@@ -1113,21 +1113,15 @@ frappe.ready(function () {
 	var customerOptions = document.getElementById("customer_options");
 	var customerProfileLink = document.getElementById("customer-profile-link");
 	var customerProfileLinkLabel = document.getElementById("customer-profile-link-label");
-	// name -> true for every Customer in the "Student" group (from get_customers).
-	var studentCustomers = {};
 
-	// Shows an "Open customer/student profile" link under the Customer field
-	// whenever a customer is picked -- students go to their own richer
-	// profile page (vacations/courses/documents/credit note/etc.), everyone
-	// else to the leaner /forms/user/customer_profile. Cheap enough to call
-	// on every customer change.
+	// Shows an "Open customer profile" link under the Customer field
+	// whenever a customer is picked. Cheap enough to call on every customer
+	// change.
 	function refresh_customer_profile_link() {
 		var name = customerInput.value;
 		if (name) {
-			var isStudent = !!studentCustomers[name];
-			customerProfileLink.href = (isStudent ? "/forms/user/student_customer_profile" : "/forms/user/customer_profile") +
-				"?customer=" + encodeURIComponent(name);
-			customerProfileLinkLabel.textContent = isStudent ? __("Open student profile") : __("Open customer profile");
+			customerProfileLink.href = "/forms/user/customer_profile?customer=" + encodeURIComponent(name);
+			customerProfileLinkLabel.textContent = __("Open customer profile");
 			customerProfileLink.classList.remove("d-none");
 		} else {
 			customerProfileLink.classList.add("d-none");
@@ -1405,9 +1399,7 @@ frappe.ready(function () {
 	}
 
 	// A real multipart POST straight to Frappe's own /api/method/upload_file
-	// (not JSON, unlike call() above) — same technique
-	// student_customer_profile.html's own document uploads already use, just
-	// generalized to any doctype/docname instead of hardcoding "Customer".
+	// (not JSON, unlike call() above), generalized to any doctype/docname.
 	// is_private=1 since this is a financial document (a receipt, a signed
 	// form) attached to a Sales Invoice — never a guessable public URL.
 	function upload_file(file, doctype, docname) {
@@ -1534,7 +1526,6 @@ frappe.ready(function () {
 	var customersLoaded = call("ez_accounting.www.forms.user.sales.get_customers").then(function (r) {
 		var rows = r.message || [];
 		customerCombo.set_rows(rows);
-		rows.forEach(function (row) { if (row.is_student) studentCustomers[row.name] = true; });
 		customerSearch.disabled = !rows.length;
 		customerSearch.placeholder = rows.length ? __("Search customers…") : __("No active customers found");
 		refresh_customer_profile_link();
@@ -2678,12 +2669,9 @@ frappe.ready(function () {
 					// The customer name itself is now the profile link (icon +
 					// name, one link) instead of linking to the invoice
 					// document — the invoice's own ID (first column) already
-					// covers that. Students go to their own richer profile
-					// (vacations/courses/documents/credit note/etc., none of
-					// which apply to a plain Customer); everyone else goes to
-					// the leaner /forms/user/customer_profile.
+					// covers that.
 					'<td><a class="history-customer-link" target="_blank" href="' +
-						(row.is_student ? "/forms/user/student_customer_profile" : "/forms/user/customer_profile") +
+						"/forms/user/customer_profile" +
 						"?customer=" + encodeURIComponent(row.customer) + '">' +
 						'<i class="fa fa-user btn-icon" aria-hidden="true"></i>' +
 						frappe.utils.escape_html(row.customer_name) + "</a></td>" +
