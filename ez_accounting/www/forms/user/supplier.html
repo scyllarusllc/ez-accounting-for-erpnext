@@ -1,0 +1,631 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .supplier-add-card .card-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .supplier-add-card .row > [class*="col-"] {
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .supplier-add-card .form-control,
+body.forms-portal-dark .supplier-add-card .btn {
+	min-height: 48px;
+}
+
+body.forms-portal-dark .supplier-add-hint {
+	font-size: 0.85rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .supplier-table-card .card-body {
+	padding: 1.5rem 1.5rem 0.5rem;
+}
+
+body.forms-portal-dark .supplier-table-card #supplier_search {
+	min-height: 56px;
+	font-size: 1.15rem;
+	padding: 0.85rem 1.1rem;
+}
+
+body.forms-portal-dark .supplier-table td,
+body.forms-portal-dark .supplier-table th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .supplier-table tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .supplier-table .supplier-code {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+}
+
+body.forms-portal-dark .supplier-table input.supplier-name-input {
+	min-width: 14rem;
+}
+
+body.forms-portal-dark .supplier-table input.supplier-first-name-input,
+body.forms-portal-dark .supplier-table input.supplier-last-name-input {
+	min-width: 8rem;
+	max-width: 10rem;
+}
+
+body.forms-portal-dark .supplier-table .name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+
+body.forms-portal-dark .supplier-table select.supplier-type-select,
+body.forms-portal-dark .supplier-table select.supplier-group-select {
+	min-width: 8rem;
+}
+
+body.forms-portal-dark .supplier-table .save-status {
+	font-size: 0.8rem;
+	min-width: 4.5rem;
+}
+
+body.forms-portal-dark .supplier-table .save-status.is-saving {
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .supplier-table .save-status.is-saved {
+	color: #6fd996;
+}
+
+body.forms-portal-dark .supplier-table .save-status.is-error {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .supplier-table .disabled-row {
+	opacity: 0.55;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Suppliers") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Manage suppliers for {0}. Individual names are always saved as \"Firstname Lastname\".").format(company) }}
+	</p>
+</div>
+
+<div id="supplier-add-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card supplier-add-card">
+	<div class="card-body">
+		<form id="supplier-add-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-2" id="new_supplier_first_name_wrap">
+					<label class="form-label" for="new_supplier_first_name">{{ _("First Name") }}</label>
+					<input type="text" class="form-control" id="new_supplier_first_name" placeholder="{{ _('Firstname') }}">
+				</div>
+
+				<div class="col-md-2" id="new_supplier_last_name_wrap">
+					<label class="form-label" for="new_supplier_last_name">{{ _("Last Name") }}</label>
+					<input type="text" class="form-control" id="new_supplier_last_name" placeholder="{{ _('Lastname') }}">
+				</div>
+
+				<div class="col-md-4 d-none" id="new_supplier_company_name_wrap">
+					<label class="form-label" for="new_supplier_company_name">{{ _("Name") }}</label>
+					<input type="text" class="form-control" id="new_supplier_company_name" placeholder="{{ _('Company/Partnership name') }}">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_supplier_type">{{ _("Type") }}</label>
+					<select class="form-control" id="new_supplier_type">
+						<option value="Individual" selected>{{ _("Individual") }}</option>
+						<option value="Company">{{ _("Company") }}</option>
+						<option value="Partnership">{{ _("Partnership") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_supplier_group">{{ _("Group") }}</label>
+					<select class="form-control" id="new_supplier_group">
+						<option value="">{{ _("— None —") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-2">
+					<button type="submit" class="btn btn-primary w-100" id="supplier-add-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="supplier-add-spinner" role="status" aria-hidden="true"></span>
+						<span id="supplier-add-label">{{ _("Add Supplier") }}</span>
+					</button>
+				</div>
+
+			</div>
+			<div class="supplier-add-hint mt-1">
+				{{ _('Individual names must be exactly "Firstname Lastname" — two words, letters only, no symbols. Company/Partnership names (e.g. "CWM Trust, LLC") are left exactly as typed.') }}
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="card form-card mt-4 supplier-table-card">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-6">
+				<input type="text" class="form-control" id="supplier_search" autocomplete="off" disabled
+					placeholder="{{ _('Loading suppliers…') }}">
+				<div class="form-text" id="supplier_count_hint"></div>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered supplier-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Name") }}</th>
+						<th>{{ _("Type") }}</th>
+						<th>{{ _("Group") }}</th>
+						<th>{{ _("Disabled") }}</th>
+					</tr>
+				</thead>
+				<tbody id="supplier-table-body">
+					<tr><td colspan="4" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	// Mirrors _validate_individual_name() in supplier.py exactly: two words,
+	// letters only, no symbols/digits/extra words — checked here so a bad
+	// format never even reaches the server, not just rejected after a round trip.
+	var INDIVIDUAL_NAME_PATTERN = /^[A-Za-z]+ [A-Za-z]+$/;
+	var INVALID_NAME_MESSAGE = __('Use exactly "Firstname Lastname": two words, letters only, no symbols.');
+	var NON_INDIVIDUAL_TYPES = { Company: true, Partnership: true };
+
+	function is_valid_individual_name(value) {
+		return INDIVIDUAL_NAME_PATTERN.test((value || "").trim().replace(/\s+/g, " "));
+	}
+
+	var tbody = document.getElementById("supplier-table-body");
+	var searchInput = document.getElementById("supplier_search");
+	var countHint = document.getElementById("supplier_count_hint");
+
+	// Rendering every supplier at once (each with an input + checkbox) would
+	// be slow enough to feel broken — same MAX_RESULTS-capped-render pattern
+	// Item Accounts/Customers use, search narrows it down instead of paging.
+	var MAX_RESULTS = 50;
+	var allSuppliers = [];
+	var allSupplierGroups = [];
+
+	// Strips everything but letters/digits before comparing, so punctuation/
+	// spacing differences between the typed query and the stored name don't
+	// prevent a match.
+	function normalize(text) {
+		return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+	}
+
+	function render_row(supplier) {
+		var row = document.createElement("tr");
+		row.className = supplier.disabled ? "disabled-row" : "";
+
+		var nameCell = document.createElement("td");
+		var nameWrap = document.createElement("div");
+		nameWrap.className = "name-cell";
+
+		var nameStatus = document.createElement("span");
+		nameStatus.className = "save-status";
+
+		function save_name(value) {
+			if (!NON_INDIVIDUAL_TYPES[supplier.supplier_type] && !is_valid_individual_name(value)) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.textContent = INVALID_NAME_MESSAGE;
+				return;
+			}
+			if (value === supplier.supplier_name) return;
+
+			nameStatus.className = "save-status is-saving";
+			nameStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.supplier.update_supplier_field", {
+				name: supplier.name,
+				field: "supplier_name",
+				value: value
+			}).then(function (r) {
+				supplier.supplier_name = (r.message && r.message.value) || value;
+				nameStatus.className = "save-status is-saved";
+				nameStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (nameStatus.classList.contains("is-saved")) nameStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.innerHTML = extract_error_message(err);
+			});
+		}
+
+		if (!NON_INDIVIDUAL_TYPES[supplier.supplier_type]) {
+			// Split into two small boxes rather than one field the admin has
+			// to type "Firstname Lastname" into exactly right — the format is
+			// enforced by the structure itself instead of by getting spacing
+			// correct. Best-effort split on the first space for existing
+			// legacy names that don't already fit two words. Mirrors
+			// customer.html's own Individual row exactly.
+			var spaceIndex = supplier.supplier_name.indexOf(" ");
+			var firstPart = spaceIndex === -1 ? supplier.supplier_name : supplier.supplier_name.slice(0, spaceIndex);
+			var lastPart = spaceIndex === -1 ? "" : supplier.supplier_name.slice(spaceIndex + 1);
+
+			var firstInput = document.createElement("input");
+			firstInput.type = "text";
+			firstInput.className = "form-control supplier-name-input supplier-first-name-input";
+			firstInput.placeholder = __("First");
+			firstInput.value = firstPart;
+
+			var lastInput = document.createElement("input");
+			lastInput.type = "text";
+			lastInput.className = "form-control supplier-name-input supplier-last-name-input";
+			lastInput.placeholder = __("Last");
+			lastInput.value = lastPart;
+
+			function current_combined() {
+				return (firstInput.value.trim() + " " + lastInput.value.trim()).trim();
+			}
+
+			// Saves on blur, but only once focus actually leaves the First+Last
+			// pair — "focusout" bubbles (unlike "blur"), and relatedTarget is
+			// the element gaining focus, so tabbing from First to Last doesn't
+			// fire a save with a half-edited name; only tabbing/clicking
+			// somewhere outside both fields does.
+			nameWrap.addEventListener("focusout", function (e) {
+				if (nameWrap.contains(e.relatedTarget)) return;
+				save_name(current_combined());
+			});
+			[firstInput, lastInput].forEach(function (input) {
+				input.addEventListener("input", function () {
+					if (nameStatus.classList.contains("is-error")) nameStatus.textContent = "";
+				});
+				input.addEventListener("keydown", function (e) {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						input.blur();
+					}
+				});
+			});
+
+			nameWrap.appendChild(firstInput);
+			nameWrap.appendChild(lastInput);
+			nameWrap.appendChild(nameStatus);
+		} else {
+			var nameInput = document.createElement("input");
+			nameInput.type = "text";
+			nameInput.className = "form-control supplier-name-input";
+			nameInput.value = supplier.supplier_name;
+
+			nameInput.addEventListener("input", function () {
+				if (nameStatus.classList.contains("is-error")) nameStatus.textContent = "";
+			});
+			nameInput.addEventListener("blur", function () {
+				save_name(nameInput.value);
+			});
+			nameInput.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					nameInput.blur();
+				}
+			});
+
+			nameWrap.appendChild(nameInput);
+			nameWrap.appendChild(nameStatus);
+		}
+
+		nameCell.appendChild(nameWrap);
+		// appendChild, not "nameCell.innerHTML +=" — the latter serializes the
+		// whole cell (including nameInput above, with its live "change"
+		// listener) back to an HTML string and reparses it into a brand-new,
+		// listener-less DOM node. Editing the name would render fine but
+		// silently never save, since the listener was bound to a node that no
+		// longer exists in the page the instant that line ran.
+		var codeDiv = document.createElement("div");
+		codeDiv.className = "supplier-code";
+		codeDiv.textContent = supplier.name;
+		nameCell.appendChild(codeDiv);
+		row.appendChild(nameCell);
+
+		var typeCell = document.createElement("td");
+		var typeSelectCell = document.createElement("select");
+		typeSelectCell.className = "form-control supplier-type-select";
+		["Individual", "Company", "Partnership"].forEach(function (t) {
+			var opt = document.createElement("option");
+			opt.value = t;
+			opt.textContent = __(t);
+			opt.selected = supplier.supplier_type === t;
+			typeSelectCell.appendChild(opt);
+		});
+		typeSelectCell.addEventListener("change", function () {
+			var newType = typeSelectCell.value;
+			var previousType = supplier.supplier_type;
+			// Same fast-fail as the Name field itself — switching an existing
+			// Company/Partnership-named supplier to Individual would otherwise
+			// round-trip to the server just to be rejected there, since a name
+			// like "Smith & Jones Partners" doesn't fit "Firstname Lastname".
+			if (!NON_INDIVIDUAL_TYPES[newType] && !is_valid_individual_name(supplier.supplier_name)) {
+				alert(__('Fix the Name to "Firstname Lastname" before switching this supplier to Individual.'));
+				typeSelectCell.value = previousType;
+				return;
+			}
+			typeSelectCell.disabled = true;
+			call("ez_accounting.www.forms.user.supplier.update_supplier_field", {
+				name: supplier.name,
+				field: "supplier_type",
+				value: newType
+			}).then(function () {
+				// The Name cell's own structure (split First/Last vs. one
+				// free-text field) depends on supplier_type — reloading the
+				// whole table is simpler and safer than trying to rebuild
+				// just this row's name inputs in place.
+				load_suppliers();
+			}).catch(function (err) {
+				typeSelectCell.disabled = false;
+				typeSelectCell.value = previousType;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		typeCell.appendChild(typeSelectCell);
+		row.appendChild(typeCell);
+
+		var groupCell = document.createElement("td");
+		var groupSelect = document.createElement("select");
+		groupSelect.className = "form-control supplier-group-select";
+		allSupplierGroups.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			opt.selected = supplier.supplier_group === g.name;
+			groupSelect.appendChild(opt);
+		});
+		groupSelect.addEventListener("change", function () {
+			var newGroup = groupSelect.value;
+			var previousGroup = supplier.supplier_group;
+			groupSelect.disabled = true;
+			call("ez_accounting.www.forms.user.supplier.update_supplier_field", {
+				name: supplier.name,
+				field: "supplier_group",
+				value: newGroup
+			}).then(function (r) {
+				supplier.supplier_group = (r.message && r.message.value) || newGroup;
+				groupSelect.disabled = false;
+			}).catch(function (err) {
+				groupSelect.disabled = false;
+				groupSelect.value = previousGroup;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		groupCell.appendChild(groupSelect);
+		row.appendChild(groupCell);
+
+		var disabledCell = document.createElement("td");
+		var disabledCheck = document.createElement("input");
+		disabledCheck.type = "checkbox";
+		disabledCheck.className = "form-check-input";
+		disabledCheck.checked = !!supplier.disabled;
+		disabledCheck.addEventListener("change", function () {
+			call("ez_accounting.www.forms.user.supplier.update_supplier_field", {
+				name: supplier.name,
+				field: "disabled",
+				value: disabledCheck.checked ? "1" : "0"
+			}).then(function () {
+				supplier.disabled = disabledCheck.checked ? 1 : 0;
+				row.className = supplier.disabled ? "disabled-row" : "";
+			}).catch(function (err) {
+				disabledCheck.checked = !!supplier.disabled;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		disabledCell.appendChild(disabledCheck);
+		row.appendChild(disabledCell);
+
+		return row;
+	}
+
+	function render_table(query) {
+		query = normalize(query);
+		var matches = !query
+			? allSuppliers
+			: allSuppliers.filter(function (supplier) {
+				return normalize(supplier.supplier_name).indexOf(query) !== -1
+					|| normalize(supplier.name).indexOf(query) !== -1;
+			});
+
+		countHint.textContent = matches.length > MAX_RESULTS
+			? __("{0} found — showing the first {1}. Keep typing to narrow down.", [matches.length, MAX_RESULTS])
+			: (query ? __("{0} found.", [matches.length]) : "");
+
+		tbody.innerHTML = "";
+		if (!matches.length) {
+			tbody.innerHTML = '<tr><td colspan="4" class="text-muted">' + __("No matching suppliers found.") + "</td></tr>";
+			return;
+		}
+		matches.slice(0, MAX_RESULTS).forEach(function (supplier) {
+			tbody.appendChild(render_row(supplier));
+		});
+	}
+
+	searchInput.addEventListener("input", function () {
+		render_table(searchInput.value);
+	});
+
+	function load_suppliers() {
+		return call("ez_accounting.www.forms.user.supplier.get_suppliers").then(function (r) {
+			allSuppliers = r.message || [];
+			if (!allSuppliers.length) {
+				tbody.innerHTML = '<tr><td colspan="4" class="text-muted">' + __("No suppliers found.") + "</td></tr>";
+				return;
+			}
+			searchInput.disabled = false;
+			searchInput.placeholder = __("Search suppliers…");
+			render_table(searchInput.value);
+		}).catch(function (err) {
+			tbody.innerHTML = '<tr><td colspan="4" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	call("ez_accounting.www.forms.user.supplier.get_supplier_groups").then(function (r) {
+		allSupplierGroups = r.message || [];
+	}).catch(function () {
+		allSupplierGroups = [];
+	}).then(function () {
+		var addGroupSelect = document.getElementById("new_supplier_group");
+		allSupplierGroups.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			addGroupSelect.appendChild(opt);
+		});
+		load_suppliers();
+	});
+
+	// Add Supplier form
+	var addForm = document.getElementById("supplier-add-form");
+	var addAlert = document.getElementById("supplier-add-alert");
+	var addSubmit = document.getElementById("supplier-add-submit");
+	var addSpinner = document.getElementById("supplier-add-spinner");
+	var addLabel = document.getElementById("supplier-add-label");
+	var firstNameInput = document.getElementById("new_supplier_first_name");
+	var lastNameInput = document.getElementById("new_supplier_last_name");
+	var firstNameWrap = document.getElementById("new_supplier_first_name_wrap");
+	var lastNameWrap = document.getElementById("new_supplier_last_name_wrap");
+	var companyNameInput = document.getElementById("new_supplier_company_name");
+	var companyNameWrap = document.getElementById("new_supplier_company_name_wrap");
+	var typeSelect = document.getElementById("new_supplier_type");
+	var groupSelect = document.getElementById("new_supplier_group");
+
+	// Individual gets two small First/Last boxes (the format is enforced by
+	// the structure, not by typing "Firstname Lastname" correctly into one
+	// field); Company/Partnership get a single free-text Name field, since
+	// those names don't follow that shape. Mirrors customer.html exactly,
+	// just checked against NON_INDIVIDUAL_TYPES (two types) instead of a
+	// plain Individual/Company toggle.
+	function apply_type_fields() {
+		var isNonIndividual = !!NON_INDIVIDUAL_TYPES[typeSelect.value];
+		firstNameWrap.classList.toggle("d-none", isNonIndividual);
+		lastNameWrap.classList.toggle("d-none", isNonIndividual);
+		companyNameWrap.classList.toggle("d-none", !isNonIndividual);
+	}
+	typeSelect.addEventListener("change", apply_type_fields);
+	apply_type_fields();
+
+	function show_alert(message, is_error) {
+		addAlert.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		addAlert.innerHTML = message;
+		addAlert.classList.remove("d-none");
+	}
+
+	function set_add_loading(is_loading) {
+		addSubmit.disabled = is_loading;
+		addSpinner.classList.toggle("d-none", !is_loading);
+		addLabel.textContent = is_loading ? __("Adding…") : __("Add Supplier");
+	}
+
+	addForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		addAlert.classList.add("d-none");
+
+		var isNonIndividual = !!NON_INDIVIDUAL_TYPES[typeSelect.value];
+		var supplierName = isNonIndividual
+			? companyNameInput.value.trim()
+			: (firstNameInput.value.trim() + " " + lastNameInput.value.trim()).trim();
+
+		if (!supplierName) {
+			show_alert(__("Name is required."), true);
+			return;
+		}
+		if (!isNonIndividual && !is_valid_individual_name(supplierName)) {
+			show_alert(INVALID_NAME_MESSAGE, true);
+			return;
+		}
+
+		set_add_loading(true);
+		call("ez_accounting.www.forms.user.supplier.create_supplier", {
+			supplier_name: supplierName,
+			supplier_type: typeSelect.value,
+			supplier_group: groupSelect.value
+		}).then(function (r) {
+			set_add_loading(false);
+			var d = r.message || {};
+			show_alert(__("Added {0} as supplier {1}.", [
+				"<strong>" + frappe.utils.escape_html(d.supplier_name) + "</strong>",
+				frappe.utils.escape_html(d.name)
+			]), false);
+			firstNameInput.value = "";
+			lastNameInput.value = "";
+			companyNameInput.value = "";
+			typeSelect.value = "Individual";
+			groupSelect.value = "";
+			apply_type_fields();
+			firstNameInput.focus();
+			load_suppliers();
+		}).catch(function (err) {
+			set_add_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+{% endblock %}

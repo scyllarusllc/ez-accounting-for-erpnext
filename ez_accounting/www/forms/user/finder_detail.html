@@ -1,0 +1,52 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+{% block style %}{{ super() }}
+<style>
+.finder-detail-back{display:inline-flex;align-items:center;gap:.4rem;margin-bottom:1rem;color:#7ea6ff}
+.finder-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem 1.5rem}
+.finder-detail-label{display:block;color:#8f9bb0;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+.finder-detail-value{color:#edf1f8;font-weight:600;overflow-wrap:anywhere}
+.finder-detail-text{white-space:pre-wrap;color:#d9e0ec;overflow-wrap:anywhere}
+.finder-detail-preview{width:100%;height:min(72vh,900px);border:1px solid #45516b;border-radius:9px;background:#111827}
+.finder-detail-image{display:block;max-width:100%;max-height:72vh;margin:auto;border-radius:9px}
+.finder-detail-actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1rem}
+</style>{% endblock %}
+{% block page_content %}
+<a class="finder-detail-back" href="{{ forms_url_prefix }}/forms/user/finder">{{ icons.btn_icon("arrow-left") }}{{ _("Back to Document Finder") }}</a>
+{% if not_found %}
+<div class="card form-card"><div class="card-body"><h4>{{ _("Document not found") }}</h4><p class="text-muted mb-0">{{ _("No Finder document matches that ID.") }}</p></div></div>
+{% elif forbidden %}
+<div class="card form-card"><div class="card-body"><h4>{{ _("Not permitted") }}</h4><p class="text-muted mb-0">{{ _("You do not have access to this document.") }}</p></div></div>
+{% else %}
+<div class="dashboard-hero">
+ <h1 class="mb-1">{{ document.title or document.name }}</h1>
+ <p class="dashboard-subtitle mb-0">{{ document.name }}{% if document.is_private %} &middot; 🔒 {{ _("Private") }}{% endif %}</p>
+</div>
+<div class="card form-card"><div class="card-body">
+ <div class="finder-detail-grid">
+  <div><span class="finder-detail-label">{{ _("Company") }}</span><span class="finder-detail-value">{{ document.company }}</span></div>
+  <div><span class="finder-detail-label">{{ _("Category") }}</span><span class="finder-detail-value">{{ document.category }}</span></div>
+  <div><span class="finder-detail-label">{{ _("Document Date") }}</span><span class="finder-detail-value">{{ frappe.utils.format_date(document.document_date) if document.document_date else "—" }}</span></div>
+  <div><span class="finder-detail-label">{{ _("Created At") }}</span><span class="finder-detail-value">{{ frappe.utils.format_datetime(document.creation) if document.creation else "—" }}</span></div>
+  <div><span class="finder-detail-label">{{ _("Expiry Date") }}</span><span class="finder-detail-value">{{ frappe.utils.format_date(document.expiry_date) if document.expiry_date else "—" }}</span></div>
+  <div><span class="finder-detail-label">{{ _("File Name") }}</span><span class="finder-detail-value">{{ document.file_name or "—" }}</span></div>
+  <div><span class="finder-detail-label">{{ _("Uploaded By") }}</span><span class="finder-detail-value">{{ document.uploaded_by or document.owner }}</span></div>
+ </div>
+ {% if document.description %}<hr><span class="finder-detail-label">{{ _("Description") }}</span><div class="finder-detail-text">{{ document.description }}</div>{% endif %}
+ {% if document.tags %}<hr><span class="finder-detail-label">{{ _("Tags") }}</span><div class="finder-detail-text">{{ document.tags }}</div>{% endif %}
+ {% if file_is_safe %}<div class="finder-detail-actions"><a class="btn btn-primary" href="{{ document.file }}" target="_blank" rel="noopener">{{ icons.btn_icon("external-link") }}{{ _("Open Original File") }}</a></div>{% endif %}
+</div></div>
+{% if file_is_safe %}
+<div class="card form-card mt-3"><div class="card-body">
+ <h5 class="mb-3">{{ _("Preview") }}</h5>
+ {% if file_extension in [".png", ".jpg", ".jpeg", ".gif", ".webp"] %}<img class="finder-detail-image" src="{{ document.file }}" alt="{{ document.file_name or document.title }}">
+ {% elif file_extension == ".pdf" %}<iframe class="finder-detail-preview" src="{{ document.file }}#toolbar=1" title="{{ document.file_name or document.title }}"></iframe>
+ {% else %}<p class="text-muted mb-0">{{ _("Preview is not available for this file type. Open the original file instead.") }}</p>{% endif %}
+</div></div>
+{% endif %}
+{% if document.content %}<div class="card form-card mt-3"><div class="card-body"><h5>{{ _("Extracted Content") }}</h5><div class="finder-detail-text">{{ document.content }}</div></div></div>{% endif %}
+{% endif %}
+{% endblock %}

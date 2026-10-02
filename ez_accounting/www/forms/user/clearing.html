@@ -1,0 +1,837 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .clearing-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .clearing-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .clearing-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .clearing-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .clearing-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark .clearing-card .value-preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 54px;
+	font-size: 1.1rem;
+	padding: 0.7rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .clearing-card .value-preview.summary-value {
+	font-size: 1.35rem;
+	font-weight: 700;
+	min-height: 60px;
+}
+
+body.forms-portal-dark .clearing-card #clearing-submit {
+	font-size: 1.2rem;
+	font-weight: 600;
+	padding: 1.1rem;
+	min-height: 60px;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .clearing-card #clearing-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .clearing-result .alert {
+	font-size: 1.05rem;
+	padding: 1.1rem 1.25rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .clearing-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Clearing History */
+body.forms-portal-dark .clearing-history-card td,
+body.forms-portal-dark .clearing-history-card th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .clearing-history-card tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .clearing-history-card tr.is-new-row td {
+	background-color: rgba(91, 140, 255, 0.16);
+	animation: clearing-row-highlight-pulse 2.4s ease-in-out;
+}
+
+body.forms-portal-dark .clearing-history-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #5b8cff;
+}
+
+@keyframes clearing-row-highlight-pulse {
+	0%, 100% { background-color: rgba(91, 140, 255, 0.16); }
+	15%, 45%, 75% { background-color: rgba(91, 140, 255, 0.5); }
+	30%, 60%, 90% { background-color: rgba(91, 140, 255, 0.16); }
+}
+
+body.forms-portal-dark .pill-cancelled {
+	background-color: #3a1f1f;
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .clearing-result .gl-entries-table {
+	margin-top: 1rem;
+}
+
+body.forms-portal-dark .gl-entries-row td {
+	background-color: #12141a;
+	padding: 1rem 1.25rem;
+}
+
+body.forms-portal-dark .history-action-link {
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .clearing-card .save-status {
+	font-size: 0.85rem;
+	font-weight: 400;
+	margin-left: 0.5rem;
+}
+body.forms-portal-dark .clearing-card .save-status.is-saving { color: #8a8f9c; }
+body.forms-portal-dark .clearing-card .save-status.is-saved { color: #6fd996; }
+body.forms-portal-dark .clearing-card .save-status.is-error { color: #f0a8a8; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Discount Clearing") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Sweep the balance sitting in a clearing account for {0} into an offset account — a real Expense account, or an Income account used as contra-revenue — in one Journal Entry (Debit offset, Credit clearing).").format(company) }}
+	</p>
+</div>
+
+<div class="card form-card clearing-card mb-4">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Default Accounts for {0}").format(company or _("this company")) }}</h4>
+		</div>
+		<p class="dashboard-subtitle mb-3">{{ _("Pre-selected on the sweep form below. Saved per company — changes here save automatically.") }}</p>
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label class="form-label" for="default_clearing_account">{{ _("Default Clearing Account") }}
+					<span class="save-status" id="default-clearing-status"></span></label>
+				<select class="form-control" id="default_clearing_account">
+					<option value="">{{ _("— None —") }}</option>
+				</select>
+			</div>
+			<div class="col-md-6">
+				<label class="form-label" for="default_expense_account">{{ _("Default Offset Account") }}
+					<span class="save-status" id="default-expense-status"></span></label>
+				<select class="form-control" id="default_expense_account">
+					<option value="">{{ _("— None —") }}</option>
+				</select>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card clearing-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Sweep to Expense") }}</h4>
+		</div>
+
+		<div id="clearing-alert" class="alert d-none mt-2" role="alert"></div>
+
+		<form id="clearing-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-md-6">
+					<label class="form-label" for="clearing_account">{{ _("Clearing Account") }}</label>
+					<select class="form-control" id="clearing_account" name="clearing_account" required>
+						<option value="" selected disabled>{{ _("Select a Cash-type account…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="expense_account">{{ _("Offset Account") }}</label>
+					<select class="form-control" id="expense_account" name="expense_account" required>
+						<option value="" selected disabled>{{ _("Select an Expense or contra-revenue account…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="posting_date">{{ _("Posting Date") }}</label>
+					<input type="date" class="form-control" id="posting_date" name="posting_date" required>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label d-block">{{ _("Current Balance") }}</label>
+					<div id="balance-preview" class="value-preview text-muted">{{ _("Select a clearing account") }}</div>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="amount">{{ _("Amount to Sweep") }}</label>
+					<input type="number" class="form-control" id="amount" name="amount" min="0.01" step="0.01">
+				</div>
+
+				<div class="col-md-12">
+					<label class="form-label" for="remark">{{ _("Remark") }}</label>
+					<input type="text" class="form-control" id="remark" name="remark" autocomplete="off" placeholder="{{ _('Optional — e.g. \'Fall 2026 tuition discounts\'') }}">
+				</div>
+
+				<div class="col-md-12">
+					<button type="submit" class="btn btn-primary" id="clearing-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="clearing-spinner" role="status" aria-hidden="true"></span>
+						{{ icons.btn_icon("zap") }}<span id="clearing-submit-label">{{ _("Post Clearing Journal Entry") }}</span>
+					</button>
+				</div>
+			</div>
+		</form>
+
+		<div id="clearing-result" class="clearing-result d-none"></div>
+	</div>
+</div>
+
+<div class="card form-card mt-4">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("In the Clearing Account") }}</h4>
+		</div>
+		<div class="row g-2 align-items-end mb-3">
+			<div class="col-auto">
+				<label class="form-label" for="entries_from_date">{{ _("From") }}</label>
+				<input type="date" class="form-control" id="entries_from_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="entries_to_date">{{ _("To") }}</label>
+				<input type="date" class="form-control" id="entries_to_date">
+			</div>
+		</div>
+		<div class="row g-3 mb-3">
+			<div class="col-sm-6">
+				<label class="form-label d-block">{{ _("Entries") }}</label>
+				<div id="entries-summary-count" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-sm-6">
+				<label class="form-label d-block">{{ _("Total") }}</label>
+				<div id="entries-summary-total" class="value-preview summary-value">&mdash;</div>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Party") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Reference No") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="entries-table-body">
+					<tr><td colspan="6" class="text-muted">{{ _("Select a clearing account above.") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card mt-4 clearing-history-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Clearing History") }}</h4>
+		</div>
+		<div class="row g-2 align-items-end mb-3">
+			<div class="col-auto">
+				<label class="form-label" for="history_from_date">{{ _("From") }}</label>
+				<input type="date" class="form-control" id="history_from_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_to_date">{{ _("To") }}</label>
+				<input type="date" class="form-control" id="history_to_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_doc_no">{{ _("Doc No") }}</label>
+				<input type="text" class="form-control" id="history_doc_no" autocomplete="off" placeholder="{{ _('Search doc number…') }}">
+			</div>
+			<div class="col-auto">
+				<button type="button" class="btn btn-outline-secondary" id="history_clear_filters">{{ _("Clear") }}</button>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Doc No") }}</th>
+						<th>{{ _("Posting Date") }}</th>
+						<th>{{ _("Clearing Account") }}</th>
+						<th>{{ _("Offset Account") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th>{{ _("Journal Entry") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Created") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="clearing-history-body">
+					<tr><td colspan="10" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	function money(v) {
+		return frappe.format(v, { fieldtype: "Currency" }, { only_value: true });
+	}
+
+	function populate_select(select, rows, empty_label) {
+		select.innerHTML = "";
+		if (!rows || !rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = empty_label;
+			select.appendChild(opt);
+			return;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = true;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.label || row.name;
+			select.appendChild(opt);
+		});
+		if (rows.length === 1) {
+			select.value = rows[0].name;
+			select.selectedIndex = 1;
+		}
+	}
+
+	function select_default(select, value) {
+		if (!value) return;
+		var option = select.querySelector('option[value="' + CSS.escape(value) + '"]');
+		if (option) select.value = value;
+	}
+
+	function render_gl_entries_table(entries) {
+		if (!entries || !entries.length) {
+			return '<p class="text-muted mb-0">' + __("No GL Entries found.") + "</p>";
+		}
+		var rows = entries.map(function (e) {
+			var voucherLabel = frappe.utils.escape_html(e.voucher_type || "") + " " + frappe.utils.escape_html(e.voucher_no || "");
+			return (
+				"<tr>" +
+				'<td><a target="_blank" href="' + doc_link(e.voucher_type, e.voucher_no) + '">' + voucherLabel + "</a></td>" +
+				"<td>" + frappe.utils.escape_html(e.account || "") + "</td>" +
+				"<td>" + frappe.utils.escape_html(e.against || "") + "</td>" +
+				'<td class="text-right">' + (parseFloat(e.debit) ? money(e.debit) : "") + "</td>" +
+				'<td class="text-right">' + (parseFloat(e.credit) ? money(e.credit) : "") + "</td>" +
+				"</tr>"
+			);
+		}).join("");
+		return (
+			'<div class="table-responsive gl-entries-table">' +
+			'<table class="table table-bordered table-sm mb-0">' +
+			"<thead><tr>" +
+			"<th>" + __("Voucher") + "</th><th>" + __("Account") + "</th><th>" + __("Against") + "</th>" +
+			'<th class="text-right">' + __("Debit") + '</th><th class="text-right">' + __("Credit") + "</th>" +
+			"</tr></thead><tbody>" + rows + "</tbody></table></div>"
+		);
+	}
+
+	var alertBox = document.getElementById("clearing-alert");
+	var resultBox = document.getElementById("clearing-result");
+	var submitBtn = document.getElementById("clearing-submit");
+	var spinner = document.getElementById("clearing-spinner");
+	var submitLabel = document.getElementById("clearing-submit-label");
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading ? __("Posting…") : __("Post Clearing Journal Entry");
+	}
+
+	var clearingSelect = document.getElementById("clearing_account");
+	var expenseSelect = document.getElementById("expense_account");
+	var defaultClearingSelect = document.getElementById("default_clearing_account");
+	var defaultExpenseSelect = document.getElementById("default_expense_account");
+	var defaultClearingStatus = document.getElementById("default-clearing-status");
+	var defaultExpenseStatus = document.getElementById("default-expense-status");
+	var postingDateInput = document.getElementById("posting_date");
+	var amountInput = document.getElementById("amount");
+	var remarkInput = document.getElementById("remark");
+	var balancePreview = document.getElementById("balance-preview");
+	var entriesFromDate = document.getElementById("entries_from_date");
+	var entriesToDate = document.getElementById("entries_to_date");
+
+	var currentBalance = null;
+	var amountTouched = false;
+	amountInput.addEventListener("input", function () { amountTouched = true; });
+
+	// Default posting date to today; entries window to the start of this month.
+	var today = frappe.datetime.get_today();
+	postingDateInput.value = today;
+	entriesToDate.value = today;
+	entriesFromDate.value = today.slice(0, 8) + "01";
+
+	function refresh_balance() {
+		if (!clearingSelect.value) {
+			currentBalance = null;
+			balancePreview.className = "value-preview text-muted";
+			balancePreview.textContent = __("Select a clearing account");
+			return;
+		}
+		balancePreview.className = "value-preview text-muted";
+		balancePreview.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.clearing.get_clearing_balance_preview", {
+			clearing_account: clearingSelect.value,
+			as_of_date: postingDateInput.value
+		}).then(function (r) {
+			if (!r.message) return;
+			currentBalance = parseFloat(r.message.balance) || 0;
+			balancePreview.className = "value-preview" + (currentBalance <= 0 ? " text-muted" : "");
+			balancePreview.textContent = money(currentBalance);
+			if (!amountTouched) {
+				amountInput.value = currentBalance > 0 ? currentBalance.toFixed(2) : "";
+			}
+		}).catch(function (err) {
+			currentBalance = null;
+			balancePreview.className = "value-preview text-danger";
+			balancePreview.innerHTML = extract_error_message(err);
+		});
+	}
+
+	var entriesBody = document.getElementById("entries-table-body");
+	var entriesSummaryCount = document.getElementById("entries-summary-count");
+	var entriesSummaryTotal = document.getElementById("entries-summary-total");
+
+	function refresh_entries() {
+		if (!clearingSelect.value) {
+			entriesBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Select a clearing account above.") + "</td></tr>";
+			entriesSummaryCount.textContent = "—";
+			entriesSummaryTotal.textContent = "—";
+			return;
+		}
+		entriesBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Loading…") + "</td></tr>";
+		call("ez_accounting.www.forms.user.clearing.get_clearing_entries", {
+			clearing_account: clearingSelect.value,
+			from_date: entriesFromDate.value,
+			to_date: entriesToDate.value
+		}).then(function (r) {
+			if (!r.message) return;
+			var entries = r.message.entries || [];
+			var summary = r.message.summary || {};
+			entriesSummaryCount.textContent = summary.count || 0;
+			entriesSummaryTotal.textContent = money(summary.total || 0);
+			if (!entries.length) {
+				entriesBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Nothing found in this account for this range.") + "</td></tr>";
+				return;
+			}
+			entriesBody.innerHTML = entries.map(function (row) {
+				return (
+					"<tr>" +
+					"<td>" + row.posting_date + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.party_name || row.party || "") + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.mode_of_payment || "") + "</td>" +
+					"<td>" + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td class="text-right">' + money(row.amount) + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + doc_link(row.voucher_type, row.name) + '">' + __("View") + "</a></td>" +
+					"</tr>"
+				);
+			}).join("");
+		}).catch(function (err) {
+			entriesBody.innerHTML = '<tr><td colspan="6" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+
+	// Set once the user picks a sweep-form account by hand — until then,
+	// saving the defaults keeps the sweep form's selects mirrored to them.
+	var sweepAccountsTouched = false;
+	clearingSelect.addEventListener("change", function () {
+		sweepAccountsTouched = true;
+		refresh_balance();
+		refresh_entries();
+	});
+	expenseSelect.addEventListener("change", function () { sweepAccountsTouched = true; });
+	postingDateInput.addEventListener("change", refresh_balance);
+	entriesFromDate.addEventListener("change", refresh_entries);
+	entriesToDate.addEventListener("change", refresh_entries);
+
+	// Fills a <select> that already has a leading blank ("— None —") option,
+	// keeping it, appending account rows, and setting the current value.
+	function fill_defaults_select(select, rows, current) {
+		while (select.options.length > 1) select.remove(1);
+		(rows || []).forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.label || row.name;
+			select.appendChild(opt);
+		});
+		select.value = current || "";
+	}
+
+	function set_status(el, text, cls) {
+		el.className = "save-status" + (cls ? " " + cls : "");
+		el.textContent = text;
+	}
+
+	// Load the three lookups independently — one failing must not leave the
+	// Default Accounts panel or the sweep form half-wired.
+	function safe_call(method) {
+		return call("ez_accounting.www.forms.user.clearing." + method)
+			.then(function (r) { return r.message || []; })
+			.catch(function (err) {
+				set_status(defaultClearingStatus, __("Load failed"), "is-error");
+				set_status(defaultExpenseStatus, extract_error_message(err), "is-error");
+				return [];
+			});
+	}
+
+	Promise.all([
+		safe_call("get_clearing_accounts"),
+		safe_call("get_offset_accounts"),
+		call("ez_accounting.www.forms.user.clearing.get_clearing_settings")
+			.then(function (r) { return r.message || {}; })
+			.catch(function () { return {}; })
+	]).then(function (out) {
+		var cashAccounts = out[0];
+		var offsetAccounts = (out[1] || []).map(function (a) {
+			// contra-revenue accounts sit under Income — flag them so the admin
+			// can tell them apart from real Expense accounts.
+			return { name: a.name, label: a.root_type === "Income" ? a.name + "  (contra-revenue)" : a.name };
+		});
+		var s = out[2] || {};
+
+		populate_select(clearingSelect, cashAccounts, __("No Cash accounts found for this company"));
+		populate_select(expenseSelect, offsetAccounts, __("No Expense or Income accounts found for this company"));
+		fill_defaults_select(defaultClearingSelect, cashAccounts, s.default_clearing_account);
+		fill_defaults_select(defaultExpenseSelect, offsetAccounts, s.default_expense_account);
+		select_default(clearingSelect, s.default_clearing_account);
+		select_default(expenseSelect, s.default_expense_account);
+		refresh_balance();
+		refresh_entries();
+	});
+
+	// Auto-save the per-company default account pair whenever either dropdown
+	// changes — no separate Save button. Shows an inline "Saving…"/"Saved" next
+	// to the field (the "Saved" toast is app-wide, see forms_portal.js), same
+	// pattern as the Item Accounts page's inline-edit selects.
+	function save_defaults(statusEl) {
+		set_status(statusEl, __("Saving…"), "is-saving");
+		call("ez_accounting.www.forms.user.clearing.save_clearing_settings", {
+			clearing_account: defaultClearingSelect.value,
+			expense_account: defaultExpenseSelect.value
+		}).then(function (r) {
+			var s = (r && r.message) || {};
+			set_status(statusEl, __("Saved"), "is-saved");
+			setTimeout(function () {
+				if (statusEl.classList.contains("is-saved")) set_status(statusEl, "");
+			}, 2500);
+			// Mirror into the sweep form unless the user already picked there.
+			if (!sweepAccountsTouched) {
+				select_default(clearingSelect, s.default_clearing_account);
+				select_default(expenseSelect, s.default_expense_account);
+				refresh_balance();
+				refresh_entries();
+			}
+		}).catch(function (err) {
+			set_status(statusEl, "", "");
+			statusEl.className = "save-status is-error";
+			statusEl.innerHTML = extract_error_message(err);
+		});
+	}
+
+	defaultClearingSelect.addEventListener("change", function () { save_defaults(defaultClearingStatus); });
+	defaultExpenseSelect.addEventListener("change", function () { save_defaults(defaultExpenseStatus); });
+
+	// ---- Submit ----
+	document.getElementById("clearing-form").addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		var amount = parseFloat(amountInput.value) || 0;
+		if (!clearingSelect.value || !expenseSelect.value) {
+			show_alert(__("Select both a clearing account and an offset account."), true);
+			return;
+		}
+		if (amount <= 0) {
+			show_alert(__("Enter an amount to sweep."), true);
+			return;
+		}
+		if (currentBalance !== null && amount > currentBalance + 0.01) {
+			show_alert(__("Amount {0} is more than the current balance {1}.", [money(amount), money(currentBalance)]), true);
+			return;
+		}
+
+		set_loading(true);
+		call("ez_accounting.www.forms.user.clearing.process_clearing_sweep", {
+			clearing_account: clearingSelect.value,
+			expense_account: expenseSelect.value,
+			posting_date: postingDateInput.value,
+			amount: amount,
+			remark: remarkInput.value
+		}).then(function (r) {
+			set_loading(false);
+			if (!r.message) return;
+			var d = r.message;
+			resultBox.innerHTML =
+				'<div class="alert alert-info">' +
+					"<strong>" + __("Clearing sweep {0} submitted", [frappe.utils.escape_html(d.name)]) + "</strong>" +
+					'<div class="mt-2">' +
+						(d.journal_entry
+							? '<a target="_blank" href="' + doc_link("journal-entry", d.journal_entry) + '">' + __("View Journal Entry") + "</a>"
+							: "") +
+					"</div>" +
+					'<div class="mt-2 text-muted">' + __("Swept") + ": " + money(d.amount) +
+						" &middot; " + __("Balance before") + ": " + money(d.clearing_balance) + "</div>" +
+					'<div class="mt-3"><h6 class="mb-2">' + __("GL Entries") + "</h6>" + render_gl_entries_table(d.gl_entries) + "</div>" +
+				"</div>";
+			resultBox.classList.remove("d-none");
+
+			amountTouched = false;
+			remarkInput.value = "";
+			// process_clearing_sweep() also saves this pair as the company
+			// default — keep the Default Accounts panel in sync.
+			defaultClearingSelect.value = clearingSelect.value;
+			defaultExpenseSelect.value = expenseSelect.value;
+			refresh_balance();
+			refresh_entries();
+			load_clearing_history(d.name);
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+
+	// ---- Clearing History ----
+	var historyBody = document.getElementById("clearing-history-body");
+	var historyFromDate = document.getElementById("history_from_date");
+	var historyToDate = document.getElementById("history_to_date");
+	var historyDocNo = document.getElementById("history_doc_no");
+	var historyClearFilters = document.getElementById("history_clear_filters");
+	var STATUS_LABEL = { 1: __("Submitted"), 2: __("Cancelled") };
+	var STATUS_PILL_CLASS = { 1: "pill-final", 2: "pill-cancelled" };
+
+	function load_clearing_history(highlightName, docNoOverride) {
+		call("ez_accounting.www.forms.user.clearing.get_clearing_history", {
+			from_date: historyFromDate.value,
+			to_date: historyToDate.value,
+			doc_no_search: (docNoOverride !== undefined ? docNoOverride : historyDocNo.value).trim()
+		}).then(function (r) {
+			var rows = r.message || [];
+			if (!rows.length) {
+				historyBody.innerHTML = '<tr><td colspan="10" class="text-muted">' + __("No clearing sweeps found for this filter.") + "</td></tr>";
+				return;
+			}
+			historyBody.innerHTML = rows.map(function (row) {
+				var link = doc_link("forms-clearing-sweep", row.name);
+				var pillClass = STATUS_PILL_CLASS[row.docstatus] || "pill-draft";
+				var glAction = row.docstatus === 1
+					? '<a href="#" class="history-action-link gl-entries-toggle" data-name="' + frappe.utils.escape_html(row.name) + '">' + __("GL Entries") + "</a>"
+					: "";
+				var cancelAction = row.docstatus === 1
+					? '<a href="#" class="history-action-link clearing-cancel-btn" data-name="' + frappe.utils.escape_html(row.name) + '">' + __("Cancel") + "</a>"
+					: "";
+				var actions = [glAction, cancelAction].filter(Boolean).join(" &middot; ");
+				var rowId = "gl-" + row.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+				var rowClass = row.name === highlightName ? ' class="is-new-row"' : "";
+				return (
+					"<tr" + rowClass + ">" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' + frappe.utils.escape_html(row.name) + "</a></td>" +
+					"<td>" + row.posting_date + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.clearing_account || "") + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.expense_account || "") + "</td>" +
+					'<td class="text-right">' + money(row.amount) + "</td>" +
+					"<td>" + (row.journal_entry
+						? '<a class="history-row-link" target="_blank" href="' + doc_link("journal-entry", row.journal_entry) + '">' + frappe.utils.escape_html(row.journal_entry) + "</a>"
+						: '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td><span class="status-pill ' + pillClass + '">' + (STATUS_LABEL[row.docstatus] || row.docstatus) + "</span></td>" +
+					"<td>" + format_timestamp(row.creation) + "</td>" +
+					"<td>" + (row.created_by ? frappe.utils.escape_html(row.created_by) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					"<td>" + actions + "</td>" +
+					"</tr>" +
+					'<tr class="gl-entries-row d-none" id="' + rowId + '"><td colspan="10"></td></tr>'
+				);
+			}).join("");
+
+			if (highlightName) {
+				var newRow = historyBody.querySelector("tr.is-new-row");
+				if (newRow) {
+					window.requestAnimationFrame(function () {
+						newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+					});
+				}
+			}
+		}).catch(function () {
+			historyBody.innerHTML = '<tr><td colspan="10" class="text-danger">' + __("Could not load clearing history.") + "</td></tr>";
+		});
+	}
+	load_clearing_history();
+
+	historyFromDate.addEventListener("change", function () { load_clearing_history(); });
+	historyToDate.addEventListener("change", function () { load_clearing_history(); });
+	var historyDocNoDebounce = null;
+	historyDocNo.addEventListener("input", function () {
+		var term = historyDocNo.value;
+		clearTimeout(historyDocNoDebounce);
+		historyDocNoDebounce = setTimeout(function () { load_clearing_history(undefined, term); }, 350);
+	});
+	historyClearFilters.addEventListener("click", function () {
+		historyFromDate.value = "";
+		historyToDate.value = "";
+		historyDocNo.value = "";
+		load_clearing_history();
+	});
+
+	// GL Entries toggle per history row — fetched lazily on first click.
+	historyBody.addEventListener("click", function (e) {
+		var toggle = e.target.closest(".gl-entries-toggle");
+		if (!toggle) return;
+		e.preventDefault();
+		var name = toggle.dataset.name;
+		var rowId = "gl-" + name.replace(/[^a-zA-Z0-9_-]/g, "_");
+		var detailRow = document.getElementById(rowId);
+		if (!detailRow) return;
+		if (!detailRow.classList.contains("d-none")) {
+			detailRow.classList.add("d-none");
+			return;
+		}
+		if (detailRow.dataset.loaded) {
+			detailRow.classList.remove("d-none");
+			return;
+		}
+		detailRow.querySelector("td").innerHTML = __("Loading…");
+		detailRow.classList.remove("d-none");
+		call("ez_accounting.www.forms.user.clearing.get_clearing_sweep_gl_entries", { name: name }).then(function (r) {
+			detailRow.querySelector("td").innerHTML = render_gl_entries_table(r.message || []);
+			detailRow.dataset.loaded = "1";
+		}).catch(function (err) {
+			detailRow.querySelector("td").innerHTML = '<span class="text-danger">' + extract_error_message(err) + "</span>";
+		});
+	});
+
+	historyBody.addEventListener("click", function (e) {
+		var btn = e.target.closest(".clearing-cancel-btn");
+		if (!btn) return;
+		e.preventDefault();
+		var name = btn.dataset.name;
+		if (!window.confirm(__("Cancel {0}? This cancels its Journal Entry too — this can't be undone from here.", [name]))) {
+			return;
+		}
+		btn.textContent = __("Cancelling…");
+		call("ez_accounting.www.forms.user.clearing.cancel_clearing_sweep", { name: name })
+			.then(function () {
+				refresh_balance();
+				refresh_entries();
+				load_clearing_history();
+			})
+			.catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				btn.textContent = __("Cancel");
+			});
+	});
+});
+</script>
+{% endblock %}

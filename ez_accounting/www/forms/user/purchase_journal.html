@@ -1,0 +1,113 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .pj-table td.pj-date { white-space: nowrap; }
+body.forms-portal-dark .pj-table tr.pj-voucher-first td { border-top: 2px solid #2a2e37; }
+body.forms-portal-dark .pj-table tr.pj-voucher-first:first-child td { border-top: none; }
+body.forms-portal-dark .pj-muted { color: #8a8f9c; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Purchase Journal") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Every Purchase Invoice for {0} posted {1} to {2}, with its full GL detail.").format(company, frappe.utils.format_date(from_date), frappe.utils.format_date(to_date)) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>
+
+<div class="card form-card mb-4 no-print">
+	<div class="card-body">
+		<div class="quick-range-row mb-3">
+			<a href="/forms/user/purchase_journal?from_date={{ last_month_from }}&to_date={{ last_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'last_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("Last Month") }}</a>
+			<a href="/forms/user/purchase_journal?from_date={{ this_month_from }}&to_date={{ this_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'this_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("This Month") }}</a>
+		</div>
+		<div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+			<form method="GET" class="date-range-row">
+				<div class="form-group mb-0">
+					<label>{{ _("From") }}</label>
+					<input type="date" class="form-control" name="from_date" value="{{ from_date or '' }}">
+				</div>
+				<div class="form-group mb-0">
+					<label>{{ _("To") }}</label>
+					<input type="date" class="form-control" name="to_date" value="{{ to_date or '' }}">
+				</div>
+				<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+			</form>
+			{% if company %}
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" href="/api/method/ez_accounting.www.forms.user.purchase_journal.download_excel?from_date={{ from_date or '' }}&to_date={{ to_date or '' }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" href="/forms/user/printer?kind=purchase_journal&from_date={{ from_date or '' }}&to_date={{ to_date or '' }}">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+{% if company %}
+<div class="card form-card">
+	<div class="card-body">
+		<div class="d-flex flex-wrap gap-4 mb-3">
+			<div><span class="stat-label">{{ _("Invoices") }}</span> <strong>{{ vouchers|length }}</strong></div>
+			<div><span class="stat-label">{{ _("Total Debit") }}</span> <strong>{{ frappe.utils.fmt_money(total_debit) }}</strong></div>
+			<div><span class="stat-label">{{ _("Total Credit") }}</span> <strong>{{ frappe.utils.fmt_money(total_credit) }}</strong></div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered pj-table">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Account ID") }}</th>
+						<th>{{ _("Account Description") }}</th>
+						<th>{{ _("Invoice/CM #") }}</th>
+						<th>{{ _("Line Description") }}</th>
+						<th class="text-right">{{ _("Debit Amount") }}</th>
+						<th class="text-right">{{ _("Credit Amount") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for v in vouchers %}
+					{% for line in v.lines %}
+					<tr class="{{ 'pj-voucher-first' if loop.first else '' }}">
+						<td class="pj-date">{{ frappe.utils.format_date(v.date) if loop.first else "" }}</td>
+						<td>{{ line.account_id }}</td>
+						<td>{{ line.account_name }}</td>
+						<td>{% if loop.first %}<a href="/forms/user/printer?id={{ v.invoice | urlencode }}" target="_blank" rel="noopener">{{ v.invoice }}</a>{% endif %}</td>
+						<td>{{ line.line_description }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(line.debit) if line.debit else "" }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(line.credit) if line.credit else "" }}</td>
+					</tr>
+					{% endfor %}
+					{% else %}
+					<tr><td colspan="7" class="pj-muted">{{ _("No purchase invoices in this period.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if vouchers %}
+				<tfoot>
+					<tr>
+						<th colspan="5">{{ _("Total") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(total_debit) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(total_credit) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+{% endblock %}

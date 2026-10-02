@@ -1,0 +1,30 @@
+<style>
+	.sr-company { font-size: 12pt; font-weight: 700; margin: 0 0 0.01in; text-align: center; }
+	body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color: #000; margin: 0; padding: 0.22in 0.2in 0.42in; font-size: 7pt; line-height: 1.15; }
+	.sr-title { font-size: 10pt; font-weight: 700; margin: 0.01in 0; text-align: center; }
+	.sr-period { color: #444; margin: 0 0 0.1in; text-align: center; }
+	.sr-summary { display: flex; justify-content: space-between; margin-bottom: 0.08in; border: 1px solid #bbb; padding: 0.035in 0.06in; }
+	.sr-summary div { text-align: center; }
+	.sr-summary strong { display: block; font-size: 8pt; }
+	.sr-summary span { color: #555; font-size: 6pt; text-transform: uppercase; }
+	table { width: 100%; border-collapse: collapse; }
+	th, td { text-align: left; padding: 0.022in 0.035in; vertical-align: top; border-bottom: 0.5px solid #ddd; }
+	th { border-bottom: 1px solid #000; color: #444; font-size: 6pt; line-height: 1.05; text-transform: uppercase; }
+	.text-end { text-align: right; }
+	.sr-total-row td { border-top: 1px solid #000; font-weight: 700; }
+	.sr-footer { position: fixed; left: 0.2in; right: 0.2in; bottom: 0.15in; border-top: 1px solid #999; padding-top: 0.02in; color: #444; font-size: 6pt; }
+	@media print { thead { display: table-header-group; } }
+</style>
+<div class="sr-company">{{ company }}</div>
+<div class="sr-title">{{ _("Sales Report") }}</div>
+<div class="sr-period">{{ period }}</div>
+<div class="sr-summary">
+	<div><strong>{{ summary.invoice_count }}</strong><span>{{ _("Receipts") }}</span></div>
+	<div><strong>{{ fmt_money(summary.total_amount, currency=summary.currency) }}</strong><span>{{ _("Total Sales") }}</span></div>
+	<div><strong>{{ fmt_money(summary.total_paid, currency=summary.currency) }}</strong><span>{{ _("Total Paid") }}</span></div>
+</div>
+{% if rows %}
+<table><thead><tr><th>{{ _("Receipt #") }}</th><th>{{ _("Date") }}</th><th>{{ _("Customer") }}</th><th>{{ _("Deposit Day") }}</th><th>{{ _("Deposit Status") }}</th><th class="text-end">{{ _("Deposit Amount") }}</th><th class="text-end">{{ _("Credit Card") }}</th><th class="text-end">{{ _("Check / Cash") }}</th><th class="text-end">{{ _("Wire Transfer") }}</th><th class="text-end">{{ _("Other Payment") }}</th><th class="text-end">{{ _("Amount") }}</th><th class="text-end">{{ _("Paid") }}</th></tr></thead>
+<tbody>{% for row in rows %}<tr><td>{{ row.receipt_no or "—" }}</td><td>{{ frappe.utils.format_date(row.posting_date) }}</td><td>{{ row.customer_name or row.customer }}</td><td>{{ frappe.utils.format_date(row.deposit_day) if row.deposit_day else "—" }}</td><td>{{ _(row.deposit_status) }}</td><td class="text-end">{{ fmt_money(row.deposit_amount, currency=row.currency) if row.deposit_amount else "—" }}</td><td class="text-end">{{ fmt_money(row.credit_card_amount, currency=row.currency) if row.credit_card_amount else "—" }}</td><td class="text-end">{{ fmt_money(row.check_cash_amount, currency=row.currency) if row.check_cash_amount else "—" }}</td><td class="text-end">{{ fmt_money(row.wire_transfer_amount, currency=row.currency) if row.wire_transfer_amount else "—" }}</td><td class="text-end">{{ fmt_money(row.other_payment_amount, currency=row.currency) if row.other_payment_amount else "—" }}</td><td class="text-end">{{ fmt_money(row.grand_total, currency=row.currency) }}</td><td class="text-end">{{ fmt_money(row.paid_amount, currency=row.currency) }}</td></tr>{% endfor %}</tbody><tfoot><tr class="sr-total-row"><td colspan="5">{{ _("Summary") }}</td><td class="text-end">{{ fmt_money(summary.total_deposit_amount, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_credit_card, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_check_cash, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_wire_transfer, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_other_payment, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_amount, currency=summary.currency) }}</td><td class="text-end">{{ fmt_money(summary.total_paid, currency=summary.currency) }}</td></tr></tfoot></table>
+{% else %}<p>{{ _("No submitted sales found for this filter.") }}</p>{% endif %}
+<div class="sr-footer">{{ printed_at }}</div>

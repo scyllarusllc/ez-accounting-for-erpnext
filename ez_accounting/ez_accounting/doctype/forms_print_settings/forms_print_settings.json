@@ -1,0 +1,124 @@
+{
+ "actions": [],
+ "autoname": "field:company",
+ "creation": "2026-08-25 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "section_sales",
+  "sales_invoice_format",
+  "column_break_sales",
+  "sales_receipt_format",
+  "section_purchase",
+  "purchase_invoice_format",
+  "column_break_purchase",
+  "purchase_receipt_format",
+  "purchase_check_format",
+  "section_payroll",
+  "payroll_check_format"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "section_sales",
+   "fieldtype": "Section Break",
+   "label": "Express Sales"
+  },
+  {
+   "description": "Print Format used by the \"Invoice\" link on /forms/user/sales — must belong to Sales Invoice. Left blank falls back to \"Sales Invoice with Remarks\".",
+   "fieldname": "sales_invoice_format",
+   "fieldtype": "Link",
+   "label": "Sales Invoice Format",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "column_break_sales",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Print Format used by the \"Receipt\" link on /forms/user/sales — must belong to Payment Entry. Left blank falls back to \"Official Receipt with line descriptions\".",
+   "fieldname": "sales_receipt_format",
+   "fieldtype": "Link",
+   "label": "Sales Receipt Format",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "section_purchase",
+   "fieldtype": "Section Break",
+   "label": "Express Purchase"
+  },
+  {
+   "description": "Print Format used by the \"Invoice\" link on /forms/user/purchase — must belong to Purchase Invoice. Left blank falls back to \"Purchase Invoice with Remarks\".",
+   "fieldname": "purchase_invoice_format",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice Format",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "column_break_purchase",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Print Format used by the \"Receipt\" link on /forms/user/purchase — must belong to Payment Entry. Left blank uses that doctype's own default format.",
+   "fieldname": "purchase_receipt_format",
+   "fieldtype": "Link",
+   "label": "Purchase Receipt Format",
+   "options": "Print Format"
+  },
+  {
+   "description": "Print Format used by the \"Print Check\" button on /forms/user/purchase — must belong to Payment Entry. Left blank falls back to \"FHB Check\".",
+   "fieldname": "purchase_check_format",
+   "fieldtype": "Link",
+   "label": "Purchase Check Format",
+   "options": "Print Format"
+  },
+  {
+   "fieldname": "section_payroll",
+   "fieldtype": "Section Break",
+   "label": "Express Payroll"
+  },
+  {
+   "description": "Print Format used by the \"Print Check\" button on /forms/user/payroll — must belong to Salary Slip. Left blank falls back to \"FHB Check for payroll\".",
+   "fieldname": "payroll_check_format",
+   "fieldtype": "Link",
+   "label": "Payroll Check Format",
+   "options": "Print Format"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-25 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Print Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,272 @@
+{
+ "charts": [],
+ "content": "[{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>EZ Accounting</b></span>\",\"col\":12}},{\"type\":\"paragraph\",\"data\":{\"text\":\"Most day-to-day work happens on the portal at <code>/forms/user</code>, not here \\u2014 these are the underlying DocTypes.\",\"col\":12}},{\"type\":\"spacer\",\"data\":{\"col\":12}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Deposits &amp; Clearing</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Deposits & Clearing\",\"col\":4}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Access &amp; Settings</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Access & Settings\",\"col\":4}},{\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\"><b>Documents &amp; AI</b></span>\",\"col\":12}},{\"type\":\"card\",\"data\":{\"card_name\":\"Documents & AI\",\"col\":4}}]",
+ "creation": "2026-08-09 12:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "clipboard-check",
+ "idx": 0,
+ "indicator_color": "",
+ "is_hidden": 0,
+ "label": "Ez Accounting",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Deposits & Clearing",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Bank Deposit Sheet",
+   "link_count": 0,
+   "link_to": "Forms Bank Deposit Sheet",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Clearing Settings",
+   "link_count": 0,
+   "link_to": "Forms Clearing Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Clearing Sweep",
+   "link_count": 0,
+   "link_to": "Forms Clearing Sweep",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Manual Entry",
+   "link_count": 0,
+   "link_to": "Forms Manual Entry",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Party Default",
+   "link_count": 0,
+   "link_to": "Forms Party Default",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Payroll Tax Settings",
+   "link_count": 0,
+   "link_to": "Forms Payroll Tax Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Access & Settings",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms User Access",
+   "link_count": 0,
+   "link_to": "Forms User Access",
+   "link_type": "DocType",
+   "onboard": 1,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms User Access Company",
+   "link_count": 0,
+   "link_to": "Forms User Access Company",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms User Access Page",
+   "link_count": 0,
+   "link_to": "Forms User Access Page",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Role Permission Collection",
+   "link_count": 0,
+   "link_to": "Forms Role Permission Collection",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Print Settings",
+   "link_count": 0,
+   "link_to": "Forms Print Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Style Settings",
+   "link_count": 0,
+   "link_to": "Forms Style Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Style",
+   "link_count": 0,
+   "link_to": "Forms Style",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Documents & AI",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms Company Document",
+   "link_count": 0,
+   "link_to": "Forms Company Document",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms File Record",
+   "link_count": 0,
+   "link_to": "Forms File Record",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Email Attachment Settings",
+   "link_count": 0,
+   "link_to": "Email Attachment Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Email Attachments",
+   "link_count": 0,
+   "link_to": "Email Attachments",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms AI Agent Settings",
+   "link_count": 0,
+   "link_to": "Forms AI Agent Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "dependencies": "",
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Forms AI Read Log",
+   "link_count": 0,
+   "link_to": "Forms AI Read Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2026-10-02 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms",
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "roles": [],
+ "sequence_id": 30.0,
+ "type": "Workspace",
+ "shortcuts": [
+  {
+   "label": "Forms Bank Deposit Sheet",
+   "link_to": "Forms Bank Deposit Sheet",
+   "type": "DocType"
+  },
+  {
+   "label": "Forms User Access",
+   "link_to": "Forms User Access",
+   "type": "DocType"
+  }
+ ],
+ "title": "Ez Accounting"
+}

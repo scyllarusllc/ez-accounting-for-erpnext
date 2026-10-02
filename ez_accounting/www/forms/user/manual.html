@@ -1,0 +1,50 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+{% block style %}{{ super() }}
+<style>
+body.forms-portal-dark .manual-layout { display:grid; grid-template-columns:minmax(18rem,.75fr) minmax(0,1.6fr); gap:1rem; align-items:start; }
+body.forms-portal-dark .manual-editor { position:sticky; top:1rem; }
+body.forms-portal-dark .manual-search { background:#12141a; border:1px solid #363c49; color:#fff; }
+body.forms-portal-dark .manual-entry { background:#12141a; border:1px solid #2a2e37; border-radius:.65rem; margin-bottom:.75rem; overflow:hidden; }
+body.forms-portal-dark .manual-entry summary { cursor:pointer; display:flex; gap:.75rem; justify-content:space-between; padding:1rem; list-style:none; }
+body.forms-portal-dark .manual-entry summary::-webkit-details-marker { display:none; }
+body.forms-portal-dark .manual-category { color:#9db7ff; font-size:.72rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+body.forms-portal-dark .manual-question { font-size:1.02rem; font-weight:700; }
+body.forms-portal-dark .manual-answer { border-top:1px solid #2a2e37; color:#d8dbe3; line-height:1.65; padding:1rem; white-space:pre-wrap; }
+body.forms-portal-dark .manual-actions { display:flex; gap:.5rem; padding:0 1rem 1rem; }
+body.forms-portal-dark .manual-empty { color:#8a8f9c; padding:2rem; text-align:center; }
+@media(max-width:900px){body.forms-portal-dark .manual-layout{grid-template-columns:1fr}body.forms-portal-dark .manual-editor{position:static}}
+</style>
+{% endblock %}
+{% block page_content %}
+<div class="dashboard-hero"><h1 class="mb-1"><a href="">{{ _("Procedures Manual") }}</a></h1><p class="dashboard-subtitle mb-0">{{ _("Create and maintain questions, answers, and procedures for") }} {{ company }}.</p></div>
+<div id="manual-alert" class="alert d-none" role="alert"></div>
+<div class="manual-layout mt-4">
+ <div class="card form-card manual-editor"><div class="card-body">
+  <h4 id="editor-title" class="mb-3">{{ _("Add Q&A") }}</h4><input type="hidden" id="entry-name">
+  <div class="mb-3"><label class="form-label" for="entry-category">{{ _("Category") }}</label><input class="form-control" id="entry-category" placeholder="{{ _('e.g. Sales, Payroll, Deposits') }}"></div>
+  <div class="mb-3"><label class="form-label" for="entry-question">{{ _("Question / Procedure") }}</label><input class="form-control" id="entry-question" required></div>
+  <div class="mb-3"><label class="form-label" for="entry-answer">{{ _("Answer / Instructions") }}</label><textarea class="form-control" id="entry-answer" rows="9" required></textarea></div>
+  <div class="mb-3"><label class="form-label" for="entry-sort">{{ _("Sort Order") }}</label><input type="number" class="form-control" id="entry-sort" value="0"></div>
+  <div class="d-flex gap-2"><button class="btn btn-primary" id="save-entry">{{ icons.btn_icon("save") }}{{ _("Save") }}</button><button class="btn btn-outline-light d-none" id="cancel-edit">{{ _("Cancel") }}</button></div>
+ </div></div>
+ <div><input type="search" class="form-control manual-search mb-3" id="manual-search" placeholder="{{ _('Search questions, answers, or categories…') }}"><div id="manual-list"><div class="manual-empty">{{ _("Loading…") }}</div></div></div>
+</div>
+{% endblock %}
+{% block script %}{{ super() }}
+<script>
+frappe.ready(function(){
+ function call(method,args){return fetch("/api/method/"+method,{method:"POST",headers:{"Content-Type":"application/json","X-Frappe-CSRF-Token":frappe.csrf_token},body:JSON.stringify(args||{})}).then(function(r){return r.json().catch(function(){return{}}).then(function(d){if(!r.ok){var e=new Error(d._error_message||d.exception||"Request failed");e.data=d;throw e}return d})})}
+ var entries=[],list=document.getElementById("manual-list"),search=document.getElementById("manual-search"),name=document.getElementById("entry-name"),category=document.getElementById("entry-category"),question=document.getElementById("entry-question"),answer=document.getElementById("entry-answer"),sort=document.getElementById("entry-sort"),cancel=document.getElementById("cancel-edit"),save=document.getElementById("save-entry"),alertBox=document.getElementById("manual-alert");
+ function show(msg,bad){alertBox.className="alert "+(bad?"alert-danger":"alert-success");alertBox.textContent=msg;alertBox.classList.remove("d-none")}
+ function reset(){name.value="";category.value="";question.value="";answer.value="";sort.value=0;cancel.classList.add("d-none");document.getElementById("editor-title").textContent=__("Add Q&A")}
+ function edit(row){name.value=row.name;category.value=row.category||"";question.value=row.question;answer.value=row.answer;sort.value=row.sort_order||0;cancel.classList.remove("d-none");document.getElementById("editor-title").textContent=__("Edit Q&A");question.focus();window.scrollTo({top:0,behavior:"smooth"})}
+ function render(){var q=search.value.trim().toLowerCase(),rows=entries.filter(function(x){return !q||[x.category,x.question,x.answer].join(" ").toLowerCase().indexOf(q)!==-1});list.innerHTML="";if(!rows.length){list.innerHTML='<div class="manual-empty">'+__(q?"No matching procedures.":"No procedures have been added yet.")+'</div>';return}rows.forEach(function(row){var box=document.createElement("details");box.className="manual-entry";var summary=document.createElement("summary"),title=document.createElement("div"),cat=document.createElement("div"),questionEl=document.createElement("div");cat.className="manual-category";cat.textContent=row.category||__("General");questionEl.className="manual-question";questionEl.textContent=row.question;title.appendChild(cat);title.appendChild(questionEl);summary.appendChild(title);summary.insertAdjacentHTML("beforeend",'<i class="fa fa-chevron-down" aria-hidden="true"></i>');box.appendChild(summary);var body=document.createElement("div");body.className="manual-answer";body.textContent=row.answer;box.appendChild(body);var actions=document.createElement("div");actions.className="manual-actions";var editBtn=document.createElement("button");editBtn.className="btn btn-sm btn-outline-light";editBtn.innerHTML='<i class="fa fa-pencil btn-icon"></i>'+__("Edit");editBtn.onclick=function(){edit(row)};var delBtn=document.createElement("button");delBtn.className="btn btn-sm btn-outline-danger";delBtn.innerHTML='<i class="fa fa-trash btn-icon"></i>'+__("Delete");delBtn.onclick=function(){if(!confirm(__("Delete this procedure?")))return;call("ez_accounting.www.forms.user.manual.delete_entry",{name:row.name}).then(load).catch(function(e){show(e.message,true)})};actions.appendChild(editBtn);actions.appendChild(delBtn);box.appendChild(actions);list.appendChild(box)})}
+ function load(){return call("ez_accounting.www.forms.user.manual.get_entries").then(function(r){entries=r.message||[];render()}).catch(function(e){show(e.message,true)})}
+ search.addEventListener("input",render);cancel.addEventListener("click",reset);save.addEventListener("click",function(){if(!question.value.trim()||!answer.value.trim()){show(__("Question and answer are required."),true);return}save.disabled=true;call("ez_accounting.www.forms.user.manual.save_entry",{name:name.value,category:category.value,question:question.value,answer:answer.value,sort_order:sort.value}).then(function(){show(__("Procedure saved."),false);reset();return load()}).catch(function(e){show(e.message,true)}).finally(function(){save.disabled=false})});load();
+});
+</script>
+{% endblock %}

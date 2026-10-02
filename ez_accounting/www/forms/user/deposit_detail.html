@@ -1,0 +1,256 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .back-to-list-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: #7ea6ff;
+	margin-bottom: 1rem;
+}
+body.forms-portal-dark .back-to-list-link:hover { color: #a7c4ff; }
+
+body.forms-portal-dark .dd-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 0.9rem 1.5rem;
+	margin-bottom: 0.5rem;
+}
+body.forms-portal-dark .dd-meta-label {
+	display: block;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: #8a8f9c;
+}
+body.forms-portal-dark .dd-meta-value { font-size: 1rem; font-weight: 600; }
+
+body.forms-portal-dark .dd-variance-ok { color: #7fd18a; }
+body.forms-portal-dark .dd-variance-bad { color: #e88; }
+
+body.forms-portal-dark .dd-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+	margin: 1rem 0 0;
+}
+body.forms-portal-dark .dd-actions .dd-cancel-all {
+	margin-left: auto;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<a href="/forms/user/deposit" class="back-to-list-link">{{ icons.btn_icon("arrow-left") }}{{ _("Back to Deposits") }}</a>
+
+{% if not_found %}
+<div class="card form-card"><div class="card-body">
+	<h4 class="mb-2">{{ _("Deposit sheet not found") }}</h4>
+	<p class="text-muted mb-0">{{ _("No Forms Bank Deposit Sheet matches that ID.") }}</p>
+</div></div>
+{% elif forbidden %}
+<div class="card form-card"><div class="card-body">
+	<h4 class="mb-2">{{ _("Not permitted") }}</h4>
+	<p class="text-muted mb-0">{{ _("This deposit sheet belongs to a company you don't have access to.") }}</p>
+</div></div>
+{% else %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ sheet.name }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Bank Deposit Sheet") }} &middot;
+		<span class="status-pill {{ 'pill-final' if status_label == 'Submitted' else ('pill-cancelled' if status_label == 'Cancelled' else 'pill-draft') }}">{{ _(status_label) }}</span>
+	</p>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="dd-meta-grid">
+			<div><span class="dd-meta-label">{{ _("Company") }}</span><span class="dd-meta-value">{{ sheet.company }}</span></div>
+			<div><span class="dd-meta-label">{{ _("Deposit Date") }}</span><span class="dd-meta-value">{{ frappe.utils.format_date(sheet.deposit_date) }}</span></div>
+			<div><span class="dd-meta-label">{{ _("Deposit To") }}</span><span class="dd-meta-value">{{ sheet.deposit_to_account or "—" }}</span></div>
+			<div><span class="dd-meta-label">{{ _("Receipts Covered") }}</span><span class="dd-meta-value">{{ frappe.utils.format_date(sheet.from_receipt_date) }} – {{ frappe.utils.format_date(sheet.to_receipt_date) }}</span></div>
+			<div><span class="dd-meta-label">{{ _("Bank Account") }}</span><span class="dd-meta-value">{{ sheet.bank_account or "—" }}</span></div>
+			<div><span class="dd-meta-label">{{ _("Cash / Checks Account") }}</span><span class="dd-meta-value">{{ sheet.cash_account or "—" }} / {{ sheet.checks_account or "—" }}</span></div>
+		</div>
+
+		<div class="dd-actions">
+			<a class="btn btn-sm btn-outline-light" target="_blank" href="/forms/user/printer?id={{ sheet.name | urlencode }}&format={{ 'Bank Deposit Compact' | urlencode }}">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			{% if sheet.deposit_journal_entry %}
+			<a class="btn btn-sm btn-outline-light" target="_blank" href="/forms/user/printer?id={{ sheet.deposit_journal_entry | urlencode }}">{{ icons.btn_icon("file-text") }}{{ _("Deposit Journal Entry") }}</a>
+			{% endif %}
+			{% if sheet.docstatus == 1 %}
+			<button type="button" class="btn btn-sm btn-danger dd-cancel-all" id="dd-cancel-all">{{ icons.btn_icon("x") }}{{ _("Cancel Bank Deposit & Undeposit Invoices") }}</button>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+<div class="row g-3 mt-1">
+	<div class="col-md-6">
+		<div class="card form-card h-100"><div class="card-body">
+			<h5 class="mb-3">{{ _("Cash") }}</h5>
+			<div class="table-responsive">
+				<table class="table table-bordered mb-2">
+					<thead><tr><th>{{ _("Denomination") }}</th><th class="text-right">{{ _("Count") }}</th><th class="text-right">{{ _("Amount") }}</th></tr></thead>
+					<tbody>
+						{% for d in denominations %}
+						<tr><td>{{ d.label }}</td><td class="text-right">{{ d.count }}</td><td class="text-right">{{ frappe.utils.fmt_money(d.amount) }}</td></tr>
+						{% endfor %}
+						{% if coins %}
+						<tr><td>{{ _("Coins") }}</td><td class="text-right">—</td><td class="text-right">{{ frappe.utils.fmt_money(coins) }}</td></tr>
+						{% endif %}
+						{% if not denominations and not coins %}
+						<tr><td colspan="3" class="text-muted">{{ _("No cash on this deposit.") }}</td></tr>
+						{% endif %}
+					</tbody>
+				</table>
+			</div>
+			<div class="dd-meta-grid">
+				<div><span class="dd-meta-label">{{ _("Physical Cash") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.total_physical_cash) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Expected Cash") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.system_expected_cash) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Cash Variance") }}</span><span class="dd-meta-value {{ 'dd-variance-ok' if not sheet.variance else 'dd-variance-bad' }}">{{ frappe.utils.fmt_money(sheet.variance) }}</span></div>
+			</div>
+		</div></div>
+	</div>
+	<div class="col-md-6">
+		<div class="card form-card h-100"><div class="card-body">
+			<h5 class="mb-3">{{ _("Checks") }}</h5>
+			<div class="dd-meta-grid">
+				<div><span class="dd-meta-label">{{ _("Check Amount") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.check_amount) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Expected Checks") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.system_expected_checks) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Check Variance") }}</span><span class="dd-meta-value {{ 'dd-variance-ok' if not sheet.check_variance else 'dd-variance-bad' }}">{{ frappe.utils.fmt_money(sheet.check_variance) }}</span></div>
+			</div>
+			<hr style="border-color:#2a2e37;">
+			<div class="dd-meta-grid">
+				<div><span class="dd-meta-label">{{ _("Total Deposit") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.total_deposit) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Total Expected") }}</span><span class="dd-meta-value">{{ frappe.utils.fmt_money(sheet.total_expected) }}</span></div>
+				<div><span class="dd-meta-label">{{ _("Total Variance") }}</span><span class="dd-meta-value {{ 'dd-variance-ok' if not sheet.total_variance else 'dd-variance-bad' }}">{{ frappe.utils.fmt_money(sheet.total_variance) }}</span></div>
+			</div>
+		</div></div>
+	</div>
+</div>
+
+<div class="card form-card mt-3">
+	<div class="card-body">
+		<h5 class="mb-3">{{ _("Receipts in this Deposit") }} <span class="text-muted">({{ receipts|length }})</span></h5>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Payment Entry") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Party") }}</th>
+						<th>{{ _("Mode") }}</th>
+						<th>{{ _("Reference") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for r in receipts %}
+					<tr>
+						<td><a class="history-row-link" target="_blank" href="/forms/user/printer?id={{ r.name | urlencode }}">{{ r.name }}</a></td>
+						<td>{{ frappe.utils.format_date(r.posting_date) }}</td>
+						<td>{{ r.party or "—" }}</td>
+						<td>{{ r.mode_of_payment or "—" }}</td>
+						<td>{{ r.reference_no or "—" }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(r.paid_amount) }}</td>
+					</tr>
+					{% else %}
+					<tr><td colspan="6" class="text-muted">{{ _("No receipts are tagged to this deposit sheet.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if receipts %}
+				<tfoot>
+					<tr><th colspan="5">{{ _("Total") }}</th><th class="text-right">{{ frappe.utils.fmt_money(receipts_total) }}</th></tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+
+{% if gl_entries %}
+<div class="card form-card mt-3">
+	<div class="card-body">
+		<h5 class="mb-3">{{ _("GL Entries") }}</h5>
+		<p class="text-muted" style="margin-top:-0.5rem;">{{ _("Ledger postings from the Payment Entries this deposit covers, plus the deposit's own Journal Entry.") }}</p>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Voucher") }}</th>
+						<th>{{ _("Account") }}</th>
+						<th>{{ _("Against") }}</th>
+						<th class="text-right">{{ _("Debit") }}</th>
+						<th class="text-right">{{ _("Credit") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for e in gl_entries %}
+					<tr>
+						<td><a class="history-row-link" target="_blank" href="/forms/user/printer?id={{ e.voucher_no | urlencode }}">{{ e.voucher_type }} {{ e.voucher_no }}</a></td>
+						<td>{{ e.account }}</td>
+						<td>{{ e.against or "—" }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(e.debit) if e.debit else "" }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(e.credit) if e.credit else "" }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+				<tfoot>
+					<tr>
+						<th colspan="3">{{ _("Total") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(gl_total_debit) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(gl_total_credit) }}</th>
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+{% if sheet and sheet.docstatus == 1 %}
+<script>
+frappe.ready(function () {
+	var button = document.getElementById("dd-cancel-all");
+	if (!button) return;
+	button.addEventListener("click", function () {
+		if (!window.confirm({{ _("Cancel this bank deposit and return all its invoice payments to Undeposited in Sales? The invoices and payments will remain submitted.") | tojson }})) return;
+		button.disabled = true;
+		fetch("/api/method/ez_accounting.www.forms.user.deposit.cancel_deposit_and_undeposit_invoices", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify({ name: {{ sheet.name | tojson }}})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) throw new Error(data._error_message || data.exception || "Request failed");
+				return data;
+			});
+		}).then(function () {
+			window.location.reload();
+		}).catch(function (error) {
+			button.disabled = false;
+			window.alert(error.message || {{ _("Cancellation failed.") | tojson }});
+		});
+	});
+});
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,583 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .back-to-list-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: #7ea6ff;
+	margin-bottom: 1rem;
+}
+body.forms-portal-dark .back-to-list-link:hover { color: #a7c4ff; }
+
+body.forms-portal-dark .profile-card .card-body { padding: 1.75rem; }
+
+body.forms-portal-dark .profile-field-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+	gap: 1.1rem;
+}
+
+body.forms-portal-dark .profile-field .form-label { display: block; margin-bottom: 0.35rem; }
+body.forms-portal-dark .profile-field .save-status { font-size: 0.8rem; display: block; min-height: 1.1rem; margin-top: 0.2rem; }
+body.forms-portal-dark .save-status.is-saving { color: #8a8f9c; }
+body.forms-portal-dark .save-status.is-saved { color: #6fd996; }
+body.forms-portal-dark .save-status.is-error { color: #f0a8a8; }
+
+body.forms-portal-dark .profile-disabled-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 1.25rem; }
+
+body.forms-portal-dark .profile-readonly-note { font-size: 0.8rem; color: #8a8f9c; margin-top: 0.3rem; }
+
+body.forms-portal-dark .sales-summary-card .card-body { padding: 1.75rem; }
+body.forms-portal-dark .sales-summary-header { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.9rem; }
+
+body.forms-portal-dark .sales-summary-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.25rem;
+	padding: 0.9rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	margin-bottom: 1rem;
+}
+body.forms-portal-dark .sales-stat { display: flex; flex-direction: column; gap: 0.15rem; }
+body.forms-portal-dark .sales-stat-label { font-size: 0.75rem; color: #8a8f9c; }
+body.forms-portal-dark .sales-stat-value { font-size: 1.15rem; font-weight: 600; }
+body.forms-portal-dark .sales-stat-outstanding .sales-stat-value { color: #f0a8a8; }
+
+body.forms-portal-dark .sales-invoice-list { max-height: 22rem; overflow-y: auto; }
+body.forms-portal-dark .sales-invoice-item { margin-bottom: 0.5rem; }
+body.forms-portal-dark .sales-invoice-item .sales-invoice-row { margin-bottom: 0; }
+body.forms-portal-dark .sales-invoice-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.6rem;
+	padding: 0.6rem 0.75rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	margin-bottom: 0.5rem;
+}
+body.forms-portal-dark .sales-invoice-row-info { flex: 1 1 auto; min-width: 0; }
+
+body.forms-portal-dark .sales-invoice-payments {
+	background-color: #0e1015;
+	border: 1px solid #2a2e37;
+	border-top: none;
+	border-radius: 0 0 0.5rem 0.5rem;
+	padding: 0.5rem 0.75rem;
+	overflow-x: auto;
+}
+body.forms-portal-dark .sales-invoice-payments table { width: 100%; border-collapse: collapse; font-size: 0.78rem; color: #b9c0cb; }
+body.forms-portal-dark .sales-invoice-payments th { text-align: right; font-weight: 600; color: #8a8f9c; padding: 0.2rem 0.5rem; border-bottom: 1px solid #2a2e37; white-space: nowrap; }
+body.forms-portal-dark .sales-invoice-payments th:first-child,
+body.forms-portal-dark .sales-invoice-payments td:first-child,
+body.forms-portal-dark .sales-invoice-payments th:nth-child(2),
+body.forms-portal-dark .sales-invoice-payments td:nth-child(2) { text-align: left; }
+body.forms-portal-dark .sales-invoice-payments td { text-align: right; padding: 0.2rem 0.5rem; white-space: nowrap; }
+body.forms-portal-dark .sales-invoice-payments tr.sales-invoice-payments-total td { border-top: 1px solid #2a2e37; font-weight: 600; color: #cbd2da; }
+
+body.forms-portal-dark .no-versions-hint { color: #8a8f9c; font-size: 0.85rem; }
+body.forms-portal-dark .document-row-meta { font-size: 0.8rem; color: #8a8f9c; margin-top: 0.2rem; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+{% if not customer %}
+<div class="card form-card"><div class="card-body">
+	<h4 class="mb-2">{{ _("No customer specified") }}</h4>
+	<p class="text-muted mb-0"><a href="/forms/user/customer">{{ _("Back to Customers") }}</a></p>
+</div></div>
+{% else %}
+
+<a href="/forms/user/customer" class="back-to-list-link">{{ icons.btn_icon("arrow-left") }}{{ _("Back to Customers") }}</a>
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="" id="cp-heading">{{ _("Customer Profile") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ customer }}</p>
+</div>
+
+<div id="cp-alert" class="alert alert-danger d-none" role="alert"></div>
+
+<div class="row g-4">
+	<div class="col-lg-7">
+		<div class="card form-card profile-card">
+			<div class="card-body">
+				<h4 class="mb-3">{{ _("Customer Info") }}</h4>
+				<div class="profile-field-grid" id="profile-field-grid"></div>
+				<p class="profile-readonly-note" id="cp-native-email-note"></p>
+				<div class="profile-disabled-row">
+					<input type="checkbox" class="form-check-input" id="cp-disabled">
+					<label class="form-check-label" for="cp-disabled">{{ _("Disabled") }}</label>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="col-lg-5">
+		<div class="card form-card profile-card sales-summary-card">
+			<div class="card-body">
+				<div class="sales-summary-header">
+					<h4 class="mb-0">{{ _("Sales Summary") }}</h4>
+				</div>
+				<div id="sales-summary"></div>
+				<div id="sales-invoice-list" class="sales-invoice-list"></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var CUSTOMER_NAME = {{ customer | tojson }};
+	if (!CUSTOMER_NAME) return;
+
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	// Not a Frappe global on website pages (only format_currency is) --
+	// every /forms/user/* page that needs it defines its own copy. (This was
+	// the actual root cause of an earlier "Something went wrong" report on a
+	// sibling page — see [[forms-student-customer-paid]] — so it's never
+	// skipped on a new page again.)
+	function format_date(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	var alertBox = document.getElementById("cp-alert");
+	function show_page_alert(message) {
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	// Mirrors _validate_individual_name() in customer.py -- the only hard
+	// rule for an Individual's name is "no comma" (the "Lastname, Firstname"
+	// pattern that stops).
+	var INVALID_NAME_MESSAGE = __('Remove the comma — enter the name as "Firstname Lastname", not "Lastname, Firstname".');
+	function is_valid_individual_name(value) {
+		var name = (value || "").trim().replace(/\s+/g, " ");
+		return name.length > 0 && name.indexOf(",") === -1;
+	}
+
+	var customer = null;
+	var customerGroups = [];
+	var territories = [];
+
+	function save_field(field, value, status, onSuccess) {
+		status.className = "save-status is-saving";
+		status.textContent = __("Saving…");
+		call("ez_accounting.www.forms.user.customer.update_customer_field", {
+			name: customer.name,
+			field: field,
+			value: value
+		}).then(function (r) {
+			customer[field] = (r.message && r.message.value) || value;
+			var renamed = r.message && r.message.name && r.message.name !== customer.name;
+			if (renamed) {
+				customer.name = r.message.name;
+				window.location.href = (window.FORMS_URL_PREFIX || "") + "/forms/user/customer_profile?customer=" + encodeURIComponent(customer.name);
+				return;
+			}
+			status.className = "save-status is-saved";
+			status.textContent = __("Saved");
+			setTimeout(function () {
+				if (status.classList.contains("is-saved")) status.textContent = "";
+			}, 2000);
+			if (onSuccess) onSuccess();
+		}).catch(function (err) {
+			status.className = "save-status is-error";
+			status.innerHTML = extract_error_message(err);
+			if (onSuccess) onSuccess(true);
+		});
+	}
+
+	function render_name_fields(grid) {
+		var spaceIndex = customer.customer_name.indexOf(" ");
+		var firstPart = spaceIndex === -1 ? customer.customer_name : customer.customer_name.slice(0, spaceIndex);
+		var lastPart = spaceIndex === -1 ? "" : customer.customer_name.slice(spaceIndex + 1);
+		var isIndividual = customer.customer_type === "Individual";
+
+		if (!isIndividual) {
+			// A Company-type customer's display name is free text, no
+			// First/Last split -- same "no comma rule doesn't apply" distinction
+			// customer.html itself draws.
+			var wrap = document.createElement("div");
+			wrap.className = "profile-field";
+			var label = document.createElement("label");
+			label.className = "form-label";
+			label.textContent = __("Name");
+			wrap.appendChild(label);
+			var input = document.createElement("input");
+			input.type = "text";
+			input.className = "form-control";
+			input.value = customer.customer_name;
+			wrap.appendChild(input);
+			var status = document.createElement("span");
+			status.className = "save-status";
+			wrap.appendChild(status);
+			input.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+			});
+			input.addEventListener("blur", function () {
+				var value = input.value.trim();
+				if (!value || value === customer.customer_name) return;
+				save_field("customer_name", value, status, function (failed) {
+					if (failed) input.value = customer.customer_name;
+				});
+			});
+			grid.appendChild(wrap);
+			return;
+		}
+
+		var firstWrap = document.createElement("div");
+		firstWrap.className = "profile-field";
+		var firstLabel = document.createElement("label");
+		firstLabel.className = "form-label";
+		firstLabel.textContent = __("First Name");
+		firstWrap.appendChild(firstLabel);
+		var firstInput = document.createElement("input");
+		firstInput.type = "text";
+		firstInput.className = "form-control";
+		firstInput.value = firstPart;
+		firstWrap.appendChild(firstInput);
+		var nameStatus = document.createElement("span");
+		nameStatus.className = "save-status";
+		firstWrap.appendChild(nameStatus);
+
+		var lastWrap = document.createElement("div");
+		lastWrap.className = "profile-field";
+		var lastLabel = document.createElement("label");
+		lastLabel.className = "form-label";
+		lastLabel.textContent = __("Last Name");
+		lastWrap.appendChild(lastLabel);
+		var lastInput = document.createElement("input");
+		lastInput.type = "text";
+		lastInput.className = "form-control";
+		lastInput.value = lastPart;
+		lastWrap.appendChild(lastInput);
+
+		function save_customer_name() {
+			var value = (firstInput.value.trim() + " " + lastInput.value.trim()).trim();
+			if (!is_valid_individual_name(value)) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.textContent = INVALID_NAME_MESSAGE;
+				return;
+			}
+			if (value === customer.customer_name) return;
+			save_field("customer_name", value, nameStatus, function (failed) {
+				if (failed) {
+					firstInput.value = firstPart;
+					lastInput.value = lastPart;
+				}
+			});
+		}
+
+		[firstInput, lastInput].forEach(function (input) {
+			input.addEventListener("input", function () {
+				if (nameStatus.classList.contains("is-error")) nameStatus.textContent = "";
+			});
+			input.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+			});
+			input.addEventListener("blur", function (e) {
+				if (firstWrap.contains(e.relatedTarget) || lastWrap.contains(e.relatedTarget)) return;
+				save_customer_name();
+			});
+		});
+
+		grid.appendChild(firstWrap);
+		grid.appendChild(lastWrap);
+	}
+
+	var FIELD_DEFS = [
+		{ field: "customer_group", label: __("Customer Group"), type: "select", source: function () { return customerGroups; } },
+		{ field: "territory", label: __("Territory"), type: "select", source: function () { return territories; }, allowEmpty: true },
+		{ field: "mobile_no", label: __("Mobile"), type: "text" },
+		{ field: "custom_email", label: __("Email"), type: "email" },
+		{ field: "tax_id", label: __("Tax ID"), type: "text" }
+	];
+
+	function render_fields() {
+		var grid = document.getElementById("profile-field-grid");
+		grid.innerHTML = "";
+		render_name_fields(grid);
+
+		FIELD_DEFS.forEach(function (def) {
+			var wrap = document.createElement("div");
+			wrap.className = "profile-field";
+
+			var label = document.createElement("label");
+			label.className = "form-label";
+			label.textContent = def.label;
+			wrap.appendChild(label);
+
+			var status = document.createElement("span");
+			status.className = "save-status";
+
+			var input;
+			if (def.type === "select") {
+				input = document.createElement("select");
+				input.className = "form-control";
+				if (def.allowEmpty) {
+					var empty = document.createElement("option");
+					empty.value = "";
+					empty.textContent = __("— None —");
+					input.appendChild(empty);
+				}
+				def.source().forEach(function (row) {
+					var opt = document.createElement("option");
+					opt.value = row.name;
+					opt.textContent = row.name;
+					if (row.name === customer[def.field]) opt.selected = true;
+					input.appendChild(opt);
+				});
+				input.addEventListener("change", function () {
+					save_field(def.field, input.value, status);
+				});
+			} else {
+				input = document.createElement("input");
+				input.type = def.type === "email" ? "email" : "text";
+				input.className = "form-control";
+				input.value = customer[def.field] || "";
+				input.addEventListener("keydown", function (e) {
+					if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+				});
+				input.addEventListener("blur", function () {
+					var value = input.value.trim();
+					if (value === (customer[def.field] || "")) return;
+					save_field(def.field, value, status, function (failed) {
+						if (failed) input.value = customer[def.field] || "";
+					});
+				});
+			}
+
+			wrap.appendChild(input);
+			wrap.appendChild(status);
+			grid.appendChild(wrap);
+		});
+
+		var nativeEmailNote = document.getElementById("cp-native-email-note");
+		nativeEmailNote.textContent = customer.email_id
+			? __("Contact email on file (read-only, from the primary Contact): {0}", [customer.email_id])
+			: "";
+
+		var disabledCheck = document.getElementById("cp-disabled");
+		disabledCheck.checked = !!customer.disabled;
+		disabledCheck.addEventListener("change", function () {
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {
+				name: customer.name,
+				field: "disabled",
+				value: disabledCheck.checked ? "1" : "0"
+			}).then(function () {
+				customer.disabled = disabledCheck.checked ? 1 : 0;
+			}).catch(function (err) {
+				disabledCheck.checked = !!customer.disabled;
+				show_page_alert(extract_error_message(err));
+			});
+		});
+	}
+
+	function status_badge_class(status) {
+		if (status === "Paid") return "badge-success";
+		if (status === "Overdue") return "badge-danger";
+		return "badge-warning";
+	}
+
+	function render_sales_summary(data) {
+		var summaryEl = document.getElementById("sales-summary");
+		var listEl = document.getElementById("sales-invoice-list");
+		summaryEl.innerHTML = "";
+		listEl.innerHTML = "";
+
+		if (!data.invoices.length) {
+			var hint = document.createElement("div");
+			hint.className = "no-versions-hint";
+			hint.textContent = __("No sales recorded yet.");
+			summaryEl.appendChild(hint);
+			return;
+		}
+
+		var summaryCurrency = data.invoices[0].currency;
+
+		var stats = document.createElement("div");
+		stats.className = "sales-summary-stats";
+
+		function add_stat(label, value, cls) {
+			var el = document.createElement("div");
+			el.className = "sales-stat" + (cls ? " " + cls : "");
+			el.innerHTML = '<span class="sales-stat-label"></span><span class="sales-stat-value"></span>';
+			el.querySelector(".sales-stat-label").textContent = label;
+			el.querySelector(".sales-stat-value").textContent = value;
+			stats.appendChild(el);
+		}
+
+		add_stat(__("Total Billed"), format_currency(data.total_billed, summaryCurrency));
+		add_stat(__("Total Paid"), format_currency(data.total_paid, summaryCurrency));
+		add_stat(__("Balance Due"), format_currency(data.balance_due, summaryCurrency), "sales-stat-outstanding");
+		add_stat(__("Invoices"), String(data.invoice_count));
+
+		summaryEl.appendChild(stats);
+
+		data.invoices.forEach(function (inv) {
+			var item = document.createElement("div");
+			item.className = "sales-invoice-item";
+
+			var row = document.createElement("div");
+			row.className = "sales-invoice-row";
+
+			var info = document.createElement("div");
+			info.className = "sales-invoice-row-info";
+
+			var title = document.createElement("div");
+			title.textContent = format_date(inv.posting_date) + " — " + inv.name;
+			info.appendChild(title);
+
+			var meta = document.createElement("div");
+			meta.className = "document-row-meta";
+			var metaText = format_currency(inv.grand_total, inv.currency);
+			if (inv.outstanding_amount) {
+				metaText += " · " + __("Outstanding: {0}", [format_currency(inv.outstanding_amount, inv.currency)]);
+			}
+			meta.textContent = metaText;
+			info.appendChild(meta);
+
+			row.appendChild(info);
+
+			var badge = document.createElement("span");
+			badge.className = "badge " + status_badge_class(inv.status);
+			badge.textContent = inv.status;
+			row.appendChild(badge);
+
+			item.appendChild(row);
+
+			if (inv.payments && inv.payments.length) {
+				var wrap = document.createElement("div");
+				wrap.className = "sales-invoice-payments";
+
+				var tbl = document.createElement("table");
+				var thead = document.createElement("thead");
+				thead.innerHTML =
+					"<tr><th>" + __("Date") + "</th><th>" + __("Mode of Payment") + "</th>" +
+					"<th>" + __("Applied") + "</th><th>" + __("Unallocated") + "</th>" +
+					"<th>" + __("Payment Amount") + "</th></tr>";
+				tbl.appendChild(thead);
+
+				var tbody = document.createElement("tbody");
+				var appliedTotal = 0;
+				inv.payments.forEach(function (p) {
+					appliedTotal += parseFloat(p.applied) || 0;
+					var tr = document.createElement("tr");
+					var cells = [
+						format_date(p.posting_date),
+						p.mode_of_payment || "—",
+						format_currency(p.applied, inv.currency),
+						(parseFloat(p.unallocated_amount) || 0)
+							? format_currency(p.unallocated_amount, inv.currency) : "—",
+						format_currency(p.paid_amount, inv.currency)
+					];
+					cells.forEach(function (c) {
+						var td = document.createElement("td");
+						td.textContent = c;
+						tr.appendChild(td);
+					});
+					tbody.appendChild(tr);
+				});
+
+				var totalRow = document.createElement("tr");
+				totalRow.className = "sales-invoice-payments-total";
+				totalRow.innerHTML = '<td colspan="2"></td><td></td><td>—</td><td>—</td>';
+				totalRow.querySelector("td[colspan]").textContent = __("Subtotal Paid");
+				totalRow.querySelectorAll("td")[1].textContent = format_currency(appliedTotal, inv.currency);
+				tbody.appendChild(totalRow);
+
+				tbl.appendChild(tbody);
+				wrap.appendChild(tbl);
+				item.appendChild(wrap);
+			}
+
+			listEl.appendChild(item);
+		});
+	}
+
+	function load_sales_summary() {
+		call("ez_accounting.www.forms.user.customer_profile.get_customer_sales_summary", { name: CUSTOMER_NAME }).then(function (r) {
+			render_sales_summary(r.message);
+		}).catch(function (err) {
+			var summaryEl = document.getElementById("sales-summary");
+			summaryEl.innerHTML = "";
+			var hint = document.createElement("div");
+			hint.className = "no-versions-hint";
+			hint.textContent = extract_error_message(err);
+			summaryEl.appendChild(hint);
+		});
+	}
+
+	Promise.all([
+		call("ez_accounting.www.forms.user.customer_profile.get_customer", { name: CUSTOMER_NAME }),
+		call("ez_accounting.www.forms.user.customer_profile.get_customer_groups", {}),
+		call("ez_accounting.www.forms.user.customer_profile.get_territories", {})
+	]).then(function (results) {
+		customer = results[0].message;
+		customerGroups = results[1].message || [];
+		territories = results[2].message || [];
+		document.getElementById("cp-heading").textContent = customer.customer_name;
+		render_fields();
+		load_sales_summary();
+	}).catch(function (err) {
+		show_page_alert(extract_error_message(err));
+	});
+});
+</script>
+{% endblock %}

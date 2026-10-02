@@ -1,0 +1,18 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Test") }}</a></h1>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<p class="mb-0">{{ _("made by mini Martin") }}</p>
+	</div>
+</div>
+{% endblock %}

@@ -1,0 +1,151 @@
+{#
+	Bare, self-contained "Customer Ledgers" content -- no {% extends %}, no site
+	chrome. Rendered by /forms/user/printerhtml (kind=customer_ledgers) and
+	iframed by /forms/user/printer at true 8.5in x 11in size, the same flow
+	every other document in this app prints through. Deliberately doesn't rely
+	on any class from forms_portal.css (not loaded here).
+
+	Context (money + date values are pre-formatted strings -- see printerhtml.py's
+	_render_customer_ledgers(), the only caller):
+	  company, period, printed_at
+	  customers: list of {customer_id, customer, opening, no_activity,
+	    rows: [{date, trans_no, type, debit, credit, balance}]}
+	  total_debit, total_credit, total_balance
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.cl-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.cl-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.cl-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.cl-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+
+	table.cl-table th,
+	table.cl-table td { text-align: left; padding: 0.035in 0.08in; vertical-align: top; }
+
+	table.cl-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+
+	table.cl-table th.num,
+	table.cl-table td.num { text-align: right; white-space: nowrap; }
+
+	table.cl-table th:first-child,
+	table.cl-table td:first-child { padding-left: 0; }
+	table.cl-table th:last-child,
+	table.cl-table td:last-child { padding-right: 0; }
+
+	tr.cl-customer-first td { border-top: 1px solid #bbb; padding-top: 0.05in; }
+	tr.cl-customer-first:first-child td { border-top: none; }
+	.cl-cust-id, .cl-cust-name { font-weight: 700; }
+	.cl-note { color: #555; font-style: italic; }
+
+	tfoot tr.cl-total td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 9.5pt;
+	}
+
+	.cl-empty { color: #555; padding: 0.3in 0; }
+
+	.cl-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print {
+		thead { display: table-header-group; }
+		tr.cl-customer-first { page-break-inside: avoid; }
+	}
+</style>
+
+<div class="cl-company">{{ company }}</div>
+<div class="cl-title">{{ _("Customer Ledgers") }}</div>
+<div class="cl-subtitle">{{ _("For the Period {0}").format(period) }}</div>
+
+{% if not customers %}
+<p class="cl-empty">{{ _("No customer receivable balances or activity in this period.") }}</p>
+{% else %}
+<table class="cl-table">
+	<thead>
+		<tr>
+			<th>{{ _("Customer ID") }}</th>
+			<th>{{ _("Customer") }}</th>
+			<th>{{ _("Date") }}</th>
+			<th>{{ _("Trans No") }}</th>
+			<th>{{ _("Type") }}</th>
+			<th class="num">{{ _("Debit Amt") }}</th>
+			<th class="num">{{ _("Credit Amt") }}</th>
+			<th class="num">{{ _("Balance") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for c in customers %}
+		<tr class="cl-customer-first">
+			<td class="cl-cust-id">{{ c.customer_id }}</td>
+			<td class="cl-cust-name">{{ c.customer }}</td>
+			<td></td>
+			<td></td>
+			<td class="cl-note">{{ _("Balance Fwd") }}</td>
+			<td class="num"></td>
+			<td class="num"></td>
+			<td class="num">{{ c.opening }}</td>
+		</tr>
+		{% if c.no_activity %}
+		<tr>
+			<td></td><td></td><td></td><td></td>
+			<td class="cl-note">{{ _("No Activity") }}</td>
+			<td class="num"></td><td class="num"></td><td class="num"></td>
+		</tr>
+		{% endif %}
+		{% for row in c.rows %}
+		<tr>
+			<td></td>
+			<td></td>
+			<td>{{ row.date }}</td>
+			<td>{{ row.trans_no }}</td>
+			<td>{{ row.type }}</td>
+			<td class="num">{{ row.debit }}</td>
+			<td class="num">{{ row.credit }}</td>
+			<td class="num">{{ row.balance }}</td>
+		</tr>
+		{% endfor %}
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="cl-total">
+			<td colspan="5">{{ _("Report Total") }}</td>
+			<td class="num">{{ total_debit }}</td>
+			<td class="num">{{ total_credit }}</td>
+			<td class="num">{{ total_balance }}</td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="cl-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

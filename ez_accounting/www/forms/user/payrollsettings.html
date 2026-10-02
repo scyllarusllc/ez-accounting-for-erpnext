@@ -1,0 +1,626 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .payrollsettings-form-card .card-body {
+	padding: 1.75rem 2rem;
+}
+
+body.forms-portal-dark .payrollsettings-form-card .form-control,
+body.forms-portal-dark .payrollsettings-form-card .btn {
+	min-height: 48px;
+}
+
+body.forms-portal-dark .payrollsettings-table-card .card-body {
+	padding: 1.5rem 1.5rem 0.5rem;
+}
+
+body.forms-portal-dark #employee_search {
+	min-height: 56px;
+	font-size: 1.15rem;
+	padding: 0.85rem 1.1rem;
+}
+
+body.forms-portal-dark .payrollsettings-table td,
+body.forms-portal-dark .payrollsettings-table th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .payrollsettings-table tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .payrollsettings-table th.select-col,
+body.forms-portal-dark .payrollsettings-table td.select-col {
+	width: 2.5rem;
+	text-align: center;
+}
+
+body.forms-portal-dark .payrollsettings-table input[type="checkbox"] {
+	width: 1.15rem;
+	height: 1.15rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .payrollsettings-table .current-structure-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .payrollsettings-result {
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .payrollsettings-result .alert {
+	font-size: 1rem;
+}
+
+body.forms-portal-dark .payrollsettings-result-list {
+	margin: 0.5rem 0 0;
+	padding-left: 1.2rem;
+}
+
+body.forms-portal-dark .payrollsettings-result-list li {
+	margin-bottom: 0.2rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Payroll Settings") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Batch-assign a Salary Structure to employees for {0} in one step — pick a structure and a date, check the employees, and the assignments are created and submitted automatically.").format(company) }}
+	</p>
+</div>
+
+<div id="payrollsettings-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card payrollsettings-form-card">
+	<div class="card-body">
+		<form id="payrollsettings-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-5">
+					<label class="form-label" for="batch_salary_structure">{{ _("Salary Structure") }}</label>
+					<select class="form-control" id="batch_salary_structure" required>
+						<option value="" selected disabled>{{ _("Loading…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="batch_from_date">{{ _("From Date") }}</label>
+					<input type="date" class="form-control" id="batch_from_date" required>
+				</div>
+
+				<div class="col-md-4">
+					<button type="submit" class="btn btn-primary w-100" id="payrollsettings-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="payrollsettings-spinner" role="status" aria-hidden="true"></span>
+						{{ icons.btn_icon("zap") }}<span id="payrollsettings-submit-label">{{ _("Assign to Selected") }}</span>
+					</button>
+				</div>
+
+			</div>
+		</form>
+
+		<hr class="my-3">
+
+		<!-- Standalone counterpart to the Salary Structure form above — for
+		     assigning/changing an employee's Holiday List directly, without
+		     needing to also (re-)assign a Salary Structure just to trigger
+		     the automatic version of this above. Shares the same employee
+		     selection (checkedEmployees/the table's own checkboxes) as the
+		     Salary Structure form — "select employees" is one shared concern,
+		     not tied to which action is about to run. -->
+		<form id="payrollsettings-holiday-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-5">
+					<label class="form-label" for="batch_holiday_list">{{ _("Holiday List") }}</label>
+					<select class="form-control" id="batch_holiday_list" required>
+						<option value="" selected disabled>{{ _("Loading…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="batch_holiday_from_date">{{ _("From Date") }}</label>
+					<input type="date" class="form-control" id="batch_holiday_from_date" required>
+				</div>
+
+				<div class="col-md-4">
+					<button type="submit" class="btn btn-outline-light w-100" id="payrollsettings-holiday-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="payrollsettings-holiday-spinner" role="status" aria-hidden="true"></span>
+						{{ icons.btn_icon("calendar") }}<span id="payrollsettings-holiday-submit-label">{{ _("Assign Holiday List to Selected") }}</span>
+					</button>
+				</div>
+
+			</div>
+		</form>
+
+		<div class="form-text mt-2" id="selected-count-hint">{{ _("No employees selected yet.") }}</div>
+	</div>
+</div>
+
+<div id="payrollsettings-result" class="payrollsettings-result d-none"></div>
+
+<div class="card form-card mt-4 payrollsettings-table-card">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-6">
+				<input type="text" class="form-control" id="employee_search" autocomplete="off" disabled
+					placeholder="{{ _('Loading employees…') }}">
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered payrollsettings-table mb-0">
+				<thead>
+					<tr>
+						<th class="select-col"><input type="checkbox" id="select-all-checkbox" aria-label="{{ _('Select all') }}"></th>
+						<th>{{ _("Employee") }}</th>
+						<th>{{ _("Current Salary Structure") }}</th>
+						<th>{{ _("Effective From") }}</th>
+						<th>{{ _("Holiday List") }}</th>
+					</tr>
+				</thead>
+				<tbody id="payrollsettings-table-body">
+					<tr><td colspan="5" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, is_error) {
+		var alertBox = document.getElementById("payrollsettings-alert");
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	var structureSelect = document.getElementById("batch_salary_structure");
+	var fromDateInput = document.getElementById("batch_from_date");
+	var form = document.getElementById("payrollsettings-form");
+	var submitBtn = document.getElementById("payrollsettings-submit");
+	var spinner = document.getElementById("payrollsettings-spinner");
+	var submitLabel = document.getElementById("payrollsettings-submit-label");
+	var selectedCountHint = document.getElementById("selected-count-hint");
+	var resultBox = document.getElementById("payrollsettings-result");
+
+	var holidaySelect = document.getElementById("batch_holiday_list");
+	var holidayFromDateInput = document.getElementById("batch_holiday_from_date");
+	var holidayForm = document.getElementById("payrollsettings-holiday-form");
+	var holidaySubmitBtn = document.getElementById("payrollsettings-holiday-submit");
+	var holidaySpinner = document.getElementById("payrollsettings-holiday-spinner");
+	var holidaySubmitLabel = document.getElementById("payrollsettings-holiday-submit-label");
+
+	var tbody = document.getElementById("payrollsettings-table-body");
+	var searchInput = document.getElementById("employee_search");
+	var selectAllCheckbox = document.getElementById("select-all-checkbox");
+
+	var allEmployees = [];
+	// Tracked independently of what's currently rendered — filtering the
+	// list (via search) never loses a selection made before the filter was
+	// typed, and "Select All" only ever affects what's currently visible.
+	var checkedEmployees = {};
+
+	function normalize(text) {
+		return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+	}
+
+	function selected_count() {
+		return Object.keys(checkedEmployees).filter(function (k) { return checkedEmployees[k]; }).length;
+	}
+
+	function update_selected_count_hint() {
+		var count = selected_count();
+		selectedCountHint.textContent = count
+			? __("{0} employee(s) selected.", [count])
+			: __("No employees selected yet.");
+	}
+
+	function format_date(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	function render_row(emp) {
+		var row = document.createElement("tr");
+
+		var selectCell = document.createElement("td");
+		selectCell.className = "select-col";
+		var checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.checked = !!checkedEmployees[emp.name];
+		checkbox.addEventListener("change", function () {
+			checkedEmployees[emp.name] = checkbox.checked;
+			update_selected_count_hint();
+		});
+		selectCell.appendChild(checkbox);
+		row.appendChild(selectCell);
+
+		var nameCell = document.createElement("td");
+		nameCell.textContent = emp.employee_name + " (" + emp.name + ")";
+		row.appendChild(nameCell);
+
+		var structureCell = document.createElement("td");
+		structureCell.className = "current-structure-cell";
+		if (emp.current_salary_structure) {
+			var structureSpan = document.createElement("span");
+			structureSpan.textContent = emp.current_salary_structure;
+			structureCell.appendChild(structureSpan);
+			if (emp.current_structure_submitted === false) {
+				var warnPill = document.createElement("span");
+				warnPill.className = "status-pill pill-cancelled";
+				warnPill.textContent = __("Draft Structure");
+				warnPill.title = __("This employee's assigned Salary Structure is still a Draft — payroll will fail for them until it's submitted.");
+				structureCell.appendChild(warnPill);
+			}
+		} else {
+			var noneSpan = document.createElement("span");
+			noneSpan.className = "text-muted";
+			noneSpan.textContent = __("— None —");
+			structureCell.appendChild(noneSpan);
+		}
+		row.appendChild(structureCell);
+
+		var dateCell = document.createElement("td");
+		dateCell.textContent = format_date(emp.current_from_date) || "—";
+		row.appendChild(dateCell);
+
+		var holidayCell = document.createElement("td");
+		holidayCell.className = "current-structure-cell";
+		if (emp.current_holiday_list) {
+			var holidaySpan = document.createElement("span");
+			holidaySpan.textContent = emp.current_holiday_list;
+			holidayCell.appendChild(holidaySpan);
+		} else {
+			var noHolidayPill = document.createElement("span");
+			noHolidayPill.className = "status-pill pill-overdue";
+			noHolidayPill.textContent = __("No Holiday List");
+			noHolidayPill.title = __("This employee has no Holiday List Assignment yet — assign one below, or it'll be auto-assigned (using the company's default Holiday List) the next time they're included in a Salary Structure batch.");
+			holidayCell.appendChild(noHolidayPill);
+		}
+		row.appendChild(holidayCell);
+
+		return row;
+	}
+
+	function render_table(query) {
+		query = normalize(query);
+		var matches = !query
+			? allEmployees
+			: allEmployees.filter(function (emp) {
+				return normalize(emp.employee_name).indexOf(query) !== -1
+					|| normalize(emp.name).indexOf(query) !== -1;
+			});
+
+		tbody.innerHTML = "";
+		if (!matches.length) {
+			tbody.innerHTML = '<tr><td colspan="5" class="text-muted">' + __("No matching employees found.") + "</td></tr>";
+			selectAllCheckbox.checked = false;
+			selectAllCheckbox.indeterminate = false;
+			return;
+		}
+		matches.forEach(function (emp) {
+			tbody.appendChild(render_row(emp));
+		});
+
+		var allChecked = matches.every(function (emp) { return !!checkedEmployees[emp.name]; });
+		var someChecked = matches.some(function (emp) { return !!checkedEmployees[emp.name]; });
+		selectAllCheckbox.checked = allChecked;
+		selectAllCheckbox.indeterminate = someChecked && !allChecked;
+	}
+
+	searchInput.addEventListener("input", function () {
+		render_table(searchInput.value);
+	});
+
+	// Only affects whatever the current search has matched — same "select
+	// all visible" semantics as a typical filtered list/inbox.
+	selectAllCheckbox.addEventListener("change", function () {
+		var query = normalize(searchInput.value);
+		var matches = !query
+			? allEmployees
+			: allEmployees.filter(function (emp) {
+				return normalize(emp.employee_name).indexOf(query) !== -1
+					|| normalize(emp.name).indexOf(query) !== -1;
+			});
+		matches.forEach(function (emp) { checkedEmployees[emp.name] = selectAllCheckbox.checked; });
+		render_table(searchInput.value);
+		update_selected_count_hint();
+	});
+
+	function load_employees() {
+		return call("ez_accounting.www.forms.user.payrollsettings.get_employees_for_batch").then(function (r) {
+			allEmployees = r.message || [];
+			if (!allEmployees.length) {
+				tbody.innerHTML = '<tr><td colspan="5" class="text-muted">' + __("No active employees found for this company.") + "</td></tr>";
+				return;
+			}
+			searchInput.disabled = false;
+			searchInput.placeholder = __("Search employees…");
+			render_table(searchInput.value);
+		}).catch(function (err) {
+			tbody.innerHTML = '<tr><td colspan="5" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	load_employees();
+
+	call("ez_accounting.www.forms.user.payrollsettings.get_salary_structures").then(function (r) {
+		var rows = r.message || [];
+		structureSelect.innerHTML = "";
+		if (!rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = __("No submitted Salary Structures found for this company");
+			structureSelect.appendChild(opt);
+			return;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = true;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		structureSelect.appendChild(placeholder);
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name + " (" + row.payroll_frequency + ")";
+			structureSelect.appendChild(opt);
+		});
+	}).catch(function () {
+		structureSelect.innerHTML = '<option value="" selected disabled>' + __("Could not load Salary Structures") + "</option>";
+	});
+
+	if (!fromDateInput.value) {
+		fromDateInput.value = frappe.datetime.get_today();
+	}
+
+	// Reuses employee.py's own endpoint (already whitelisted for the Add
+	// Employee form's Holiday List picker) rather than adding a second one
+	// here just to list the same doctype.
+	call("ez_accounting.www.forms.user.employee.get_holiday_lists").then(function (r) {
+		var rows = r.message || [];
+		holidaySelect.innerHTML = "";
+		if (!rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = __("No Holiday Lists found");
+			holidaySelect.appendChild(opt);
+			return;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = true;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		holidaySelect.appendChild(placeholder);
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			holidaySelect.appendChild(opt);
+		});
+	}).catch(function () {
+		holidaySelect.innerHTML = '<option value="" selected disabled>' + __("Could not load Holiday Lists") + "</option>";
+	});
+
+	if (!holidayFromDateInput.value) {
+		holidayFromDateInput.value = frappe.datetime.get_today();
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading ? __("Assigning…") : __("Assign to Selected");
+	}
+
+	function set_holiday_loading(is_loading) {
+		holidaySubmitBtn.disabled = is_loading;
+		holidaySpinner.classList.toggle("d-none", !is_loading);
+		holidaySubmitLabel.textContent = is_loading ? __("Assigning…") : __("Assign Holiday List to Selected");
+	}
+
+	function render_result(d, skippedLabel) {
+		var parts = [];
+
+		if (d.success && d.success.length) {
+			parts.push(
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Assigned to {0} employee(s):", [d.success.length]) + '</strong>' +
+					'<ul class="payrollsettings-result-list">' +
+						d.success.map(function (row) {
+							return "<li>" + frappe.utils.escape_html(row.employee_name) + "</li>";
+						}).join("") +
+					"</ul>" +
+				"</div>"
+			);
+		}
+		if (d.holiday_list_assigned && d.holiday_list_assigned.length) {
+			parts.push(
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Also auto-assigned a Holiday List to {0} employee(s) who didn't have one:", [d.holiday_list_assigned.length]) + '</strong>' +
+					'<ul class="payrollsettings-result-list">' +
+						d.holiday_list_assigned.map(function (row) {
+							return "<li>" + frappe.utils.escape_html(row.employee_name) + "</li>";
+						}).join("") +
+					"</ul>" +
+				"</div>"
+			);
+		}
+		if (d.skipped && d.skipped.length) {
+			parts.push(
+				'<div class="alert alert-secondary">' +
+					'<strong>' + __(skippedLabel, [d.skipped.length]) + '</strong>' +
+					'<ul class="payrollsettings-result-list">' +
+						d.skipped.map(function (row) {
+							return "<li>" + frappe.utils.escape_html(row.employee_name) + "</li>";
+						}).join("") +
+					"</ul>" +
+				"</div>"
+			);
+		}
+		if (d.failed && d.failed.length) {
+			parts.push(
+				'<div class="alert alert-warning">' +
+					'<strong>' + __("Failed ({0}):", [d.failed.length]) + '</strong>' +
+					'<ul class="payrollsettings-result-list">' +
+						d.failed.map(function (row) {
+							return "<li>" + frappe.utils.escape_html(row.employee_name) + ": " + frappe.utils.escape_html(row.error) + "</li>";
+						}).join("") +
+					"</ul>" +
+				"</div>"
+			);
+		}
+		resultBox.innerHTML = parts.join("");
+		resultBox.classList.toggle("d-none", !parts.length);
+	}
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		document.getElementById("payrollsettings-alert").classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		var employees = Object.keys(checkedEmployees).filter(function (k) { return checkedEmployees[k]; });
+
+		if (!structureSelect.value) {
+			show_alert(__("Select a Salary Structure."), true);
+			return;
+		}
+		if (!fromDateInput.value) {
+			show_alert(__("Select a From Date."), true);
+			return;
+		}
+		if (!employees.length) {
+			show_alert(__("Select at least one employee."), true);
+			return;
+		}
+
+		set_loading(true);
+		call("ez_accounting.www.forms.user.payrollsettings.batch_assign_salary_structure", {
+			salary_structure: structureSelect.value,
+			from_date: fromDateInput.value,
+			employees: JSON.stringify(employees)
+		}).then(function (r) {
+			set_loading(false);
+			if (!r.message) return;
+			render_result(r.message, __("Skipped — already assigned this exact structure/date ({0}):"));
+			checkedEmployees = {};
+			update_selected_count_hint();
+			load_employees();
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+
+	holidayForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		document.getElementById("payrollsettings-alert").classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		var employees = Object.keys(checkedEmployees).filter(function (k) { return checkedEmployees[k]; });
+
+		if (!holidaySelect.value) {
+			show_alert(__("Select a Holiday List."), true);
+			return;
+		}
+		if (!holidayFromDateInput.value) {
+			show_alert(__("Select a From Date."), true);
+			return;
+		}
+		if (!employees.length) {
+			show_alert(__("Select at least one employee."), true);
+			return;
+		}
+
+		set_holiday_loading(true);
+		call("ez_accounting.www.forms.user.payrollsettings.batch_assign_holiday_list", {
+			holiday_list: holidaySelect.value,
+			from_date: holidayFromDateInput.value,
+			employees: JSON.stringify(employees)
+		}).then(function (r) {
+			set_holiday_loading(false);
+			if (!r.message) return;
+			render_result(r.message, __("Skipped — already has this exact Holiday List/date ({0}):"));
+			checkedEmployees = {};
+			update_selected_count_hint();
+			load_employees();
+		}).catch(function (err) {
+			set_holiday_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+
+{% endblock %}

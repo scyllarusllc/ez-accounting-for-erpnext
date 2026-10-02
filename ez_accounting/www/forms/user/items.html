@@ -1,0 +1,1132 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .items-card .card-body {
+	padding: 1.5rem 1.5rem 0.5rem;
+}
+
+body.forms-portal-dark .items-card #items_search {
+	min-height: 56px;
+	font-size: 1.15rem;
+	padding: 0.85rem 1.1rem;
+}
+
+body.forms-portal-dark .items-table td,
+body.forms-portal-dark .items-table th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .items-table tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .items-table .item-code {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+}
+
+body.forms-portal-dark .items-table .item-flags {
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .items-table .item-flags .status-pill {
+	margin-right: 0.3rem;
+}
+
+body.forms-portal-dark .items-table select.account-select {
+	min-width: 16rem;
+	max-width: 22rem;
+}
+
+body.forms-portal-dark .items-table .account-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+body.forms-portal-dark .items-table .save-status {
+	font-size: 0.8rem;
+	min-width: 4.5rem;
+}
+
+body.forms-portal-dark .items-table .save-status.is-saving {
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .items-table .save-status.is-saved {
+	color: #6fd996;
+}
+
+body.forms-portal-dark .items-table .save-status.is-error {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .items-table .name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+body.forms-portal-dark .items-table input.item-name-input {
+	min-width: 12rem;
+}
+
+body.forms-portal-dark .items-table tr.disabled-row {
+	opacity: 0.55;
+}
+
+body.forms-portal-dark .items-table button.delete-item-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #f0a8a8;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .items-table button.delete-item-btn:hover {
+	color: #f6c6c6;
+}
+
+body.forms-portal-dark .items-table button.delete-item-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .items-table .row-actions {
+	display: flex;
+	align-items: center;
+	gap: 0.9rem;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .items-table .duplicate-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+body.forms-portal-dark .items-table button.duplicate-item-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #7ea6ff;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .items-table button.duplicate-item-btn:hover {
+	color: #a7c4ff;
+}
+
+body.forms-portal-dark .items-table button.edit-item-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #6fd996;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .items-table button.edit-item-btn:hover { color: #a5ebbd; }
+
+body.forms-portal-dark .items-table .duplicate-wrap select {
+	min-width: 13rem;
+}
+
+body.forms-portal-dark .forms-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .forms-modal {
+	background-color: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: 100%;
+	max-width: 560px;
+	max-height: 90vh;
+	overflow-y: auto;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+body.forms-portal-dark .forms-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.25rem 1.5rem;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .forms-modal-header h4 { margin: 0; }
+
+body.forms-portal-dark .forms-modal-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.6rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+body.forms-portal-dark .forms-modal-close:hover { color: #e6e8eb; }
+
+body.forms-portal-dark .forms-modal-body { padding: 1.5rem; }
+
+body.forms-portal-dark .dup-modal-route {
+	font-size: 0.95rem;
+	color: #9aa1ac;
+	margin-bottom: 1.25rem;
+}
+
+body.forms-portal-dark .dup-modal-route strong { color: #e6e8eb; }
+
+body.forms-portal-dark .dup-field { margin-bottom: 1.1rem; }
+
+body.forms-portal-dark .dup-field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.3rem;
+}
+
+body.forms-portal-dark .dup-field .dup-hint {
+	font-size: 0.8rem;
+	color: #8a8f9c;
+	margin-top: 0.25rem;
+}
+
+body.forms-portal-dark .dup-field .dup-hint.is-guess { color: #6fd996; }
+
+body.forms-portal-dark #item-duplicate-alert { margin-bottom: 1rem; }
+
+body.forms-portal-dark .dup-modal-actions {
+	display: flex;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+}
+
+body.forms-portal-dark .items-add-card .card-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .items-add-card .row > [class*="col-"] {
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .items-add-card .form-control,
+body.forms-portal-dark .items-add-card .btn {
+	min-height: 48px;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Item Accounts") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Set, per company, the Expense/Income Account each item posts to on a purchase or sale, and the \"Deposit to\" bank account its receipts belong to (used as the filter on the Bank Deposit page). Left blank, an item falls back to that company's generic default account.") }}
+	</p>
+</div>
+
+<div id="item-add-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card items-add-card">
+	<div class="card-body">
+		<form id="item-add-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-4">
+					<label class="form-label" for="new_item_name">{{ _("Item Name") }}</label>
+					<input type="text" class="form-control" id="new_item_name" placeholder="{{ _('Item name') }}" required>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="new_item_group">{{ _("Item Group") }}</label>
+					<select class="form-control" id="new_item_group">
+						<option value="" selected disabled>{{ _("Loading item groups…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-4">
+					<div class="form-check">
+						<input type="checkbox" class="form-check-input" id="new_item_sales" checked>
+						<label class="form-check-label" for="new_item_sales">{{ _("Sales Item") }}</label>
+					</div>
+					<div class="form-check">
+						<input type="checkbox" class="form-check-input" id="new_item_purchase" checked>
+						<label class="form-check-label" for="new_item_purchase">{{ _("Purchase Item") }}</label>
+					</div>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="new_item_expense_account">{{ _("Expense Account") }}</label>
+					<select class="select select-neutral w-100" id="new_item_expense_account" required>
+						<option value="" selected disabled>{{ _("Loading expense accounts…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="new_item_income_account">{{ _("Income Account") }}</label>
+					<select class="select select-neutral w-100" id="new_item_income_account" required>
+						<option value="" selected disabled>{{ _("Loading income accounts…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="new_item_deposit_to">{{ _("Deposit to") }}</label>
+					<select class="select select-neutral w-100" id="new_item_deposit_to" required>
+						<option value="" selected disabled>{{ _("Loading bank accounts…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-2 ms-auto">
+					<button type="submit" class="btn btn-primary w-100" id="item-add-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="item-add-spinner" role="status" aria-hidden="true"></span>
+						<span id="item-add-label">{{ _("Add Item") }}</span>
+					</button>
+				</div>
+
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="card form-card items-card">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-6">
+				<input type="text" class="form-control" id="items_search" autocomplete="off" disabled
+					placeholder="{{ _('Loading items…') }}">
+				<div class="form-text" id="items_count_hint"></div>
+			</div>
+			<div class="col-md-4">
+				<select class="form-control" id="items_company_filter">
+					<option value="__all__">{{ _("All companies") }}</option>
+					{% for c in companies %}
+					<option value="{{ c.name }}" {{ "selected" if c.name == company else "" }}>{{ c.name }}</option>
+					{% endfor %}
+				</select>
+				{% if can_show_all %}
+				<div class="form-check mt-1">
+					<input type="checkbox" class="form-check-input" id="items_show_all">
+					<label class="form-check-label small text-muted" for="items_show_all">{{ _("Show all items (not just ones with accounts set here)") }}</label>
+				</div>
+				{% endif %}
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered items-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Item") }}</th>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Type") }}</th>
+						<th>{{ _("Expense Account") }}</th>
+						<th>{{ _("Income Account") }}</th>
+						<th>{{ _("Deposit to") }}</th>
+						<th>{{ _("Disabled") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="items-table-body">
+					<tr><td colspan="8" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div id="item-duplicate-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal">
+		<div class="forms-modal-header">
+			<h4>{{ _("Duplicate to another company") }}</h4>
+			<button type="button" class="forms-modal-close" id="item-duplicate-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div id="item-duplicate-alert" class="alert alert-warning d-none" role="alert"></div>
+			<p class="dup-modal-route" id="item-duplicate-route"></p>
+			<p class="text-muted" style="font-size:0.85rem;margin-top:-0.75rem;">
+				{{ _("Accounts are guessed from the source company's setup — review each and adjust before confirming. Leave blank to fall back to the company's generic default account.") }}
+			</p>
+
+			{% for f in [("expense_account", _("Expense Account")), ("income_account", _("Income Account")), ("custom_deposit_to_account", _("Deposit to"))] %}
+			<div class="dup-field" data-field="{{ f[0] }}">
+				<label>{{ f[1] }}</label>
+				<select class="form-control dup-select"></select>
+				<div class="dup-hint"></div>
+			</div>
+			{% endfor %}
+
+			<div class="dup-modal-actions">
+				<button type="button" class="btn btn-primary" id="item-duplicate-confirm">
+					<span class="spinner-border spinner-border-sm d-none" id="item-duplicate-spinner" role="status" aria-hidden="true"></span>
+					<span id="item-duplicate-confirm-label">{{ _("Duplicate") }}</span>
+				</button>
+				<button type="button" class="btn btn-outline-secondary" id="item-duplicate-cancel">{{ _("Cancel") }}</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="item-edit-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal">
+		<div class="forms-modal-header">
+			<h4>{{ _("Edit Item") }}</h4>
+			<button type="button" class="forms-modal-close" id="item-edit-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div id="item-edit-alert" class="alert alert-warning d-none" role="alert"></div>
+			<div class="mb-3"><label class="form-label">{{ _("Item Code") }}</label><input type="text" class="form-control" id="item-edit-code" disabled></div>
+			<div class="mb-3"><label class="form-label">{{ _("Item Name") }}</label><input type="text" class="form-control" id="item-edit-name"></div>
+			<div class="mb-3"><label class="form-label">{{ _("Item Group") }}</label><select class="form-control" id="item-edit-group"></select></div>
+			<div class="d-flex flex-wrap gap-4 mb-3">
+				<label class="form-check"><input type="checkbox" class="form-check-input" id="item-edit-purchase"><span class="form-check-label">{{ _("Purchase Item") }}</span></label>
+				<label class="form-check"><input type="checkbox" class="form-check-input" id="item-edit-sales"><span class="form-check-label">{{ _("Sales Item") }}</span></label>
+				<label class="form-check"><input type="checkbox" class="form-check-input" id="item-edit-disabled"><span class="form-check-label">{{ _("Disabled") }}</span></label>
+			</div>
+			<div class="dup-modal-actions">
+				<button type="button" class="btn btn-primary" id="item-edit-save"><span class="spinner-border spinner-border-sm d-none" id="item-edit-spinner" role="status" aria-hidden="true"></span> <span id="item-edit-save-label">{{ _("Save") }}</span></button>
+				<button type="button" class="btn btn-outline-secondary" id="item-edit-cancel">{{ _("Cancel") }}</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function build_account_options(select, accounts, current, blankLabel) {
+		select.innerHTML = "";
+		var blank = document.createElement("option");
+		blank.value = "";
+		blank.textContent = blankLabel || __("— Company Default —");
+		select.appendChild(blank);
+
+		accounts.forEach(function (acc) {
+			var opt = document.createElement("option");
+			opt.value = acc.name;
+			opt.textContent = acc.name;
+			select.appendChild(opt);
+		});
+		select.value = current || "";
+	}
+
+	function type_badge(active, label) {
+		return '<span class="status-pill ' + (active ? "pill-final" : "pill-draft") + '">' + label + "</span>";
+	}
+
+	var tbody = document.getElementById("items-table-body");
+	var searchInput = document.getElementById("items_search");
+	var countHint = document.getElementById("items_count_hint");
+	var companyFilterSelect = document.getElementById("items_company_filter");
+	var showAllCheck = document.getElementById("items_show_all");
+
+	// Rendering every item at once (thousands, on a large catalog) means
+	// thousands of rows each with two populated <select> elements — slow
+	// enough to make the page feel broken. Cap what's actually drawn, same
+	// MAX_RESULTS pattern Express Sales/Purchase use for their customer/item
+	// pickers, and let search narrow it down instead.
+	var MAX_RESULTS = 50;
+	var allItems = [];
+	var itemGroups = [];
+	var expenseAccounts = [];
+	var incomeAccounts = [];
+	var depositAccounts = [];
+
+	// Strips everything but letters/digits before comparing, so spacing and
+	// punctuation differences between the typed query and the stored name
+	// don't prevent a match — e.g. "S&S" or "S&SCo.LTD" both find
+	// "S & S Co. LTD".
+	function normalize(text) {
+		return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+	}
+
+	function render_row(item) {
+		var row = document.createElement("tr");
+		row.className = item.disabled ? "disabled-row" : "";
+
+		var itemCell = document.createElement("td");
+		var nameWrap = document.createElement("div");
+		nameWrap.className = "name-cell";
+
+		var nameInput = document.createElement("input");
+		nameInput.type = "text";
+		nameInput.className = "form-control item-name-input";
+		nameInput.value = item.item_name || item.name;
+
+		var nameStatus = document.createElement("span");
+		nameStatus.className = "save-status";
+
+		nameInput.addEventListener("change", function () {
+			var value = nameInput.value;
+			nameStatus.className = "save-status is-saving";
+			nameStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.items.update_item_field", {
+				item: item.name,
+				field: "item_name",
+				value: value,
+				company: item.company || current_company()
+			}).then(function (r) {
+				var saved = (r.message && r.message.value) || value;
+				// The "All companies" view can show the same item on several
+				// rows — keep every copy's name in sync for a later re-render.
+				allItems.forEach(function (i) { if (i.name === item.name) i.item_name = saved; });
+				nameInput.value = saved;
+				nameStatus.className = "save-status is-saved";
+				nameStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (nameStatus.classList.contains("is-saved")) nameStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.innerHTML = extract_error_message(err);
+				nameInput.value = item.item_name || item.name;
+			});
+		});
+
+		nameWrap.appendChild(nameInput);
+		nameWrap.appendChild(nameStatus);
+		itemCell.appendChild(nameWrap);
+		// appendChild, not itemCell.innerHTML += — the latter would serialize
+		// nameWrap (with its live "change" listener) back to an HTML string
+		// and reparse it into a brand-new, listener-less node, silently
+		// breaking the rename the same way it did on the Customers page
+		// before that bug was found and fixed.
+		var codeDiv = document.createElement("div");
+		codeDiv.className = "item-code";
+		codeDiv.textContent = item.name;
+		itemCell.appendChild(codeDiv);
+		row.appendChild(itemCell);
+
+		var companyCell = document.createElement("td");
+		companyCell.textContent = item.company || "";
+		row.appendChild(companyCell);
+
+		var flagsCell = document.createElement("td");
+		flagsCell.className = "item-flags";
+		flagsCell.innerHTML =
+			type_badge(item.is_purchase_item, __("Purchase")) +
+			type_badge(item.is_sales_item, __("Sales"));
+		row.appendChild(flagsCell);
+
+		[
+			{ field: "expense_account", accounts: expenseAccounts, current: item.expense_account },
+			{ field: "income_account", accounts: incomeAccounts, current: item.income_account },
+			{ field: "custom_deposit_to_account", accounts: depositAccounts, current: item.deposit_to_account, blank: __("— None —") }
+		].forEach(function (spec) {
+			var cell = document.createElement("td");
+			var wrap = document.createElement("div");
+			wrap.className = "account-cell";
+
+			var select = document.createElement("select");
+			select.className = "form-control account-select";
+			// Each account carries its own `company`; in the "All companies"
+			// view keep only the ones for this row's company.
+			var rowAccounts = spec.accounts.filter(function (a) {
+				return !a.company || a.company === item.company;
+			});
+			build_account_options(select, rowAccounts, spec.current, spec.blank);
+
+			var status = document.createElement("span");
+			status.className = "save-status";
+
+			select.addEventListener("change", function () {
+				status.className = "save-status is-saving";
+				status.textContent = __("Saving…");
+				call("ez_accounting.www.forms.user.items.update_item_account", {
+					item: item.name,
+					field: spec.field,
+					account: select.value,
+					company: item.company || current_company()
+				}).then(function () {
+					status.className = "save-status is-saved";
+					status.textContent = __("Saved");
+					setTimeout(function () {
+						if (status.classList.contains("is-saved")) status.textContent = "";
+					}, 2500);
+				}).catch(function (err) {
+					status.className = "save-status is-error";
+					status.innerHTML = extract_error_message(err);
+					// Revert the dropdown to what's actually saved, since the
+					// server rejected this change.
+					select.value = spec.current || "";
+				});
+			});
+
+			wrap.appendChild(select);
+			wrap.appendChild(status);
+			cell.appendChild(wrap);
+			row.appendChild(cell);
+		});
+
+		var disabledCell = document.createElement("td");
+		var disabledCheck = document.createElement("input");
+		disabledCheck.type = "checkbox";
+		disabledCheck.className = "form-check-input";
+		disabledCheck.checked = !!item.disabled;
+		disabledCheck.addEventListener("change", function () {
+			call("ez_accounting.www.forms.user.items.update_item_field", {
+				item: item.name,
+				field: "disabled",
+				value: disabledCheck.checked ? "1" : "0",
+				company: item.company || current_company()
+			}).then(function () {
+				var dis = disabledCheck.checked ? 1 : 0;
+				allItems.forEach(function (i) { if (i.name === item.name) i.disabled = dis; });
+				row.className = dis ? "disabled-row" : "";
+			}).catch(function (err) {
+				disabledCheck.checked = !!item.disabled;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		disabledCell.appendChild(disabledCheck);
+		row.appendChild(disabledCell);
+
+		var actionsCell = document.createElement("td");
+		var actionsWrap = document.createElement("div");
+		actionsWrap.className = "row-actions";
+
+		var editBtn = document.createElement("button");
+		editBtn.type = "button";
+		editBtn.className = "edit-item-btn";
+		editBtn.innerHTML = '<i class="fa fa-pencil btn-icon" aria-hidden="true"></i>' + __("Edit");
+		editBtn.addEventListener("click", function () { open_edit_modal(item); });
+		actionsWrap.appendChild(editBtn);
+
+		// --- Duplicate to another company ---
+		// Click swaps the button for a company picker; picking one copies this
+		// item's per-company accounts to that company (mapped by account
+		// number/name where an equivalent exists) via a new Item Default row.
+		var dupWrap = document.createElement("span");
+		dupWrap.className = "duplicate-wrap";
+		var dupBtn = document.createElement("button");
+		dupBtn.type = "button";
+		dupBtn.className = "duplicate-item-btn";
+		dupBtn.innerHTML = '<i class="fa fa-copy btn-icon" aria-hidden="true"></i>' + __("Duplicate");
+		var dupStatus = document.createElement("span");
+		dupStatus.className = "save-status";
+		dupBtn.addEventListener("click", function () {
+			var targets = company_names().filter(function (c) { return c !== item.company; });
+			if (!targets.length) {
+				dupStatus.className = "save-status is-error";
+				dupStatus.textContent = __("No other company.");
+				return;
+			}
+			var sel = document.createElement("select");
+			sel.className = "form-control account-select";
+			var ph = document.createElement("option");
+			ph.value = ""; ph.textContent = __("Copy to company…"); ph.selected = true; ph.disabled = true;
+			sel.appendChild(ph);
+			targets.forEach(function (c) {
+				var o = document.createElement("option");
+				o.value = c; o.textContent = c;
+				sel.appendChild(o);
+			});
+			sel.addEventListener("change", function () {
+				if (!sel.value) return;
+				var target = sel.value;
+				sel.disabled = true;
+				dupStatus.className = "save-status is-saving";
+				dupStatus.textContent = __("Loading…");
+				call("ez_accounting.www.forms.user.items.duplicate_item_preview", {
+					item: item.name,
+					target_company: target,
+					source_company: item.company
+				}).then(function (r) {
+					dupStatus.textContent = "";
+					sel.replaceWith(dupBtn);
+					open_duplicate_modal(r.message || {});
+				}).catch(function (err) {
+					sel.disabled = false;
+					dupStatus.className = "save-status is-error";
+					dupStatus.innerHTML = extract_error_message(err);
+				});
+			});
+			dupBtn.replaceWith(sel);
+		});
+		dupWrap.appendChild(dupBtn);
+		dupWrap.appendChild(dupStatus);
+		actionsWrap.appendChild(dupWrap);
+
+		var deleteBtn = document.createElement("button");
+		deleteBtn.type = "button";
+		deleteBtn.className = "delete-item-btn";
+		deleteBtn.innerHTML = '<i class="fa fa-trash btn-icon" aria-hidden="true"></i>' + __("Delete");
+		deleteBtn.addEventListener("click", function () {
+			if (!window.confirm(__("Delete {0}? This can't be undone. If it's used on any invoice or other document, the delete will be blocked instead.", [item.item_name || item.name]))) {
+				return;
+			}
+			deleteBtn.disabled = true;
+			deleteBtn.textContent = __("Deleting…");
+			call("ez_accounting.www.forms.user.items.delete_item", {item: item.name}).then(function () {
+				allItems = allItems.filter(function (i) { return i.name !== item.name; });
+				render_table(searchInput.value);
+			}).catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				deleteBtn.disabled = false;
+				deleteBtn.innerHTML = '<i class="fa fa-trash btn-icon" aria-hidden="true"></i>' + __("Delete");
+			});
+		});
+		actionsWrap.appendChild(deleteBtn);
+		actionsCell.appendChild(actionsWrap);
+		row.appendChild(actionsCell);
+
+		return row;
+	}
+
+	function render_table(query) {
+		query = normalize(query);
+		var matches = !query
+			? allItems
+			: allItems.filter(function (item) {
+				return normalize(item.item_name).indexOf(query) !== -1
+					|| normalize(item.name).indexOf(query) !== -1;
+			});
+
+		countHint.textContent = matches.length > MAX_RESULTS
+			? __("{0} found — showing the first {1}. Keep typing to narrow down.", [matches.length, MAX_RESULTS])
+			: (query ? __("{0} found.", [matches.length]) : "");
+
+		tbody.innerHTML = "";
+		if (!matches.length) {
+			tbody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("No matching items found.") + "</td></tr>";
+			return;
+		}
+		matches.slice(0, MAX_RESULTS).forEach(function (item) {
+			tbody.appendChild(render_row(item));
+		});
+	}
+
+	searchInput.addEventListener("input", function () {
+		render_table(searchInput.value);
+	});
+
+	function current_company() { return companyFilterSelect.value; }
+
+	// Real company names from the filter dropdown (drops the "__all__" option) —
+	// the targets a row can be duplicated to.
+	function company_names() {
+		return Array.prototype.slice.call(companyFilterSelect.options)
+			.map(function (o) { return o.value; })
+			.filter(function (v) { return v && v !== "__all__"; });
+	}
+
+	// ---- Edit Item modal ----
+	var editOverlay = document.getElementById("item-edit-overlay");
+	var editAlert = document.getElementById("item-edit-alert");
+	var editCode = document.getElementById("item-edit-code");
+	var editName = document.getElementById("item-edit-name");
+	var editGroup = document.getElementById("item-edit-group");
+	var editPurchase = document.getElementById("item-edit-purchase");
+	var editSales = document.getElementById("item-edit-sales");
+	var editDisabled = document.getElementById("item-edit-disabled");
+	var editSave = document.getElementById("item-edit-save");
+	var editSpinner = document.getElementById("item-edit-spinner");
+	var editSaveLabel = document.getElementById("item-edit-save-label");
+	var editCtx = null;
+
+	function close_edit_modal() { editOverlay.classList.add("d-none"); editCtx = null; }
+	function set_edit_loading(loading) {
+		editSave.disabled = loading;
+		editSpinner.classList.toggle("d-none", !loading);
+		editSaveLabel.textContent = loading ? __("Saving…") : __("Save");
+	}
+	function open_edit_modal(item) {
+		editCtx = item;
+		editAlert.classList.add("d-none");
+		editCode.value = item.name;
+		editName.value = item.item_name || item.name;
+		editGroup.innerHTML = "";
+		itemGroups.forEach(function (group) {
+			var option = document.createElement("option");
+			option.value = group.name;
+			option.textContent = group.name;
+			editGroup.appendChild(option);
+		});
+		editGroup.value = item.item_group || "";
+		editPurchase.checked = !!item.is_purchase_item;
+		editSales.checked = !!item.is_sales_item;
+		editDisabled.checked = !!item.disabled;
+		set_edit_loading(false);
+		editOverlay.classList.remove("d-none");
+		editName.focus();
+	}
+	document.getElementById("item-edit-close").addEventListener("click", close_edit_modal);
+	document.getElementById("item-edit-cancel").addEventListener("click", close_edit_modal);
+	editSave.addEventListener("click", function () {
+		if (!editCtx) return;
+		editAlert.classList.add("d-none");
+		if (!editName.value.trim() || !editGroup.value) {
+			editAlert.textContent = __("Item Name and Item Group are required.");
+			editAlert.classList.remove("d-none");
+			return;
+		}
+		set_edit_loading(true);
+		call("ez_accounting.www.forms.user.items.update_item_details", {
+			item: editCtx.name,
+			item_name: editName.value.trim(),
+			item_group: editGroup.value,
+			is_purchase_item: editPurchase.checked ? 1 : 0,
+			is_sales_item: editSales.checked ? 1 : 0,
+			disabled: editDisabled.checked ? 1 : 0,
+			company: editCtx.company || current_company()
+		}).then(function () {
+			close_edit_modal();
+			load_items();
+		}).catch(function (err) {
+			set_edit_loading(false);
+			editAlert.innerHTML = extract_error_message(err);
+			editAlert.classList.remove("d-none");
+		});
+	});
+
+	// ---- Duplicate-to-company modal ----
+	var dupOverlay = document.getElementById("item-duplicate-overlay");
+	var dupAlert = document.getElementById("item-duplicate-alert");
+	var dupRoute = document.getElementById("item-duplicate-route");
+	var dupConfirmBtn = document.getElementById("item-duplicate-confirm");
+	var dupSpinner = document.getElementById("item-duplicate-spinner");
+	var dupConfirmLabel = document.getElementById("item-duplicate-confirm-label");
+	var dupFieldEls = Array.prototype.slice.call(dupOverlay.querySelectorAll(".dup-field"));
+	var dupCtx = null;
+
+	function close_duplicate_modal() {
+		dupOverlay.classList.add("d-none");
+		dupCtx = null;
+	}
+	document.getElementById("item-duplicate-close").addEventListener("click", close_duplicate_modal);
+	document.getElementById("item-duplicate-cancel").addEventListener("click", close_duplicate_modal);
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape" && !dupOverlay.classList.contains("d-none")) close_duplicate_modal();
+		if (e.key === "Escape" && !editOverlay.classList.contains("d-none")) close_edit_modal();
+	});
+
+	function open_duplicate_modal(preview) {
+		dupCtx = preview;
+		dupAlert.classList.add("d-none");
+		dupRoute.innerHTML = __("Copy {0} from {1} to {2}", [
+			"<strong>" + frappe.utils.escape_html(preview.item_name) + "</strong>",
+			"<strong>" + frappe.utils.escape_html(preview.source_company) + "</strong>",
+			"<strong>" + frappe.utils.escape_html(preview.target_company) + "</strong>"
+		]) + (preview.target_row_exists
+			? " — <span class=\"text-warning\">" + __("this item already exists there; confirming overwrites its accounts") + "</span>"
+			: "");
+
+		dupFieldEls.forEach(function (fieldEl) {
+			var key = fieldEl.dataset.field;
+			var spec = (preview.fields || {})[key] || { options: [], guess: null, source: null };
+			var select = fieldEl.querySelector("select");
+			var hint = fieldEl.querySelector(".dup-hint");
+
+			select.innerHTML = "";
+			var blank = document.createElement("option");
+			blank.value = "";
+			blank.textContent = (key === "custom_deposit_to_account") ? __("— None —") : __("— Company Default —");
+			select.appendChild(blank);
+			(spec.options || []).forEach(function (name) {
+				var opt = document.createElement("option");
+				opt.value = name;
+				opt.textContent = name;
+				select.appendChild(opt);
+			});
+			select.value = spec.guess || "";
+
+			if (spec.source) {
+				var matched = spec.guess && select.value === spec.guess;
+				hint.className = "dup-hint" + (matched ? " is-guess" : "");
+				hint.textContent = matched
+					? __("From “{0}” → guessed “{1}”", [spec.source, spec.guess])
+					: __("Source: “{0}” — no close match found, pick one", [spec.source]);
+			} else {
+				hint.className = "dup-hint";
+				hint.textContent = __("Not set on the source company.");
+			}
+		});
+
+		set_dup_loading(false);
+		dupOverlay.classList.remove("d-none");
+	}
+
+	function set_dup_loading(loading) {
+		dupConfirmBtn.disabled = loading;
+		dupSpinner.classList.toggle("d-none", !loading);
+		dupConfirmLabel.textContent = loading ? __("Duplicating…") : __("Duplicate");
+	}
+
+	dupConfirmBtn.addEventListener("click", function () {
+		if (!dupCtx) return;
+		dupAlert.classList.add("d-none");
+		var accounts = {};
+		dupFieldEls.forEach(function (fieldEl) {
+			accounts[fieldEl.dataset.field] = fieldEl.querySelector("select").value;
+		});
+		set_dup_loading(true);
+		call("ez_accounting.www.forms.user.items.duplicate_item_to_company", {
+			item: dupCtx.item,
+			target_company: dupCtx.target_company,
+			source_company: dupCtx.source_company,
+			accounts: JSON.stringify(accounts)
+		}).then(function (r) {
+			var d = r.message || {};
+			var target = dupCtx.target_company;
+			close_duplicate_modal();
+			frappe.show_alert({
+				message: d.created ? __("Added to {0}", [target]) : __("Updated {0}", [target]),
+				indicator: "green"
+			});
+			load_items();
+		}).catch(function (err) {
+			set_dup_loading(false);
+			dupAlert.classList.remove("d-none");
+			dupAlert.innerHTML = extract_error_message(err);
+		});
+	});
+
+	function load_items() {
+		tbody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("Loading…") + "</td></tr>";
+		var allCompanies = current_company() === "__all__";
+		// "Show all items" is a per-company idea (one row per item); it has no
+		// meaning in the cross-company "one row per Item Default" view.
+		if (showAllCheck) {
+			showAllCheck.disabled = allCompanies;
+			showAllCheck.parentElement.style.opacity = allCompanies ? "0.5" : "";
+		}
+		var args = { company: current_company() };
+		return Promise.all([
+			call("ez_accounting.www.forms.user.items.get_items_with_accounts", { company: current_company(), show_all: (showAllCheck && showAllCheck.checked) ? 1 : 0 }),
+			call("ez_accounting.www.forms.user.items.get_expense_accounts", args),
+			call("ez_accounting.www.forms.user.items.get_income_accounts", args),
+			call("ez_accounting.www.forms.user.items.get_deposit_accounts", args)
+		]).then(function (results) {
+			allItems = results[0].message || [];
+			expenseAccounts = results[1].message || [];
+			incomeAccounts = results[2].message || [];
+			depositAccounts = results[3].message || [];
+
+			searchInput.disabled = false;
+			searchInput.placeholder = __("Search items…");
+			if (!allItems.length) {
+				tbody.innerHTML = '<tr><td colspan="8" class="text-muted">' + (allCompanies
+					? __("No items have per-company accounts set anywhere yet.")
+					: __("No items have accounts set for this company yet — tick “Show all items” to configure one.")) + "</td></tr>";
+				countHint.textContent = "";
+				return;
+			}
+			render_table(searchInput.value);
+		}).catch(function (err) {
+			tbody.innerHTML = '<tr><td colspan="8" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	companyFilterSelect.addEventListener("change", function () {
+		load_items();
+		load_new_item_deposit_accounts();
+	});
+	if (showAllCheck) showAllCheck.addEventListener("change", load_items);
+	load_items();
+
+	// Add Item form
+	var addForm = document.getElementById("item-add-form");
+	var addAlert = document.getElementById("item-add-alert");
+	var addSubmit = document.getElementById("item-add-submit");
+	var addSpinner = document.getElementById("item-add-spinner");
+	var addLabel = document.getElementById("item-add-label");
+	var newItemNameInput = document.getElementById("new_item_name");
+	var newItemGroupSelect = document.getElementById("new_item_group");
+	var newItemExpenseAccountSelect = document.getElementById("new_item_expense_account");
+	var newItemIncomeAccountSelect = document.getElementById("new_item_income_account");
+	var newItemDepositToSelect = document.getElementById("new_item_deposit_to");
+	var newItemSalesCheck = document.getElementById("new_item_sales");
+	var newItemPurchaseCheck = document.getElementById("new_item_purchase");
+
+	function load_new_item_deposit_accounts() {
+		[newItemExpenseAccountSelect, newItemIncomeAccountSelect, newItemDepositToSelect].forEach(function (select) {
+			select.disabled = true;
+			select.innerHTML = '<option value="">' + __("Loading accounts…") + "</option>";
+		});
+		return call("ez_accounting.www.forms.user.items.get_item_creation_deposit_accounts", {
+			company: current_company()
+		}).then(function (r) {
+			var data = r.message || {};
+			[
+				{select: newItemExpenseAccountSelect, accounts: data.expense_accounts || [], defaultValue: data.default_expense_account, empty: __("No Expense accounts found")},
+				{select: newItemIncomeAccountSelect, accounts: data.income_accounts || [], defaultValue: data.default_income_account, empty: __("No Income accounts found")},
+				{select: newItemDepositToSelect, accounts: data.accounts || [], defaultValue: data.default, empty: __("No Bank accounts found")}
+			].forEach(function (config) {
+				config.select.innerHTML = "";
+				if (!config.accounts.length) {
+					config.select.innerHTML = '<option value="">' + config.empty + "</option>";
+					return;
+				}
+				config.accounts.forEach(function (account) {
+					var option = document.createElement("option");
+					option.value = account.name;
+					option.textContent = account.name;
+					config.select.appendChild(option);
+				});
+				config.select.value = config.defaultValue || config.accounts[0].name;
+				config.select.disabled = false;
+			});
+		}).catch(function () {
+			[newItemExpenseAccountSelect, newItemIncomeAccountSelect, newItemDepositToSelect].forEach(function (select) {
+				select.innerHTML = '<option value="">' + __("Could not load accounts") + "</option>";
+			});
+		});
+	}
+	load_new_item_deposit_accounts();
+
+	call("ez_accounting.www.forms.user.items.get_item_groups").then(function (r) {
+		var groups = r.message || [];
+		itemGroups = groups;
+		newItemGroupSelect.innerHTML = "";
+		if (!groups.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.textContent = __("No item groups found");
+			newItemGroupSelect.appendChild(opt);
+			return;
+		}
+		groups.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			newItemGroupSelect.appendChild(opt);
+		});
+		// "Products" covers the overwhelming majority of existing items on
+		// this site — pre-select it when available so the common case
+		// doesn't require picking a group at all, still fully changeable.
+		var hasProducts = groups.some(function (g) { return g.name === "Products"; });
+		newItemGroupSelect.value = hasProducts ? "Products" : groups[0].name;
+	}).catch(function () {
+		newItemGroupSelect.innerHTML = "";
+		var opt = document.createElement("option");
+		opt.value = "";
+		opt.textContent = __("Could not load item groups");
+		newItemGroupSelect.appendChild(opt);
+	});
+
+	function show_add_alert(message, is_error) {
+		addAlert.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		addAlert.innerHTML = message;
+		addAlert.classList.remove("d-none");
+	}
+
+	function set_add_loading(is_loading) {
+		addSubmit.disabled = is_loading;
+		addSpinner.classList.toggle("d-none", !is_loading);
+		addLabel.textContent = is_loading ? __("Adding…") : __("Add Item");
+	}
+
+	addForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		addAlert.classList.add("d-none");
+
+		if (!newItemNameInput.value.trim()) {
+			show_add_alert(__("Item Name is required."), true);
+			return;
+		}
+		if (!newItemGroupSelect.value) {
+			show_add_alert(__("Item Group is required."), true);
+			return;
+		}
+		if (!newItemDepositToSelect.value) {
+			show_add_alert(__("Deposit to is required."), true);
+			return;
+		}
+		if (!newItemExpenseAccountSelect.value || !newItemIncomeAccountSelect.value) {
+			show_add_alert(__("Expense Account and Income Account are required."), true);
+			return;
+		}
+
+		set_add_loading(true);
+		call("ez_accounting.www.forms.user.items.create_item", {
+			item_name: newItemNameInput.value.trim(),
+			item_group: newItemGroupSelect.value,
+			is_sales_item: newItemSalesCheck.checked ? 1 : 0,
+			is_purchase_item: newItemPurchaseCheck.checked ? 1 : 0,
+			company: current_company(),
+			deposit_to_account: newItemDepositToSelect.value,
+			expense_account: newItemExpenseAccountSelect.value,
+			income_account: newItemIncomeAccountSelect.value
+		}).then(function (r) {
+			set_add_loading(false);
+			var d = r.message || {};
+			show_add_alert(__("Added {0} as item {1}.", [
+				"<strong>" + frappe.utils.escape_html(d.item_name) + "</strong>",
+				frappe.utils.escape_html(d.item)
+			]), false);
+			newItemNameInput.value = "";
+			newItemNameInput.focus();
+			// create_item gives the new item an Item Default row for the
+			// current company, so it shows up in the company-scoped list
+			// without needing "Show all" (which scoped users don't have).
+			load_items();
+		}).catch(function (err) {
+			set_add_loading(false);
+			show_add_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,322 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .v1099-table tr.v1099-vendor-first td { border-top: 2px solid #2a2e37; }
+body.forms-portal-dark .v1099-table tr.v1099-vendor-first:first-child td { border-top: none; }
+body.forms-portal-dark .v1099-table tr.v1099-subtotal td {
+	border-top: 1px solid #5b6270;
+	font-weight: 700;
+}
+body.forms-portal-dark .v1099-muted { color: #8a8f9c; }
+body.forms-portal-dark .v1099-table td.v1099-num { white-space: nowrap; }
+
+body.forms-portal-dark .v1099-setup { border: 1px solid #2a2e37; border-radius: 0.6rem; margin-bottom: 1.5rem; }
+body.forms-portal-dark .v1099-setup > summary {
+	cursor: pointer;
+	padding: 0.9rem 1.1rem;
+	font-weight: 600;
+	list-style: none;
+}
+body.forms-portal-dark .v1099-setup > summary::-webkit-details-marker { display: none; }
+body.forms-portal-dark .v1099-setup > summary::before { content: "▸ "; color: #8a8f9c; }
+body.forms-portal-dark .v1099-setup[open] > summary::before { content: "▾ "; }
+body.forms-portal-dark .v1099-setup-body { padding: 0 1.1rem 1.1rem; }
+body.forms-portal-dark .v1099-setup select, body.forms-portal-dark .v1099-setup input[type=text] {
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	color: #e6e8eb;
+	border-radius: 0.35rem;
+	padding: 0.3rem 0.5rem;
+	font: inherit;
+}
+body.forms-portal-dark .v1099-setup .v1099-box-select { min-width: 4.5rem; }
+body.forms-portal-dark .v1099-save-status { font-size: 0.78rem; margin-left: 0.4rem; }
+body.forms-portal-dark .v1099-save-status.ok { color: #6fd996; }
+body.forms-portal-dark .v1099-save-status.err { color: #f0a8a8; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("1099 Vendor Report") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Payments to 1099-flagged vendors of {0} for the year {1}. Limit = {2}.").format(company, year, frappe.utils.fmt_money(threshold)) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>
+
+<div class="card form-card mb-4 no-print">
+	<div class="card-body">
+		<div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+			<form method="GET" class="date-range-row">
+				<div class="form-group mb-0">
+					<label>{{ _("Year") }}</label>
+					<input type="number" class="form-control" name="year" value="{{ year }}" min="2000" max="{{ current_year }}" step="1" style="max-width:8rem;">
+				</div>
+				<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+			</form>
+			{% if company %}
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" href="/api/method/ez_accounting.www.forms.user.vendor_1099.download_excel?year={{ year }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" href="/forms/user/printer?kind=vendor_1099_report&year={{ year }}">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+{% if company %}
+<details class="v1099-setup no-print" id="v1099-setup">
+	<summary>{{ _("Manage 1099 vendors") }}</summary>
+	<div class="v1099-setup-body">
+		<p class="v1099-muted" style="font-size:0.85rem;">{{ _("Flag a supplier as needing a 1099 and set its type (NEC / MISC) and box. Suppliers paid at or above the limit this year that aren't flagged yet are suggested below.") }}</p>
+
+		<h6 class="mt-3">{{ _("Suggested (paid ≥ limit, not flagged)") }}</h6>
+		<div class="table-responsive">
+			<table class="table table-sm table-bordered mb-2">
+				<thead><tr><th>{{ _("Supplier") }}</th><th class="text-right">{{ _("Paid this year") }}</th><th></th></tr></thead>
+				<tbody id="v1099-candidates"><tr><td colspan="3" class="v1099-muted">{{ _("Loading…") }}</td></tr></tbody>
+			</table>
+		</div>
+
+		<h6 class="mt-3">{{ _("Flagged vendors") }}</h6>
+		<div class="table-responsive">
+			<table class="table table-sm table-bordered mb-2">
+				<thead><tr><th>{{ _("Supplier") }}</th><th>{{ _("Type") }}</th><th>{{ _("Box") }}</th><th class="text-right">{{ _("Paid this year") }}</th><th></th></tr></thead>
+				<tbody id="v1099-flagged"></tbody>
+			</table>
+		</div>
+
+		<h6 class="mt-3">{{ _("Search suppliers") }}</h6>
+		<input type="text" id="v1099-search" placeholder="{{ _('Search supplier name…') }}" autocomplete="off" style="width:100%;max-width:24rem;">
+		<div class="table-responsive mt-2">
+			<table class="table table-sm table-bordered mb-0">
+				<thead><tr><th>{{ _("Supplier") }}</th><th>{{ _("1099?") }}</th><th>{{ _("Type") }}</th><th>{{ _("Box") }}</th></tr></thead>
+				<tbody id="v1099-search-results"><tr><td colspan="4" class="v1099-muted">{{ _("Type to search.") }}</td></tr></tbody>
+			</table>
+		</div>
+	</div>
+</details>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="d-flex flex-wrap gap-4 mb-3">
+			<div><span class="stat-label">{{ _("Vendors") }}</span> <strong>{{ vendors|length }}</strong></div>
+			<div><span class="stat-label">{{ _("Met limit") }}</span> <strong>{{ met_count }}</strong></div>
+			<div><span class="stat-label">{{ _("Report Total") }}</span> <strong>{{ frappe.utils.fmt_money(report_total) }}</strong></div>
+			{% if no_activity %}<div class="v1099-muted">{{ _("{0} flagged vendor(s) had no payments this year").format(no_activity) }}</div>{% endif %}
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered v1099-table">
+				<thead>
+					<tr>
+						<th>{{ _("Vendor ID") }}</th>
+						<th>{{ _("Vendor") }}</th>
+						<th>{{ _("1099 Type") }}</th>
+						<th>{{ _("1099 Box") }}</th>
+						<th>{{ _("Box Desc") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Trans No") }}</th>
+						<th class="text-right">{{ _("Trans Amount") }}</th>
+						<th>{{ _("Limit Met?") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for v in vendors %}
+					{% for row in v.rows %}
+					<tr class="{{ 'v1099-vendor-first' if loop.first else '' }}">
+						<td>{{ v.vendor_id if loop.first else "" }}</td>
+						<td>{{ v.vendor if loop.first else "" }}</td>
+						<td>{{ v.kind if loop.first else "" }}</td>
+						<td>{{ v.box if loop.first else "" }}</td>
+						<td>{{ v.box_desc if loop.first else "" }}</td>
+						<td class="v1099-num">{{ frappe.utils.format_date(row.date) }}</td>
+						<td>{{ row.trans_no }}</td>
+						<td class="text-right v1099-num">{{ frappe.utils.fmt_money(row.amount) }}</td>
+						<td></td>
+					</tr>
+					{% endfor %}
+					<tr class="v1099-subtotal">
+						<td colspan="6"></td>
+						<td class="text-right">{{ _("Subtotal") }}</td>
+						<td class="text-right v1099-num">{{ frappe.utils.fmt_money(v.subtotal) }}</td>
+						<td>{{ _("Yes") if v.limit_met else _("No") }}</td>
+					</tr>
+					{% else %}
+					<tr><td colspan="9" class="v1099-muted">{{ _("No 1099 vendor payments for this year. Use “Manage 1099 vendors” above to flag suppliers.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if vendors %}
+				<tfoot>
+					<tr>
+						<th colspan="7">{{ _("Report Total") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(report_total) }}</th>
+						<th></th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var YEAR = "{{ year }}";
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: JSON.stringify(args || {})
+		}).then(function (r) {
+			return r.json().catch(function () { return {}; }).then(function (d) {
+				if (!r.ok) { var e = new Error(d._error_message || "Request failed"); e.data = d; throw e; }
+				return d.message;
+			});
+		});
+	}
+	var esc = frappe.utils.escape_html;
+	var setupEl = document.getElementById("v1099-setup");
+	if (!setupEl) return;
+
+	var candidatesBody = document.getElementById("v1099-candidates");
+	var flaggedBody = document.getElementById("v1099-flagged");
+	var searchInput = document.getElementById("v1099-search");
+	var searchBody = document.getElementById("v1099-search-results");
+	var BOX_OPTIONS = {}, BOX_DESC = {};
+
+	function money(v) { return frappe.format(v, { fieldtype: "Currency" }, { only_value: true }); }
+
+	function box_select(kind, box) {
+		var opts = (BOX_OPTIONS[kind || "NEC"] || []);
+		var html = '<option value="">—</option>' + opts.map(function (b) {
+			return '<option value="' + b + '"' + (b === box ? " selected" : "") + '>' + b + "</option>";
+		}).join("");
+		return '<select class="v1099-box-select">' + html + "</select>";
+	}
+	function type_select(kind) {
+		return '<select class="v1099-type-select">' +
+			['', 'NEC', 'MISC'].map(function (t) {
+				return '<option value="' + t + '"' + (t === (kind || "") ? " selected" : "") + '>' + (t || "—") + "</option>";
+			}).join("") + "</select>";
+	}
+
+	function save_row(rowEl, supplier, flagged) {
+		var status = rowEl.querySelector(".v1099-save-status") || (function () {
+			var s = document.createElement("span"); s.className = "v1099-save-status";
+			(rowEl.querySelector("td:last-child") || rowEl).appendChild(s); return s;
+		})();
+		var kind = (rowEl.querySelector(".v1099-type-select") || {}).value || "";
+		var box = (rowEl.querySelector(".v1099-box-select") || {}).value || "";
+		status.className = "v1099-save-status"; status.textContent = "…";
+		return call("ez_accounting.www.forms.user.vendor_1099.set_supplier_1099", {
+			supplier: supplier, irs_1099: flagged ? 1 : 0, kind: kind, box: box
+		}).then(function () {
+			status.className = "v1099-save-status ok"; status.textContent = "✓";
+			setTimeout(function () { status.textContent = ""; }, 2000);
+		}).catch(function (err) {
+			status.className = "v1099-save-status err";
+			status.textContent = (err.data && err.data._server_messages) ? "!" : "!";
+		});
+	}
+
+	function render_flagged(list) {
+		if (!list.length) { flaggedBody.innerHTML = '<tr><td colspan="5" class="v1099-muted">' + __("None flagged yet.") + "</td></tr>"; return; }
+		flaggedBody.innerHTML = "";
+		list.forEach(function (s) {
+			var tr = document.createElement("tr");
+			tr.innerHTML =
+				"<td>" + esc(s.supplier_name || s.name) + '<div class="v1099-muted" style="font-size:0.75rem;">' + esc(s.name) + "</div></td>" +
+				"<td>" + type_select(s.custom_1099_type) + "</td>" +
+				"<td>" + box_select(s.custom_1099_type, s.custom_1099_box) + "</td>" +
+				'<td class="text-right">' + money(s.paid || 0) + "</td>" +
+				'<td><button type="button" class="btn btn-sm btn-outline-light v1099-unflag">' + __("Remove") + '</button><span class="v1099-save-status"></span></td>';
+			tr.querySelector(".v1099-type-select").addEventListener("change", function () {
+				var bs = tr.querySelector(".v1099-box-select");
+				bs.outerHTML = box_select(tr.querySelector(".v1099-type-select").value, "");
+				tr.querySelector(".v1099-box-select").addEventListener("change", function () { save_row(tr, s.name, true); });
+				save_row(tr, s.name, true);
+			});
+			tr.querySelector(".v1099-box-select").addEventListener("change", function () { save_row(tr, s.name, true); });
+			tr.querySelector(".v1099-unflag").addEventListener("click", function () {
+				save_row(tr, s.name, false).then(load_setup);
+			});
+			flaggedBody.appendChild(tr);
+		});
+	}
+
+	function render_candidates(list) {
+		if (!list.length) { candidatesBody.innerHTML = '<tr><td colspan="3" class="v1099-muted">' + __("Nothing suggested.") + "</td></tr>"; return; }
+		candidatesBody.innerHTML = "";
+		list.forEach(function (s) {
+			var tr = document.createElement("tr");
+			tr.innerHTML =
+				"<td>" + esc(s.supplier_name || s.name) + "</td>" +
+				'<td class="text-right">' + money(s.paid || 0) + "</td>" +
+				'<td><button type="button" class="btn btn-sm btn-primary">' + __("Flag as NEC / Box 1") + "</button></td>";
+			tr.querySelector("button").addEventListener("click", function () {
+				this.disabled = true;
+				call("ez_accounting.www.forms.user.vendor_1099.set_supplier_1099", { supplier: s.name, irs_1099: 1, kind: "NEC", box: "1" })
+					.then(load_setup);
+			});
+			candidatesBody.appendChild(tr);
+		});
+	}
+
+	function load_setup() {
+		call("ez_accounting.www.forms.user.vendor_1099.get_setup", { year: YEAR }).then(function (d) {
+			BOX_OPTIONS = d.box_options || {}; BOX_DESC = d.box_desc || {};
+			render_flagged(d.flagged || []);
+			render_candidates(d.candidates || []);
+		});
+	}
+
+	var searchTimer = null;
+	searchInput.addEventListener("input", function () {
+		clearTimeout(searchTimer);
+		var q = searchInput.value;
+		searchTimer = setTimeout(function () {
+			if (!q.trim()) { searchBody.innerHTML = '<tr><td colspan="4" class="v1099-muted">' + __("Type to search.") + "</td></tr>"; return; }
+			call("ez_accounting.www.forms.user.vendor_1099.search_suppliers", { q: q }).then(function (list) {
+				if (!list.length) { searchBody.innerHTML = '<tr><td colspan="4" class="v1099-muted">' + __("No suppliers match.") + "</td></tr>"; return; }
+				searchBody.innerHTML = "";
+				list.forEach(function (s) {
+					var tr = document.createElement("tr");
+					var checked = s.irs_1099 ? " checked" : "";
+					tr.innerHTML =
+						"<td>" + esc(s.supplier_name || s.name) + "</td>" +
+						'<td><input type="checkbox" class="v1099-flag-cb"' + checked + "></td>" +
+						"<td>" + type_select(s.custom_1099_type) + "</td>" +
+						"<td>" + box_select(s.custom_1099_type, s.custom_1099_box) + '<span class="v1099-save-status"></span></td>';
+					function persist() {
+						save_row(tr, s.name, tr.querySelector(".v1099-flag-cb").checked).then(load_setup);
+					}
+					tr.querySelector(".v1099-flag-cb").addEventListener("change", persist);
+					tr.querySelector(".v1099-type-select").addEventListener("change", persist);
+					tr.querySelector(".v1099-box-select").addEventListener("change", persist);
+					searchBody.appendChild(tr);
+				});
+			});
+		}, 300);
+	});
+
+	setupEl.addEventListener("toggle", function () { if (setupEl.open && !flaggedBody.children.length) load_setup(); });
+	load_setup();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,21 @@
+{
+ "actions": [],
+ "autoname": "field:role",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "description": "Reusable Forms portal page and company access assigned by role.",
+ "field_order": ["role", "companies", "pages"],
+ "fields": [
+  {"fieldname": "role", "fieldtype": "Link", "label": "Role", "options": "Role", "reqd": 1, "unique": 1, "in_list_view": 1},
+  {"description": "No rows means every company.", "fieldname": "companies", "fieldtype": "Table", "label": "Company Scope", "options": "Forms User Access Company"},
+  {"description": "Forms pages granted to users with this role.", "fieldname": "pages", "fieldtype": "Table", "label": "Allowed Pages", "options": "Forms User Access Page"}
+ ],
+ "index_web_pages_for_search": 0,
+ "module": "Ez Accounting",
+ "name": "Forms Role Permission Collection",
+ "naming_rule": "By fieldname",
+ "permissions": [{"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1}],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

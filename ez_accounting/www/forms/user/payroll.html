@@ -1,0 +1,1077 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+/* Scoped to .payroll-card only — this page's own styling, doesn't touch the
+   shared forms_portal.css used by the other portal pages (990, W2, dashboard…).
+   Bigger fields/buttons/spacing: this is a single-admin data-entry form run
+   at a desk, not a dense list view, so trading density for legibility and
+   larger click/tap targets is the right call here. */
+body.forms-portal-dark .payroll-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .payroll-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .payroll-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .payroll-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .payroll-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark .payroll-card .form-text {
+	font-size: 0.9rem;
+	margin-top: 0.4rem;
+}
+
+/* Pay Mode: bigger tap targets, and the picked option reads as a clearly
+   selected pill rather than a small radio dot easy to miss at a glance. */
+body.forms-portal-dark .payroll-card .form-check-inline {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.7rem 1.25rem;
+	margin-right: 0.85rem;
+	border: 1px solid #2a2e37;
+	border-radius: 999px;
+	background-color: #12141a;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .payroll-card .form-check-inline:has(.form-check-input:checked) {
+	border-color: #5b8cff;
+	background-color: rgba(91, 140, 255, 0.14);
+}
+
+body.forms-portal-dark .payroll-card .form-check-input {
+	width: 1.35rem;
+	height: 1.35rem;
+	margin-top: 0;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .payroll-card .form-check-label {
+	font-size: 1.1rem;
+	margin-left: 0.5rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .payroll-card .period-preview {
+	display: flex;
+	align-items: center;
+	min-height: 54px;
+	font-size: 1.1rem;
+	padding: 0.7rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .payroll-card .stat-tile {
+	min-height: 54px;
+	justify-content: center;
+}
+
+body.forms-portal-dark .payroll-card .stat-value {
+	font-size: 1.4rem;
+}
+
+body.forms-portal-dark .payroll-card #payroll-submit {
+	font-size: 1.2rem;
+	font-weight: 600;
+	padding: 1.1rem;
+	min-height: 60px;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .payroll-card #payroll-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .payroll-card .payroll-result .alert {
+	font-size: 1.05rem;
+	padding: 1.1rem 1.25rem;
+}
+
+/* Deductions — repeatable Salary Component + Amount rows, same visual
+   language as Express Sales' Split Payment rows (own background/border,
+   flex row, fixed-width Remove button). */
+body.forms-portal-dark .payroll-card .payroll-deduction-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 0.9rem;
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .payroll-card .payroll-deduction-component {
+	flex: 1 1 220px;
+	min-width: 220px;
+}
+
+body.forms-portal-dark .payroll-card .payroll-deduction-amount {
+	width: 9rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .payroll-card .payroll-deduction-remove {
+	flex: 0 0 auto;
+	width: 3.2rem;
+	min-height: 54px;
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	color: #f0a8a8;
+	font-size: 1.3rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .payroll-card .payroll-deduction-remove:hover {
+	background-color: #2a1616;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .payroll-card .payroll-deduction-remove:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+body.forms-portal-dark .payroll-card #add-deduction-row-btn {
+	min-height: 48px;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .payroll-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Salary Slip History */
+body.forms-portal-dark .payroll-summary-card td,
+body.forms-portal-dark .payroll-summary-card th,
+body.forms-portal-dark .payroll-history-card td,
+body.forms-portal-dark .payroll-history-card th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .payroll-summary-card tfoot td {
+	font-weight: 700;
+	border-top-width: 2px;
+}
+
+body.forms-portal-dark .payroll-history-card tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+/* The row for a payroll run just recorded through this page's own form —
+   pulses a few times then a lingering tinted background/left-border so it's
+   still easy to spot even after the pulse animation ends, scrolled into
+   view by load_salary_slip_history()'s highlightSlip argument. Mirrors
+   sales.html's own tr.is-new-row block. */
+body.forms-portal-dark .payroll-history-card tr.is-new-row td {
+	background-color: rgba(91, 140, 255, 0.16);
+	animation: payroll-row-highlight-pulse 2.4s ease-in-out;
+}
+
+body.forms-portal-dark .payroll-history-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #5b8cff;
+}
+
+@keyframes payroll-row-highlight-pulse {
+	0%, 100% { background-color: rgba(91, 140, 255, 0.16); }
+	15%, 45%, 75% { background-color: rgba(91, 140, 255, 0.5); }
+	30%, 60%, 90% { background-color: rgba(91, 140, 255, 0.16); }
+}
+
+body.forms-portal-dark .payroll-history-card a.history-row-link {
+	color: inherit;
+}
+
+body.forms-portal-dark .payroll-history-card a.history-row-link:hover {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .payroll-history-card .history-print-actions > * + * {
+	margin-left: 0.85rem;
+}
+
+body.forms-portal-dark .payroll-history-card .history-print-actions a.history-row-link {
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .payroll-history-card button.cancel-payroll-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #f0a8a8;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .payroll-history-card button.cancel-payroll-btn:hover {
+	color: #f6c6c6;
+}
+
+body.forms-portal-dark .payroll-history-card button.cancel-payroll-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .pill-cancelled {
+	background-color: #3a1f1f;
+	color: #f0a8a8;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Express Payroll") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Run one employee's payroll for {0}: Salary Slip, accrual GL entry, and bank disbursement in a single step.").format(company) }}
+	</p>
+</div>
+
+<div class="card form-card payroll-card">
+	<div class="card-body">
+
+		<div id="payroll-alert" class="alert d-none" role="alert"></div>
+
+		<form id="payroll-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-md-6">
+					<label class="form-label" for="employee">{{ _("Employee") }}</label>
+					<select class="form-control" id="employee" name="employee" required autofocus>
+						<option value="" selected disabled>{{ _("Loading employees…") }}</option>
+					</select>
+					<div id="employee-hint" class="form-text d-none"></div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="start_date">{{ _("Start Date") }}</label>
+					<input type="date" class="form-control" id="start_date" name="start_date" required>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label d-block">{{ _("Payroll Period") }}</label>
+					<div id="period-preview" class="period-preview text-muted">
+						{{ _("Select an employee and start date to see the pay period.") }}
+					</div>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Pay Mode") }}</label>
+					<div class="form-check form-check-inline">
+						<input class="form-check-input" type="radio" name="pay_mode" id="pay_mode_hourly" value="Hourly" checked>
+						<label class="form-check-label" for="pay_mode_hourly">{{ _("Hourly") }}</label>
+					</div>
+					<div class="form-check form-check-inline">
+						<input class="form-check-input" type="radio" name="pay_mode" id="pay_mode_gross" value="Regular Gross">
+						<label class="form-check-label" for="pay_mode_gross">{{ _("Regular Gross") }}</label>
+					</div>
+				</div>
+
+				<div class="col-md-6" id="hourly-fields">
+					<div class="row g-3">
+						<div class="col-6">
+							<label class="form-label" for="hours_worked">{{ _("Hours Worked") }}</label>
+							<input type="number" class="form-control" id="hours_worked" name="hours_worked" min="0" step="0.01">
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="pay_rate">{{ _("Pay Rate") }}</label>
+							<input type="number" class="form-control" id="pay_rate" name="pay_rate" min="0" step="0.01">
+						</div>
+					</div>
+				</div>
+
+				<div class="col-md-6 d-none" id="gross-fields">
+					<label class="form-label" for="gross_amount">{{ _("Gross Amount") }}</label>
+					<input type="number" class="form-control" id="gross_amount" name="gross_amount" min="0" step="0.01">
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label d-block">{{ _("Amount To Be Paid") }}</label>
+					<div id="amount-preview" class="stat-tile">
+						<span class="stat-label">{{ _("Gross Pay") }}</span>
+						<span class="stat-value" id="amount-preview-value">&mdash;</span>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="bank_account">{{ _("Bank Account") }}</label>
+					<select class="form-control" id="bank_account" name="bank_account" required>
+						<option value="" selected disabled>{{ _("Loading bank accounts…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Deductions") }}</label>
+					<div id="payroll-deductions-container"></div>
+					<button type="button" class="btn btn-outline-secondary" id="add-deduction-row-btn">
+						{{ icons.btn_icon("arrow-right") }}{{ _("Add Deduction") }}
+					</button>
+					<div class="form-text">{{ _('Optional — a one-off deduction for just this period (e.g. a loan repayment or school-fee withholding), on top of whatever the Salary Structure itself already computes. Leave empty for a normal run.') }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="reference_no">{{ _("Check Number") }}</label>
+					<input type="text" class="form-control" id="reference_no" name="reference_no">
+					<div class="form-text">{{ _("Optional — defaults to the Payroll Entry number if left blank.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="remarks">{{ _("Custom Remarks") }}</label>
+					<input type="text" class="form-control" id="remarks" name="remarks">
+					<div class="form-text">{{ _("Optional — defaults to the disbursement entry's own auto-generated summary if left blank.") }}</div>
+				</div>
+
+			</div>
+
+			<div class="d-grid mt-4">
+				<button type="submit" class="btn btn-primary" id="payroll-submit">
+					<span class="spinner-border spinner-border-sm d-none" id="payroll-spinner" role="status" aria-hidden="true"></span>
+					{{ icons.btn_icon("zap") }}<span id="payroll-submit-label">{{ _("Run Express Payroll & Disburse Funds") }}</span>
+				</button>
+			</div>
+		</form>
+
+		<div id="payroll-result" class="payroll-result d-none"></div>
+
+	</div>
+</div>
+
+<div class="card form-card mt-4 payroll-summary-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<div>
+				<h4 class="mb-0">{{ _("Payroll by Company") }}</h4>
+				<div class="text-muted mt-1">{{ _("All submitted salary slips; net pay is the amount paid after deductions.") }}</div>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Covered Dates") }}</th>
+						<th class="text-right">{{ _("Salary Slips") }}</th>
+						<th class="text-right">{{ _("Gross Pay") }}</th>
+						<th class="text-right">{{ _("Amount Paid") }}</th>
+					</tr>
+				</thead>
+				<tbody id="company-payroll-summary-body">
+					<tr><td colspan="5" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+				<tfoot id="company-payroll-summary-foot"></tfoot>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card mt-4 payroll-history-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Salary Slip History") }}</h4>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Employee") }}</th>
+						<th>{{ _("Check Number") }}</th>
+						<th>{{ _("Period") }}</th>
+						<th>{{ _("Frequency") }}</th>
+						<th class="text-right">{{ _("Gross Pay") }}</th>
+						<th class="text-right">{{ _("Net Pay") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="salary-slip-history-body">
+					<tr><td colspan="10" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var employeeSelect = document.getElementById("employee");
+	var employeeHint = document.getElementById("employee-hint");
+	var bankAccountSelect = document.getElementById("bank_account");
+	var startDateInput = document.getElementById("start_date");
+	var referenceNoInput = document.getElementById("reference_no");
+	var remarksInput = document.getElementById("remarks");
+	var deductionsContainer = document.getElementById("payroll-deductions-container");
+	var addDeductionRowBtn = document.getElementById("add-deduction-row-btn");
+	var deductionRows = [];
+	var deductionComponentsData = [];
+	var form = document.getElementById("payroll-form");
+	var submitBtn = document.getElementById("payroll-submit");
+	var spinner = document.getElementById("payroll-spinner");
+	var submitLabel = document.getElementById("payroll-submit-label");
+	var alertBox = document.getElementById("payroll-alert");
+	var resultBox = document.getElementById("payroll-result");
+	var companySummaryBody = document.getElementById("company-payroll-summary-body");
+	var companySummaryFoot = document.getElementById("company-payroll-summary-foot");
+
+	// This company's configured Print Format overrides (see
+	// /forms/user/printersettings) — {} until loaded, so the Print Check link
+	// below falls back to its hardcoded default until this resolves. The
+	// initial history load is held behind printFormatSettingsLoaded so the
+	// very first render never races ahead of it; the other two reload sites
+	// (after Cancel, after a successful run) don't need to wait since by then
+	// this has already settled. Mirrors sales.html/purchase.html.
+	var printFormatSettings = {};
+	var printFormatSettingsLoaded = call("ez_accounting.api.get_print_format_settings", {}).then(function (r) {
+		printFormatSettings = r.message || {};
+	}).catch(function () {
+		printFormatSettings = {};
+	});
+
+	// Returns true when the list had exactly one real (non-placeholder) option, so
+	// the caller can auto-select it — a dropdown with a single possible answer
+	// shouldn't require a click.
+	function populate_select(select, rows, value_field, label_field, empty_label) {
+		select.innerHTML = "";
+		if (!rows || !rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = empty_label;
+			select.appendChild(opt);
+			return false;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = rows.length > 1;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row[value_field];
+			opt.textContent = row[label_field] ? (row[label_field] + " (" + row[value_field] + ")") : row[value_field];
+			select.appendChild(opt);
+		});
+
+		if (rows.length === 1) {
+			select.value = rows[0][value_field];
+			select.selectedIndex = 1;
+			return true;
+		}
+		return false;
+	}
+
+	// Both lists load in parallel; whichever finishes last kicks off the period
+	// preview + saved-values restore below, so the form is ready to submit with
+	// zero clicks whenever there's only one employee and one bank account.
+	var employeesLoaded = false, bankAccountsLoaded = false;
+	function maybe_auto_advance() {
+		if (employeesLoaded && bankAccountsLoaded) {
+			restore_employee_defaults();
+			refresh_period_preview();
+		}
+	}
+
+	call("ez_accounting.www.forms.user.payroll.get_active_employees").then(function (r) {
+		var auto_selected = populate_select(employeeSelect, r.message, "name", "employee_name", __("No payroll-ready employees found — each employee needs an active Salary Structure Assignment."));
+		employeeHint.classList.toggle("d-none", !(r.message && r.message.length));
+		if (r.message) {
+			employeeHint.textContent = r.message.length === 1
+				? __("Only one employee is set up for payroll.")
+				: __("{0} employees are set up for payroll.", [r.message.length]);
+		}
+		if (auto_selected) employeeSelect.dispatchEvent(new Event("change"));
+	}).catch(function () {
+		populate_select(employeeSelect, [], "name", "employee_name", __("Could not load employees"));
+	}).finally(function () {
+		employeesLoaded = true;
+		maybe_auto_advance();
+	});
+
+	// Remembered when there's exactly one bank account, so it can be reselected
+	// after form.reset() without the admin having to reopen the dropdown.
+	var soleBankAccount = null;
+
+	call("ez_accounting.www.forms.user.payroll.get_company_bank_accounts").then(function (r) {
+		if (populate_select(bankAccountSelect, r.message, "name", "account", __("No company bank accounts found"))) {
+			soleBankAccount = r.message[0].name;
+		}
+	}).catch(function () {
+		populate_select(bankAccountSelect, [], "name", "account", __("Could not load bank accounts"));
+	}).finally(function () {
+		bankAccountsLoaded = true;
+		maybe_auto_advance();
+	});
+
+	// ---- Deductions: repeatable Salary Component + Amount rows, same
+	// pattern as Express Sales' Split Payment rows. Optional — an empty list
+	// (the default, no rows) runs exactly like before this feature existed. ----
+	function apply_deduction_components_to_row(r) {
+		var current = r.componentSelect.value;
+		r.componentSelect.innerHTML = '<option value="" selected disabled>' + __("Select…") + "</option>";
+		deductionComponentsData.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			r.componentSelect.appendChild(opt);
+		});
+		if (current) r.componentSelect.value = current;
+	}
+
+	function update_remove_deduction_row_buttons() {
+		deductionRows.forEach(function (r) {
+			r.removeBtn.disabled = deductionRows.length <= 1;
+		});
+	}
+
+	function create_deduction_row() {
+		deductionsContainer.insertAdjacentHTML("beforeend",
+			'<div class="payroll-deduction-row">' +
+				'<select class="form-control payroll-deduction-component">' +
+					'<option value="" selected disabled>' + __("Select…") + "</option>" +
+				"</select>" +
+				'<input type="number" class="form-control payroll-deduction-amount" min="0.01" step="0.01" placeholder="' + __("Amount") + '">' +
+				'<button type="button" class="payroll-deduction-remove" aria-label="' + __("Remove") + '">&times;</button>' +
+			"</div>"
+		);
+
+		var rowEl = deductionsContainer.lastElementChild;
+		var r = {
+			row: rowEl,
+			componentSelect: rowEl.querySelector(".payroll-deduction-component"),
+			amountInput: rowEl.querySelector(".payroll-deduction-amount"),
+			removeBtn: rowEl.querySelector(".payroll-deduction-remove")
+		};
+		apply_deduction_components_to_row(r);
+
+		r.removeBtn.addEventListener("click", function () {
+			var idx = deductionRows.indexOf(r);
+			if (idx !== -1) deductionRows.splice(idx, 1);
+			rowEl.remove();
+			update_remove_deduction_row_buttons();
+		});
+
+		deductionRows.push(r);
+		update_remove_deduction_row_buttons();
+		return r;
+	}
+
+	addDeductionRowBtn.addEventListener("click", function () {
+		create_deduction_row();
+	});
+
+	call("ez_accounting.www.forms.user.payroll.get_deduction_components").then(function (r) {
+		deductionComponentsData = r.message || [];
+		deductionRows.forEach(apply_deduction_components_to_row);
+	}).catch(function () {
+		deductionComponentsData = [];
+	});
+
+	// Default Start Date to today — the common case is running the current period,
+	// not an arbitrary past one.
+	if (!startDateInput.value) {
+		startDateInput.value = frappe.datetime.get_today();
+	}
+
+	// Payroll Frequency and End Date aren't asked for — every employee already has
+	// a Salary Structure Assignment, so the frequency comes from that, and the End
+	// Date is the period it implies for the chosen Start Date. This just previews
+	// that resolved period; process_express_payroll() re-resolves it itself from
+	// employee + start_date rather than trusting whatever this preview showed.
+	var periodPreview = document.getElementById("period-preview");
+	var currentPeriod = null;
+
+	// Display-only relabel: HRMS's own frequency name is "Bimonthly" (twice a
+	// month), which reads as "every two months" to anyone not already familiar
+	// with that HRMS-ism. The underlying value sent to/from the server is left
+	// untouched — this only affects what the admin sees here.
+	var FREQUENCY_DISPLAY_LABELS = { "Bimonthly": __("Semi-monthly") };
+	var MONTH_NAMES = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.", "Oct.", "Nov.", "Dec."];
+
+	// "2026-09-01" -> "Sept. 1, 2026"
+	function date_in_words(iso) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+		if (!m) return iso || "";
+		return __(MONTH_NAMES[parseInt(m[2], 10) - 1]) + " " + parseInt(m[3], 10) + ", " + m[1];
+	}
+
+	function display_frequency(frequency) {
+		return FREQUENCY_DISPLAY_LABELS[frequency] || frequency;
+	}
+
+	function refresh_period_preview() {
+		currentPeriod = null;
+		var employee = employeeSelect.value;
+		var start_date = startDateInput.value;
+
+		if (!employee || !start_date) {
+			periodPreview.className = "period-preview text-muted";
+			periodPreview.textContent = __("Select an employee and start date to see the pay period.");
+			return;
+		}
+
+		periodPreview.className = "period-preview text-muted";
+		periodPreview.textContent = __("Checking…");
+
+		call("ez_accounting.www.forms.user.payroll.get_payroll_period", {employee: employee, start_date: start_date})
+			.then(function (r) {
+				if (!r.message) return;
+				currentPeriod = r.message;
+				periodPreview.className = "period-preview";
+				periodPreview.textContent =
+					display_frequency(currentPeriod.payroll_frequency) + ": " + date_in_words(currentPeriod.start_date) + " → " + date_in_words(currentPeriod.end_date);
+			})
+			.catch(function (err) {
+				periodPreview.className = "period-preview text-danger";
+				periodPreview.innerHTML = extract_error_message(err);
+			});
+	}
+
+	employeeSelect.addEventListener("change", refresh_period_preview);
+	employeeSelect.addEventListener("change", restore_employee_defaults);
+	startDateInput.addEventListener("change", refresh_period_preview);
+
+	// Live "Amount To Be Paid" tile — recomputed as the admin types, so a typo
+	// (an extra zero, a swapped rate/hours) is visible before they ever hit submit.
+	// Declared before toggle_pay_mode_fields() below, which calls this on its
+	// initial (synchronous, on-load) invocation.
+	var amountPreviewValue = document.getElementById("amount-preview-value");
+	function update_amount_preview() {
+		var hourly = document.getElementById("pay_mode_hourly").checked;
+		var amount = hourly
+			? (parseFloat(document.getElementById("hours_worked").value) || 0) * (parseFloat(document.getElementById("pay_rate").value) || 0)
+			: (parseFloat(document.getElementById("gross_amount").value) || 0);
+		amountPreviewValue.textContent = amount > 0 ? frappe.format(amount, {fieldtype: "Currency"}, {only_value: true}) : "—";
+	}
+	["hours_worked", "pay_rate", "gross_amount"].forEach(function (id) {
+		document.getElementById(id).addEventListener("input", update_amount_preview);
+	});
+
+	function toggle_pay_mode_fields() {
+		var hourly = document.getElementById("pay_mode_hourly").checked;
+		document.getElementById("hourly-fields").classList.toggle("d-none", !hourly);
+		document.getElementById("gross-fields").classList.toggle("d-none", hourly);
+		update_amount_preview();
+	}
+	document.getElementById("pay_mode_hourly").addEventListener("change", toggle_pay_mode_fields);
+	document.getElementById("pay_mode_gross").addEventListener("change", toggle_pay_mode_fields);
+	toggle_pay_mode_fields();
+
+	// Per-employee memory (browser-local only — nothing sent to the server): after
+	// a successful run, this employee's pay mode/amount/bank account are
+	// remembered so the *next* run for the same employee starts prefilled instead
+	// of blank. There's no server-side history to seed this from on first use
+	// (Express Payroll doesn't persist hours/rate separately from the combined
+	// amount), so it only kicks in from the second run onward.
+	var DEFAULTS_KEY = "express_payroll_defaults";
+	function load_all_defaults() {
+		try {
+			return JSON.parse(localStorage.getItem(DEFAULTS_KEY)) || {};
+		} catch (e) {
+			return {};
+		}
+	}
+	function save_employee_defaults(employee, values) {
+		var all = load_all_defaults();
+		all[employee] = values;
+		try { localStorage.setItem(DEFAULTS_KEY, JSON.stringify(all)); } catch (e) { /* storage unavailable */ }
+	}
+	function restore_employee_defaults() {
+		var employee = employeeSelect.value;
+		if (!employee) return;
+		var saved = load_all_defaults()[employee];
+		if (!saved) return;
+
+		document.getElementById(saved.pay_mode === "Regular Gross" ? "pay_mode_gross" : "pay_mode_hourly").checked = true;
+		if (saved.hours_worked) document.getElementById("hours_worked").value = saved.hours_worked;
+		if (saved.pay_rate) document.getElementById("pay_rate").value = saved.pay_rate;
+		if (saved.gross_amount) document.getElementById("gross_amount").value = saved.gross_amount;
+		if (saved.bank_account && bankAccountSelect.querySelector('option[value="' + CSS.escape(saved.bank_account) + '"]')) {
+			bankAccountSelect.value = saved.bank_account;
+		}
+		toggle_pay_mode_fields();
+	}
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived,
+	// e.g. an employee_name embedded in a throw()) content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong while running payroll. Check the Error Log for details.");
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading ? __("Running payroll…") : __("Run Express Payroll & Disburse Funds");
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	// Sends the admin to /forms/user/printer with the document ID (and desired
+	// format) pre-filled — same helper as Express Sales/Purchase, used here only
+	// for "Print Check" (doctype is auto-detected from the ID by the Printer
+	// page itself, so it isn't part of the link).
+	function printer_link(id, format) {
+		var url = "/forms/user/printer?id=" + encodeURIComponent(id);
+		if (format) url += "&format=" + encodeURIComponent(format);
+		return url;
+	}
+
+	// row.creation is a full datetime (unlike start_date/end_date, business
+	// dates the admin picks) — str_to_user formats it per the site's date/
+	// time display settings; falls back to the raw value if that ever throws
+	// (e.g. an unexpected format), so a formatting hiccup never blanks the
+	// cell. Mirrors purchase.html/sales.html's own format_timestamp().
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	// "2026-09-24 15:20:04" -> "Sept. 24, 2026 15:20"
+	function created_in_words(value) {
+		var t = /[ T](\d{2}:\d{2})/.exec(value || "");
+		return date_in_words(value) + (t ? " " + t[1] : "");
+	}
+
+	// Salary Slip History — loaded once on page load, then reloaded after every
+	// successful run so the new slip shows up without a manual page refresh.
+	var historyBody = document.getElementById("salary-slip-history-body");
+	var STATUS_PILL_CLASS = { Submitted: "pill-final", Cancelled: "pill-cancelled" };
+
+	function format_money(value, currency) {
+		return frappe.format(value, {fieldtype: "Currency", options: currency}, {only_value: true});
+	}
+
+	function load_company_payroll_summary() {
+		call("ez_accounting.www.forms.user.payroll.get_company_payroll_summary").then(function (r) {
+			var rows = r.message || [];
+			companySummaryFoot.innerHTML = "";
+			if (!rows.length) {
+				companySummaryBody.innerHTML = '<tr><td colspan="5" class="text-muted">' + __("No submitted salary slips yet.") + "</td></tr>";
+				return;
+			}
+
+			companySummaryBody.innerHTML = rows.map(function (row) {
+				return "<tr>" +
+					"<td>" + frappe.utils.escape_html(row.company) + "</td>" +
+					"<td>" + date_in_words(row.first_start_date) + " → " + date_in_words(row.last_end_date) + "</td>" +
+					'<td class="text-right">' + row.salary_slip_count + "</td>" +
+					'<td class="text-right">' + format_money(row.gross_pay, row.currency) + "</td>" +
+					'<td class="text-right">' + format_money(row.net_pay, row.currency) + "</td>" +
+				"</tr>";
+			}).join("");
+
+			var currencies = Array.from(new Set(rows.map(function (row) { return row.currency; })));
+			if (currencies.length === 1) {
+				var totals = rows.reduce(function (total, row) {
+					total.count += row.salary_slip_count;
+					total.gross += row.gross_pay;
+					total.net += row.net_pay;
+					return total;
+				}, {count: 0, gross: 0, net: 0});
+				companySummaryFoot.innerHTML = "<tr>" +
+					'<td colspan="2">' + __("Total") + "</td>" +
+					'<td class="text-right">' + totals.count + "</td>" +
+					'<td class="text-right">' + format_money(totals.gross, currencies[0]) + "</td>" +
+					'<td class="text-right">' + format_money(totals.net, currencies[0]) + "</td>" +
+				"</tr>";
+			}
+		}).catch(function () {
+			companySummaryBody.innerHTML = '<tr><td colspan="5" class="text-danger">' + __("Could not load company payroll summary.") + "</td></tr>";
+			companySummaryFoot.innerHTML = "";
+		});
+	}
+
+	// highlightSlip: the just-created Salary Slip's name, if this reload
+	// follows a successful payroll run (see the submit handler below) — that
+	// row gets a pulsing highlight (is-new-row, styled above) and is
+	// scrolled into view, so a fresh run is easy to spot in a list that can
+	// otherwise run to dozens of rows. Omitted for every other reload (page
+	// load, after Cancel) since there's no "just did this" row to point at.
+	// Mirrors sales.html's own load_sales_invoice_history(highlightInvoice).
+	function load_salary_slip_history(highlightSlip) {
+		call("ez_accounting.www.forms.user.payroll.get_salary_slip_history").then(function (r) {
+			var rows = r.message || [];
+			if (!rows.length) {
+				historyBody.innerHTML = '<tr><td colspan="10" class="text-muted">' + __("No salary slips yet.") + "</td></tr>";
+				return;
+			}
+			historyBody.innerHTML = rows.map(function (row) {
+				var link = doc_link("salary-slip", row.name);
+				var pillClass = STATUS_PILL_CLASS[row.status] || "pill-draft";
+				var rowClass = row.name === highlightSlip ? ' class="is-new-row"' : "";
+				return (
+					"<tr" + rowClass + ">" +
+					"<td>" + created_in_words(row.creation) + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' +
+						frappe.utils.escape_html(row.employee_name) + "</a></td>" +
+					"<td>" + (row.check_number
+						? frappe.utils.escape_html(row.check_number)
+						: '<span class="text-muted">&mdash;</span>') + "</td>" +
+					"<td>" + date_in_words(row.start_date) + " → " + date_in_words(row.end_date) + "</td>" +
+					"<td>" + display_frequency(row.payroll_frequency) + "</td>" +
+					'<td class="text-right">' + frappe.format(row.gross_pay, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td class="text-right">' + frappe.format(row.net_pay, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td><span class="status-pill ' + pillClass + '">' + frappe.utils.escape_html(row.status) + "</span></td>" +
+					"<td>" + (row.created_by ? frappe.utils.escape_html(row.created_by) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td class="history-print-actions">' +
+						'<a class="history-row-link" target="_blank" href="' + printer_link(row.name, printFormatSettings.payroll_check_format || "FHB Check for payroll") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Print Check") + "</a>" +
+						(row.status !== "Cancelled"
+							? '<button type="button" class="history-row-link cancel-payroll-btn" data-salary-slip="' + frappe.utils.escape_html(row.name) + '">' +
+								'<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel") + "</button>"
+							: "") +
+					"</td>" +
+					"</tr>"
+				);
+			}).join("");
+
+			if (highlightSlip) {
+				var newRow = historyBody.querySelector("tr.is-new-row");
+				// rAF, not immediate — scrollIntoView on a row whose layout
+				// hasn't settled yet (innerHTML was just replaced above) can
+				// measure the wrong position and land short.
+				if (newRow) {
+					window.requestAnimationFrame(function () {
+						newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+					});
+				}
+			}
+		}).catch(function () {
+			historyBody.innerHTML = '<tr><td colspan="10" class="text-danger">' + __("Could not load salary slip history.") + "</td></tr>";
+		});
+	}
+	printFormatSettingsLoaded.then(load_salary_slip_history);
+	load_company_payroll_summary();
+
+	// Delegated on the tbody (bound once) rather than per-button — the whole
+	// tbody is rebuilt from an HTML string on every load/reload, which would
+	// silently drop any listener attached directly to a row's own button.
+	// Mirrors purchase.html's cancel-purchase-btn handler.
+	historyBody.addEventListener("click", function (e) {
+		var btn = e.target.closest(".cancel-payroll-btn");
+		if (!btn) return;
+
+		var salarySlip = btn.dataset.salarySlip;
+		if (!window.confirm(__("Cancel {0}? This cancels its bank disbursement entry, accrual entry, and base-pay override together — this can't be undone from here.", [salarySlip]))) {
+			return;
+		}
+
+		btn.disabled = true;
+		btn.textContent = __("Cancelling…");
+		call("ez_accounting.www.forms.user.payroll.cancel_express_payroll", {salary_slip: salarySlip})
+			.then(function () {
+				load_salary_slip_history();
+				load_company_payroll_summary();
+			})
+			.catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel");
+			});
+	});
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		var pay_mode = document.querySelector('input[name="pay_mode"]:checked').value;
+
+		// Rows with no component picked are silently dropped (the admin
+		// clicked "Add Deduction" then changed their mind), same reasoning
+		// as the empty item rows on Express Sales/Purchase — an amount of 0
+		// isn't a real deduction either.
+		var deductionLines = [];
+		var deductionError = null;
+		deductionRows.forEach(function (r) {
+			if (!r.componentSelect.value) return;
+			var amount = parseFloat(r.amountInput.value) || 0;
+			if (amount <= 0) {
+				deductionError = __("Enter an amount greater than zero for every deduction row.");
+				return;
+			}
+			deductionLines.push({salary_component: r.componentSelect.value, amount: amount});
+		});
+
+		var args = {
+			employee: employeeSelect.value,
+			start_date: startDateInput.value,
+			pay_mode: pay_mode,
+			bank_account: bankAccountSelect.value,
+			hours_worked: document.getElementById("hours_worked").value || 0,
+			pay_rate: document.getElementById("pay_rate").value || 0,
+			gross_amount: document.getElementById("gross_amount").value || 0,
+			deductions: JSON.stringify(deductionLines),
+			reference_no: referenceNoInput.value,
+			remarks: remarksInput.value
+		};
+
+		if (!args.employee || !args.start_date || !args.bank_account) {
+			show_alert(__("Please fill in all required fields."), true);
+			return;
+		}
+
+		if (deductionError) {
+			show_alert(deductionError, true);
+			return;
+		}
+
+		if (!currentPeriod) {
+			show_alert(__("Could not resolve a payroll period for this employee and start date."), true);
+			return;
+		}
+
+		set_loading(true);
+
+		call("ez_accounting.www.forms.user.payroll.process_express_payroll", args).then(function (r) {
+			set_loading(false);
+			if (!r.message) return;
+			var d = r.message;
+			resultBox.innerHTML =
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Payroll run complete for {0}", [frappe.utils.escape_html(d.employee_name)]) + '</strong>' +
+					'<div class="mt-2">' +
+						'<a target="_blank" href="' + doc_link("payroll-entry", d.payroll_entry) + '">' + __("Payroll Entry") + '</a>' +
+						' &middot; <a target="_blank" href="' + doc_link("salary-slip", d.salary_slip) + '">' + __("Salary Slip") + '</a>' +
+						(d.accrual_journal_entry ? ' &middot; <a target="_blank" href="' + doc_link("journal-entry", d.accrual_journal_entry) + '">' + __("Accrual Journal Entry") + '</a>' : '') +
+						' &middot; <a target="_blank" href="' + doc_link("journal-entry", d.bank_entry) + '">' + __("Bank Disbursement Entry") + '</a>' +
+					'</div>' +
+					'<div class="mt-2 text-muted">' + __("Net Pay") + ': ' + frappe.format(d.net_pay, {fieldtype: "Currency"}, {only_value: true}) + '</div>' +
+					(d.deductions && d.deductions.length
+						? '<div class="mt-2 text-muted">' + __("Deductions") + ': ' +
+							d.deductions.map(function (row) {
+								return frappe.utils.escape_html(row.salary_component) + ' (' + frappe.format(row.amount, {fieldtype: "Currency"}, {only_value: true}) + ')';
+							}).join(", ") +
+						'</div>'
+						: '') +
+				'</div>';
+			resultBox.classList.remove("d-none");
+
+			save_employee_defaults(args.employee, {
+				pay_mode: args.pay_mode,
+				hours_worked: args.hours_worked,
+				pay_rate: args.pay_rate,
+				gross_amount: args.gross_amount,
+				bank_account: args.bank_account
+			});
+
+			// Reset the amount/employee fields (don't silently resubmit the same pay
+			// for the same person), but keep the Start Date and Bank Account — the
+			// next run is very likely the same pay period, possibly the same account.
+			form.reset();
+			startDateInput.value = args.start_date;
+
+			// Deductions are one-off per run (same reasoning as Express
+			// Sales' Split Payment rows) — cleared out entirely rather than
+			// carried over to the next employee/period.
+			deductionsContainer.innerHTML = "";
+			deductionRows = [];
+
+			if (soleBankAccount) bankAccountSelect.value = soleBankAccount;
+			toggle_pay_mode_fields();
+			refresh_period_preview();
+			// Passing the new slip's name highlights + scrolls to its row
+			// (see load_salary_slip_history's highlightSlip param above) —
+			// the whole point being to make the run just recorded easy to
+			// find in a history table that can run to dozens of rows.
+			load_salary_slip_history(d.salary_slip);
+			load_company_payroll_summary();
+			employeeSelect.focus();
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+
+{% endblock %}

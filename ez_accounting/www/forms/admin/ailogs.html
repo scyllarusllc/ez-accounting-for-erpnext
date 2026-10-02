@@ -1,0 +1,168 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .ai-log-stats { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-bottom: 1rem; }
+body.forms-portal-dark .ai-log-stat-label { font-size: .72rem; color: #8a8f9c; text-transform: uppercase; letter-spacing: .03em; }
+body.forms-portal-dark .ai-log-stat-value { font-size: 1.15rem; font-weight: 600; }
+body.forms-portal-dark .ai-log-table { font-size: .8rem; }
+body.forms-portal-dark .ai-log-table td { vertical-align: top; }
+body.forms-portal-dark .ai-log-status-success { color: #a8e0c0; }
+body.forms-portal-dark .ai-log-status-error { color: #f2b8bd; }
+body.forms-portal-dark .ai-log-status-running { color: #f5d98b; }
+body.forms-portal-dark .ai-log-company { display: inline-block; margin-top: .2rem; padding: .05rem .5rem; font-size: .7rem; color: #b8cdff; background: rgba(91,140,255,.12); border: 1px solid rgba(91,140,255,.35); border-radius: 999px; }
+body.forms-portal-dark .ai-log-note { font-size: .75rem; color: #8a8f9c; max-width: 18rem; word-break: break-word; }
+body.forms-portal-dark .ai-log-output summary { cursor: pointer; color: #c7b8ff; white-space: nowrap; }
+body.forms-portal-dark .ai-log-preview { max-width: 42rem; overflow-wrap: anywhere; font-size: .8rem; line-height: 1.55; color: #d8dbe3; }
+body.forms-portal-dark .ai-log-full { max-width: 48rem; max-height: 32rem; overflow: auto; margin-top: .5rem; padding: .75rem 1rem; background: #111319; border: 1px solid #2a2e37; border-radius: .5rem; font-size: .82rem; line-height: 1.55; color: #d8dbe3; }
+body.forms-portal-dark .ai-log-view, body.forms-portal-dark .ai-log-view:hover { color: #8fb0ff; text-decoration: none; font-size: .78rem; margin-top: .25rem; }
+body.forms-portal-dark .ai-log-view:hover { color: #c7d8ff; text-decoration: underline; }
+body.forms-portal-dark .ai-log-output pre {
+	max-width: 38rem; max-height: 24rem; overflow: auto; margin: .5rem 0 0; padding: .75rem;
+	white-space: pre-wrap; overflow-wrap: anywhere; color: #d8dbe3; background: #111319;
+	border: 1px solid #2a2e37; border-radius: .5rem; font-size: .75rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1">{{ _("AI Logs") }}</h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Review AI usage, status, cost, and generated output.") }}</p>
+</div>
+
+<section class="card form-card">
+	<div class="card-body">
+		<div class="form-card-header d-flex justify-content-between align-items-center gap-2">
+			<h4 class="mb-0">{{ _("AI Read Logs") }}</h4>
+			<button type="button" class="btn btn-outline-light btn-sm" id="ai-log-refresh">{{ _("Refresh") }}</button>
+		</div>
+		<p class="form-card-description">{{ _("Usage, status, and saved output for AI Read, AI filing, and mini Martin calls.") }}</p>
+		<div class="ai-log-stats" id="ai-log-stats"></div>
+			<div class="d-flex flex-wrap gap-2 mb-3">
+				<input type="search" id="ai-log-search" class="form-control form-control-sm" style="max-width:16rem" placeholder="{{ _('Search reference, action, note') }}">
+				<select id="ai-log-status" class="form-control form-control-sm" style="max-width:10rem">
+					<option value="">{{ _("All statuses") }}</option><option>Success</option><option>Error</option><option>Running</option>
+				</select>
+			</div>
+		<div class="table-responsive">
+			<table class="table ai-log-table">
+				<thead><tr><th>{{ _("Time") }}</th><th>{{ _("Reference") }}</th><th>{{ _("Action") }}</th><th>{{ _("Model") }}</th><th>{{ _("Status") }}</th><th>{{ _("Input Tokens") }}</th><th>{{ _("Output Tokens") }}</th><th>{{ _("Cost") }}</th><th>{{ _("Duration") }}</th><th>{{ _("Note") }}</th><th>{{ _("Output Text") }}</th></tr></thead>
+				<tbody id="ai-log-body"><tr><td colspan="11" class="text-muted">{{ _("Loading…") }}</td></tr></tbody>
+			</table>
+		</div>
+		<div class="text-center mt-2"><button type="button" class="btn btn-outline-light btn-sm" id="ai-log-more" style="display:none">{{ _("Load more") }}</button></div>
+	</div>
+</section>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+(function () {
+	var PAGE = 50, start = 0, statusFilter = "", searchText = "", timer = null;
+	var logBody = document.getElementById("ai-log-body");
+	var logStats = document.getElementById("ai-log-stats");
+	var moreBtn = document.getElementById("ai-log-more");
+	function tr(s) { return (window.__ ? window.__(s) : s); }
+	function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+	function call(method, args, attempt) {
+		attempt = attempt || 0;
+		var params = new URLSearchParams();
+		Object.keys(args || {}).forEach(function (key) {
+			var value = args[key];
+			if (value !== undefined && value !== null) params.set(key, value);
+		});
+		var url = "/api/method/ez_accounting.www.forms.admin.ailogs." + method;
+		if (params.toString()) url += "?" + params.toString();
+		return fetch(url, {method: "GET", credentials: "same-origin"}).then(function (r) {
+			return r.text().then(function (text) {
+				var d = null;
+				try { d = JSON.parse(text); } catch (e) {}
+				if (d && r.ok) return d.message || {};
+				// HTML/empty reply = proxy or server restarting (502/504/520...) -> retry twice
+				if (!d && r.status >= 500 && attempt < 2) {
+					return new Promise(function (res) { setTimeout(res, 1500 * (attempt + 1)); }).then(function () { return call(method, args, attempt + 1); });
+				}
+				if (!d) throw new Error(r.status === 403 || r.status === 401 ? tr("Session expired - please reload and log in again.") : tr("Server returned an unexpected response") + " (HTTP " + r.status + ")");
+				throw new Error(d._error_message || (d.exception || "").split(":").slice(-1)[0] || "HTTP " + r.status);
+			});
+		});
+	}
+	function cost(v) { return "$" + (parseFloat(v) || 0).toFixed(4); }
+	function dur(ms) { ms = parseInt(ms, 10) || 0; return ms ? (ms / 1000).toFixed(1) + "s" : ""; }
+	function num(v) { return (parseInt(v, 10) || 0).toLocaleString(); }
+	function refLink(row) {
+		var label = esc(row.reference_name);
+		if (row.reference_doctype === "Forms Company Document" && row.company_abbr) {
+			// Company-scoped Files page (/c/<abbr>/ pins the tab to that company)
+			return '<a href="/c/' + encodeURIComponent(row.company_abbr) + '/forms/user/files" target="_blank" rel="noopener">' + label + '</a>' +
+				(row.reference_title ? '<div class="ai-log-note">' + esc(row.reference_title) + '</div>' : '') +
+				'<span class="ai-log-company">' + esc(row.company) + '</span>';
+		}
+		var routes = {"Forms Company Document": "forms-company-document", "Email Attachments": "email-attachments", "User": "user"};
+		return '<a href="/app/' + (routes[row.reference_doctype] || "user") + '/' + encodeURIComponent(row.reference_name) + '" target="_blank" rel="noopener">' + label + '</a>';
+	}
+	function md(text, truncated) {
+		text = String(text == null ? "" : text);
+		if ((text.match(/```/g) || []).length % 2) text += "\n```";
+		var fm = window.formsMarkdown;
+		return fm ? fm.render(text) : '<pre>' + esc(text) + '</pre>';
+	}
+	function statusClass(s) { return s === "Success" ? "ai-log-status-success" : (s === "Running" ? "ai-log-status-running" : "ai-log-status-error"); }
+	function rowHtml(row) {
+		var out = row.output_len ? '<div class="ai-log-preview mm-md">' + md(row.output_preview + (row.output_len > 300 ? " …" : "")) + '</div>' + (row.output_len > 300 ? '<button type="button" class="btn btn-link btn-sm p-0 ai-log-view" data-name="' + esc(row.name) + '">' + tr("View full output") + '</button><div class="ai-log-text"></div>' : '') : '<span class="text-muted">' + tr("No saved output") + '</span>';
+		return '<tr><td>' + esc(row.creation).slice(0, 19) + '</td><td>' + refLink(row) + '</td><td>' + esc(row.action) + '</td><td>' + esc(row.model) + '</td><td class="' + statusClass(row.status) + '">' + esc(row.status) + '</td><td>' + num(row.input_tokens) + '</td><td>' + num(row.output_tokens) + '</td><td>' + cost(row.cost_usd) + '</td><td>' + dur(row.duration_ms) + '</td><td class="ai-log-note">' + esc(row.note) + '</td><td class="ai-log-output">' + out + '</td></tr>';
+	}
+	function load(append) {
+		if (!append) { start = 0; logBody.innerHTML = '<tr><td colspan="11" class="text-muted">' + tr("Loading…") + '</td></tr>'; }
+		moreBtn.disabled = true;
+		call("get_ai_read_logs", {limit: PAGE, start: start, status: statusFilter, search: searchText}).then(function (data) {
+			var s = data.summary || {};
+			logStats.innerHTML = [["Total Calls", num(s.total_calls)], ["Success", num(s.success_count)], ["Errors", num(s.error_count)], ["Running", num(s.running_count)], ["Total Cost", cost(s.total_cost)], ["Input Tokens", num(s.total_input_tokens)], ["Output Tokens", num(s.total_output_tokens)]].map(function (i) {
+				return '<div><div class="ai-log-stat-label">' + tr(i[0]) + '</div><div class="ai-log-stat-value">' + esc(i[1]) + '</div></div>';
+			}).join("");
+			var rows = data.rows || [];
+			var html = rows.map(rowHtml).join("");
+			if (append) logBody.insertAdjacentHTML("beforeend", html);
+			else logBody.innerHTML = html || '<tr><td colspan="11" class="text-muted">' + tr("No AI calls found.") + '</td></tr>';
+			if (window.formsMarkdown) window.formsMarkdown.highlight(logBody);
+			start += rows.length;
+			moreBtn.style.display = data.has_more ? "" : "none";
+			moreBtn.disabled = false;
+		}).catch(function (e) {
+			logBody.innerHTML = '<tr><td colspan="11" class="text-danger">' + esc(e.message) + '</td></tr>';
+			moreBtn.style.display = "none";
+		});
+	}
+	logBody.addEventListener("click", function (e) {
+		var cb = e.target.closest(".mm-copy");
+		if (cb && window.formsMarkdown) { window.formsMarkdown.copy(cb.closest(".mm-codebox").querySelector("code").textContent, cb); return; }
+		var btn = e.target.closest(".ai-log-view");
+		if (!btn) return;
+		var box = btn.nextElementSibling;
+		if (box.innerHTML) { box.innerHTML = ""; btn.textContent = tr("View full output"); box.previousElementSibling.previousElementSibling.style.display = ""; return; }
+		btn.textContent = tr("Loading…");
+		call("get_ai_read_log_text", {name: btn.dataset.name}).then(function (d) {
+			box.innerHTML = '<div class="ai-log-full mm-md">' + md(d.output_text) + '</div>';
+			if (window.formsMarkdown) window.formsMarkdown.highlight(box);
+			box.previousElementSibling.previousElementSibling.style.display = "none";
+			btn.textContent = tr("Hide output");
+		}).catch(function (err) { btn.textContent = err.message; });
+	});
+	document.getElementById("ai-log-refresh").addEventListener("click", function () { load(false); });
+	moreBtn.addEventListener("click", function () { load(true); });
+	document.getElementById("ai-log-status").addEventListener("change", function () { statusFilter = this.value; load(false); });
+	document.getElementById("ai-log-search").addEventListener("input", function () {
+		var v = this.value.trim(); clearTimeout(timer);
+		timer = setTimeout(function () { searchText = v; load(false); }, 300);
+	});
+	load(false);
+})();
+</script>
+{% endblock %}

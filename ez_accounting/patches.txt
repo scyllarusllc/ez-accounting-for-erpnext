@@ -1,0 +1,27 @@
+[pre_model_sync]
+# Patches added in this section will be executed before doctypes are migrated
+# Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
+
+[post_model_sync]
+ez_accounting.patches.v1_0.add_bank_deposit_all_payment_modes_format
+# Patches added in this section will be executed after doctypes are migrated
+ez_accounting.patches.v1_0.add_deposit_to_account_field
+ez_accounting.patches.v1_0.add_payment_entry_deposit_sheet_field
+ez_accounting.patches.v1_0.backfill_payment_entry_deposit_sheet
+ez_accounting.patches.v1_0.migrate_forms_user_access_companies
+ez_accounting.patches.v1_0.add_official_receipt_without_invoice_label
+ez_accounting.patches.v1_0.add_supplier_1099_fields
+ez_accounting.patches.v1_0.add_payment_entry_sequence_number_field
+ez_accounting.patches.v1_0.backfill_payment_entry_sequence_numbers
+ez_accounting.patches.v1_0.add_deposit_sheet_sequence_number_field
+ez_accounting.patches.v1_0.backfill_deposit_sheet_sequence_numbers
+ez_accounting.patches.v1_0.add_customer_company_field
+ez_accounting.patches.v1_0.update_bank_deposit_compact_format
+ez_accounting.patches.v1_0.backfill_forms_company_document_content_hash
+ez_accounting.patches.v1_0.add_item_name_to_split_payments_receipt
+ez_accounting.patches.v1_0.update_bank_deposit_all_payment_modes_format
+ez_accounting.patches.v1_0.add_bank_deposit_all_payment_modes_2copies_format
+ez_accounting.patches.v1_0.fix_official_receipt_letterhead
+ez_accounting.patches.v1_0.fix_official_receipt_alignment
+ez_accounting.patches.v1_0.shrink_official_receipt_header
+ez_accounting.patches.v1_0.uppercase_company_customer_names

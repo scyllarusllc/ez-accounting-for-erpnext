@@ -1,0 +1,88 @@
+{#
+	Bare, self-contained "Vendor List" content -- no {% extends %}, no site
+	chrome. Rendered by /forms/user/printerhtml (kind=vendor_list) and iframed
+	by /forms/user/printer at true 8.5in x 11in size.
+
+	Context (see printerhtml.py's _render_vendor_list()):
+	  company, printed_at
+	  vendors: list of {vendor_id, vendor, contact, phone, tax_id}
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.vlist-company { font-size: 15pt; font-weight: 700; margin: 0; text-align: center; }
+	.vlist-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0.25in; text-align: center; }
+
+	table.vlist-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+	table.vlist-table th, table.vlist-table td { text-align: left; padding: 0.045in 0.09in; vertical-align: top; }
+	table.vlist-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7.5pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+	table.vlist-table td { border-bottom: 0.5px solid #ddd; }
+	table.vlist-table th:first-child, table.vlist-table td:first-child { padding-left: 0; }
+	table.vlist-table th:last-child, table.vlist-table td:last-child { padding-right: 0; }
+
+	.vlist-empty { color: #555; padding: 0.3in 0; }
+
+	.vlist-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print { thead { display: table-header-group; } }
+</style>
+
+<div class="vlist-company">{{ company }}</div>
+<div class="vlist-title">{{ _("Vendor List") }}</div>
+
+{% if not vendors %}
+<p class="vlist-empty">{{ _("No vendors.") }}</p>
+{% else %}
+<table class="vlist-table">
+	<thead>
+		<tr>
+			<th>{{ _("Vendor ID") }}</th>
+			<th>{{ _("Vendor") }}</th>
+			<th>{{ _("Contact") }}</th>
+			<th>{{ _("Telephone 1") }}</th>
+			<th>{{ _("Tax Id No") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for v in vendors %}
+		<tr>
+			<td>{{ v.vendor_id }}</td>
+			<td>{{ v.vendor }}</td>
+			<td>{{ v.contact }}</td>
+			<td>{{ v.phone }}</td>
+			<td>{{ v.tax_id }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endif %}
+
+<div class="vlist-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

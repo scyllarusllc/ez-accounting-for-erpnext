@@ -1,0 +1,182 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .email-toolbar { display:flex; gap:.6rem; align-items:flex-end; flex-wrap:wrap; margin-bottom:1rem; }
+body.forms-portal-dark .email-search { min-width:18rem; flex:1 1 20rem; }
+body.forms-portal-dark .email-tabs { display:flex; gap:.4rem; }
+body.forms-portal-dark .email-tab.is-active { background:#4263eb; border-color:#4263eb; color:#fff; }
+body.forms-portal-dark .email-table { font-size:.82rem; }
+body.forms-portal-dark .email-table td { vertical-align:middle; }
+body.forms-portal-dark .email-subject { font-weight:600; min-width:14rem; }
+body.forms-portal-dark .email-address { max-width:18rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+body.forms-portal-dark .email-hint { color:#8a8f9c; font-size:.82rem; }
+body.forms-portal-dark .email-status { min-height:1.25rem; margin-top:.5rem; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1">{{ _("Email") }}</h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Sent and received email, with Xerox inbox attachments archived separately.") }}</p>
+</div>
+
+<div class="card form-card mb-4"><div class="card-body">
+	<div class="form-card-header"><h4 class="mb-0">{{ _("Attachment Source") }}</h4></div>
+	<p class="form-card-description">{{ _("Choose the inbox and sender whose attachments should be archived.") }}</p>
+	<div class="email-toolbar">
+		<div><label class="form-label" for="archive-account">{{ _("Receive From Account") }}</label><select class="form-control" id="archive-account"></select></div>
+		<div class="email-search"><label class="form-label" for="archive-sender">{{ _("Sender Email") }}</label><input type="email" class="form-control" id="archive-sender" value="{{ xerox_sender }}"></div>
+		<div class="form-check mb-2"><input type="checkbox" class="form-check-input" id="archive-include-spam"><label class="form-check-label" for="archive-include-spam">{{ _("Include Spam folder") }}</label></div>
+		<button class="btn btn-primary" id="archive-settings-save">{{ icons.btn_icon("save") }}{{ _("Save Source") }}</button>
+	</div>
+	<div class="email-status" id="archive-settings-status"></div>
+</div></div>
+
+<div class="card form-card mb-4"><div class="card-body">
+	<div class="form-card-header"><h4 class="mb-0">{{ _("Mailbox") }}</h4></div>
+	<div class="email-toolbar">
+		<div class="email-tabs">
+			<button class="btn btn-outline-light email-tab is-active" data-direction="Received">{{ _("Received") }}</button>
+			<button class="btn btn-outline-light email-tab" data-direction="Sent">{{ _("Sent") }}</button>
+		</div>
+		<div class="email-search"><label class="form-label" for="email-search">{{ _("Search") }}</label><input class="form-control" id="email-search" placeholder="{{ _("Subject, sender, or recipient") }}"></div>
+		<button class="btn btn-primary" id="email-refresh">{{ icons.btn_icon("refresh-cw") }}{{ _("Refresh List") }}</button>
+		<button class="btn btn-outline-light" id="email-fetch">{{ icons.btn_icon("download") }}{{ _("Fetch Inbox") }}</button>
+		<button class="btn btn-outline-light" id="email-fetch-ai">🤖 {{ _("Fetch an Email and AI Read") }}</button>
+	</div>
+	<div class="email-hint">{{ _("Fetch Inbox synchronizes the selected account and archives attachments from") }} <strong id="configured-sender">{{ xerox_sender }}</strong>. {{ _("Fetch an Email and AI Read processes one new file per click.") }}</div>
+	<div class="email-status" id="email-status"></div>
+	<div class="table-responsive mt-2"><table class="table email-table"><thead><tr><th>{{ _("Date") }}</th><th>{{ _("Subject") }}</th><th>{{ _("From") }}</th><th>{{ _("To") }}</th><th>{{ _("Attachment") }}</th><th>{{ _("Status") }}</th></tr></thead><tbody id="email-body"></tbody></table></div>
+</div></div>
+
+<div class="card form-card"><div class="card-body">
+	<div class="form-card-header d-flex justify-content-between align-items-center gap-2"><h4 class="mb-0">{{ _("Email Attachments") }}</h4><button type="button" class="btn btn-primary" id="email-attachment-sync">{{ icons.btn_icon("download") }}{{ _("Sync") }}</button></div>
+	<p class="form-card-description">{{ _("Private copies of attachments received from the configured sender.") }}</p>
+	<div class="email-status" id="attachment-sync-status"></div>
+	<div class="table-responsive"><table class="table email-table"><thead><tr><th>{{ _("Received") }}</th><th>{{ _("Subject") }}</th><th>{{ _("File") }}</th><th>{{ _("Email") }}</th></tr></thead><tbody id="attachment-body"></tbody></table></div>
+</div></div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {method:"POST", headers:{"Content-Type":"application/json", "X-Frappe-CSRF-Token":frappe.csrf_token}, body:JSON.stringify(args || {})})
+			.then(function (response) { return response.json().then(function (data) { if (!response.ok) { var e = new Error(data.exception || "Request failed"); e.data = data; throw e; } return data; }); });
+	}
+	function esc(value) { return frappe.utils.escape_html(value || ""); }
+	function error_message(err) {
+		if (err && err.data && err.data._server_messages) { try { return JSON.parse(err.data._server_messages).map(function (m) { return esc(JSON.parse(m).message); }).join("<br>"); } catch (e) {} }
+		return esc((err && err.message) || __("Request failed."));
+	}
+	var direction = "Received";
+	var body = document.getElementById("email-body");
+	var attachmentBody = document.getElementById("attachment-body");
+	var search = document.getElementById("email-search");
+	var status = document.getElementById("email-status");
+	var fetchBtn = document.getElementById("email-fetch");
+	var fetchAiBtn = document.getElementById("email-fetch-ai");
+	var attachmentSyncBtn = document.getElementById("email-attachment-sync");
+	var attachmentSyncStatus = document.getElementById("attachment-sync-status");
+	var archiveAccount = document.getElementById("archive-account");
+	var archiveSender = document.getElementById("archive-sender");
+	var archiveIncludeSpam = document.getElementById("archive-include-spam");
+	var configuredSender = document.getElementById("configured-sender");
+	var settingsStatus = document.getElementById("archive-settings-status");
+
+	function load_settings() {
+		return call("ez_accounting.www.forms.admin.email.get_archive_settings", {}).then(function (r) {
+			var data = r.message || {};
+			archiveAccount.innerHTML = '<option value="">' + __("All enabled incoming accounts") + '</option>' + (data.accounts || []).map(function (account) { return '<option value="' + esc(account.name) + '">' + esc(account.name + " — " + account.email_id) + '</option>'; }).join("");
+			archiveAccount.value = data.email_account || "";
+			archiveSender.value = data.sender_email || "";
+			archiveIncludeSpam.checked = Boolean(data.include_spam);
+			configuredSender.textContent = data.sender_email || "";
+		});
+	}
+
+	function load_emails() {
+		body.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Loading…") + '</td></tr>';
+		return call("ez_accounting.www.forms.admin.email.get_emails", {direction:direction, search:search.value}).then(function (r) {
+			var rows = r.message || [];
+			body.innerHTML = rows.length ? rows.map(function (row) { return '<tr><td>' + esc(row.communication_date) + '</td><td class="email-subject">' + esc(row.subject || __("(No subject)")) + '</td><td class="email-address" title="' + esc(row.sender) + '">' + esc(row.sender) + '</td><td class="email-address" title="' + esc(row.recipients) + '">' + esc(row.recipients) + '</td><td>' + (row.has_attachment ? __("Yes") : "") + '</td><td>' + esc(row.delivery_status) + '</td></tr>'; }).join("") : '<tr><td colspan="6" class="text-muted">' + __("No email found.") + '</td></tr>';
+		}).catch(function (err) { body.innerHTML = '<tr><td colspan="6" class="text-danger">' + error_message(err) + '</td></tr>'; });
+	}
+
+	function load_attachments() {
+		attachmentBody.innerHTML = '<tr><td colspan="4" class="text-muted">' + __("Loading…") + '</td></tr>';
+		return call("ez_accounting.www.forms.admin.email.get_archived_attachments", {}).then(function (r) {
+			var rows = r.message || [];
+			attachmentBody.innerHTML = rows.length ? rows.map(function (row) { return '<tr><td>' + esc(row.email_date) + '</td><td>' + esc(row.subject) + '</td><td><a href="' + esc(row.attachment) + '" target="_blank">' + esc(row.file_name) + '</a></td><td><a href="/app/communication/' + encodeURIComponent(row.source_communication) + '" target="_blank">' + esc(row.source_communication) + '</a></td></tr>'; }).join("") : '<tr><td colspan="4" class="text-muted">' + __("No Xerox attachments archived yet.") + '</td></tr>';
+		}).catch(function (err) { attachmentBody.innerHTML = '<tr><td colspan="4" class="text-danger">' + error_message(err) + '</td></tr>'; });
+	}
+
+	document.querySelectorAll(".email-tab").forEach(function (tab) { tab.addEventListener("click", function () { direction = tab.dataset.direction; document.querySelectorAll(".email-tab").forEach(function (x) { x.classList.toggle("is-active", x === tab); }); load_emails(); }); });
+	document.getElementById("email-refresh").addEventListener("click", function () { load_emails(); load_attachments(); });
+	document.getElementById("archive-settings-save").addEventListener("click", function () {
+		var button = this; button.disabled = true; settingsStatus.className = "email-status text-muted"; settingsStatus.textContent = __("Saving…");
+		call("ez_accounting.www.forms.admin.email.save_archive_settings", {email_account:archiveAccount.value, sender_email:archiveSender.value, include_spam:archiveIncludeSpam.checked ? 1 : 0}).then(function (r) { var data = r.message || {}; configuredSender.textContent = data.sender_email || ""; settingsStatus.className = "email-status text-success"; settingsStatus.textContent = __("Attachment source saved."); }).catch(function (err) { settingsStatus.className = "email-status text-danger"; settingsStatus.innerHTML = error_message(err); }).finally(function () { button.disabled = false; });
+	});
+	search.addEventListener("keydown", function (e) { if (e.key === "Enter") load_emails(); });
+	function sync_inbox() {
+		fetchBtn.disabled = true; fetchAiBtn.disabled = true; attachmentSyncBtn.disabled = true;
+		status.className = "email-status text-muted"; status.textContent = __("Fetching inbox…");
+		attachmentSyncStatus.className = "email-status text-muted"; attachmentSyncStatus.textContent = __("Syncing attachments…");
+		call("ez_accounting.www.forms.admin.email.fetch_inbox", {}).then(function (r) {
+			var x = r.message || {};
+			var message = __("Sync complete. {0} new attachments archived; {1} already archived.", [x.created || 0, x.skipped || 0]);
+			status.className = "email-status text-success"; status.textContent = message;
+			attachmentSyncStatus.className = "email-status text-success"; attachmentSyncStatus.textContent = message;
+			return Promise.all([load_emails(), load_attachments()]);
+		}).catch(function (err) {
+			status.className = "email-status text-danger"; status.innerHTML = error_message(err);
+			attachmentSyncStatus.className = "email-status text-danger"; attachmentSyncStatus.innerHTML = error_message(err);
+		}).finally(function () { fetchBtn.disabled = false; fetchAiBtn.disabled = false; attachmentSyncBtn.disabled = false; });
+	}
+	function fetch_and_ai_read() {
+		fetchBtn.disabled = true; fetchAiBtn.disabled = true; attachmentSyncBtn.disabled = true;
+		status.className = "email-status text-muted";
+		status.textContent = __("Fetching inbox and AI reading one file…");
+		call("ez_accounting.www.forms.admin.email.fetch_one_email_and_ai_read", {}).then(function (r) {
+			var x = r.message || {};
+			if (x.busy) {
+				status.className = "email-status text-warning";
+				status.textContent = __("An email AI Read is already running. Please wait for it to finish.");
+				return;
+			}
+			if (!x.processed) {
+				status.className = "email-status text-success";
+				status.textContent = __("Inbox synchronized. No unprocessed email attachment was found.");
+				return;
+			}
+			if (x.matched_company) {
+				status.className = "email-status text-success";
+				status.innerHTML = esc(x.file_name) + " — " + esc(__("filed under {0}.", [x.matched_company])) +
+					(x.document_name ? ' <a href="/forms/user/finder_detail?id=' + encodeURIComponent(x.document_name) + '">' + esc(__("Open file")) + "</a>" : "");
+			} else {
+				status.className = "email-status text-warning";
+				status.textContent = __("AI Read finished for {0}, but no company matched.", [x.file_name]);
+			}
+		}).catch(function (err) {
+			status.className = "email-status text-danger";
+			status.innerHTML = error_message(err);
+		}).finally(function () {
+			fetchBtn.disabled = false; fetchAiBtn.disabled = false; attachmentSyncBtn.disabled = false;
+			load_emails(); load_attachments();
+		});
+	}
+	fetchBtn.addEventListener("click", sync_inbox);
+	fetchAiBtn.addEventListener("click", fetch_and_ai_read);
+	attachmentSyncBtn.addEventListener("click", sync_inbox);
+	load_settings(); load_emails(); load_attachments();
+});
+</script>
+{% endblock %}

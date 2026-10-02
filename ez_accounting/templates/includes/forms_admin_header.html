@@ -1,0 +1,33 @@
+{#
+	Shared header for /forms/admin/* pages -- deliberately its own, simpler
+	nav rather than forms_nav.html (the fuller /forms/user/* bar with its
+	company selector, Quick Jump, and "More" menu, none of which make sense
+	here: nothing under /forms/admin/ is company-scoped). Every page here
+	already passed its own ensure_admin()/ensure_style_admin() gate before
+	this ever renders, so the tax-form review links are always shown; only
+	the two System-Manager-only pages (Portal Access, App Settings) are
+	conditional, reusing the same show_permissions_link/show_settings_link
+	flags website_context.py already computes for forms_nav.html's own
+	identical links -- one flag, two nav bars, never out of sync.
+
+	Set `context.nav_active` in each page's own get_context() to highlight
+	the current page (see forms_nav.html's own convention) -- one of:
+	"permissions", "settings", "email", "finder", "aiagent", "ailogs", "test".
+#}
+<nav class="forms-admin-nav">
+	<div class="container forms-admin-nav-inner">
+		<a href="/forms/admin/email" class="forms-admin-nav-brand">{{ _("Forms Admin") }}</a>
+		<a href="/forms/admin/email" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'email' else '' }}">{{ _("Email") }}</a>
+		<a href="/forms/admin/finder" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'finder' else '' }}">{{ _("Finder") }}</a>
+		{% if show_permissions_link %}
+		<a href="/forms/admin/permissions" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'permissions' else '' }}">{{ _("Portal Access") }}</a>
+		<a href="/forms/admin/roles" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'roles' else '' }}">{{ _("Role Permissions") }}</a>
+		{% endif %}
+		{% if show_settings_link %}
+		<a href="/forms/admin/settings" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'settings' else '' }}">{{ _("App Settings") }}</a>
+		{% endif %}
+		<a href="/forms/admin/aiagent" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'aiagent' else '' }}">{{ _("AI Agent") }}</a>
+		<a href="/forms/admin/ailogs" class="forms-admin-nav-link {{ 'is-active' if nav_active == 'ailogs' else '' }}">{{ _("AI Logs") }}</a>
+		<a href="/forms/user/dashboard" class="forms-admin-nav-link forms-admin-nav-link-right">{{ _("Back to Portal") }}</a>
+	</div>
+</nav>

@@ -1,0 +1,1008 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .customer-add-card .card-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .customer-add-card .row > [class*="col-"] {
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .customer-add-card .form-control,
+body.forms-portal-dark .customer-add-card .btn {
+	min-height: 48px;
+}
+
+body.forms-portal-dark .customer-add-hint {
+	font-size: 0.85rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .customer-table-card .card-body {
+	padding: 1.5rem 1.5rem 0.5rem;
+}
+
+body.forms-portal-dark .customer-table-card #customer_search {
+	min-height: 56px;
+	font-size: 1.15rem;
+	padding: 0.85rem 1.1rem;
+}
+
+body.forms-portal-dark .customer-table td,
+body.forms-portal-dark .customer-table th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .customer-table tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .customer-table .customer-code {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+}
+
+body.forms-portal-dark .customer-table input.customer-name-input {
+	min-width: 14rem;
+}
+
+body.forms-portal-dark .customer-table input.customer-first-name-input,
+body.forms-portal-dark .customer-table input.customer-middle-name-input,
+body.forms-portal-dark .customer-table input.customer-last-name-input {
+	min-width: 8rem;
+	max-width: 10rem;
+}
+
+body.forms-portal-dark .customer-table .name-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+
+body.forms-portal-dark .customer-table select.customer-type-select,
+body.forms-portal-dark .customer-table select.customer-group-select,
+body.forms-portal-dark .customer-table select.customer-company-select {
+	min-width: 8rem;
+}
+
+body.forms-portal-dark .customer-table .save-status {
+	font-size: 0.8rem;
+	min-width: 4.5rem;
+}
+
+body.forms-portal-dark .customer-table .save-status.is-saving {
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .customer-table .save-status.is-saved {
+	color: #6fd996;
+}
+
+body.forms-portal-dark .customer-table .save-status.is-error {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .customer-table .disabled-row {
+	opacity: 0.55;
+}
+
+body.forms-portal-dark .customer-table .manage-student-btn {
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	padding: 0.4rem 0.8rem;
+	color: #7ea6ff;
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .customer-table .manage-student-btn:hover {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .customer-table td.customer-actions-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .customer-table button.delete-customer-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #f0a8a8;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .customer-table button.duplicate-customer-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #7ea6ff;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .customer-table button.edit-customer-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #a5ebbd;
+	white-space: nowrap;
+}
+
+.customer-edit-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 1050;
+	background: rgba(0, 0, 0, 0.72);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+}
+
+.customer-edit-overlay.d-none { display: none; }
+.customer-edit-dialog { width: min(680px, 100%); max-height: 90vh; overflow-y: auto; }
+
+body.forms-portal-dark .customer-table button.delete-customer-btn:hover {
+	color: #f6c6c6;
+}
+
+body.forms-portal-dark .customer-table button.delete-customer-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Customers") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Manage customers. The list is filtered to those with a transaction for the chosen company — tick \"Show all\" to see every customer. Enter Individual names as \"Firstname Lastname\" (not \"Lastname, Firstname\").") }}
+	</p>
+</div>
+
+<div id="customer-add-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card customer-add-card">
+	<div class="card-body">
+		<form id="customer-add-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-2" id="new_customer_first_name_wrap">
+					<label class="form-label" for="new_customer_first_name">{{ _("First Name") }}</label>
+					<input type="text" class="form-control" id="new_customer_first_name" placeholder="{{ _('Firstname') }}">
+				</div>
+
+				<div class="col-md-2" id="new_customer_middle_name_wrap">
+					<label class="form-label" for="new_customer_middle_name">{{ _("Middle Name") }}</label>
+					<input type="text" class="form-control" id="new_customer_middle_name" placeholder="{{ _('Middlename') }}">
+				</div>
+
+				<div class="col-md-2" id="new_customer_last_name_wrap">
+					<label class="form-label" for="new_customer_last_name">{{ _("Last Name") }}</label>
+					<input type="text" class="form-control" id="new_customer_last_name" placeholder="{{ _('Lastname') }}">
+				</div>
+
+				<div class="col-md-4 d-none" id="new_customer_company_name_wrap">
+					<label class="form-label" for="new_customer_company_name">{{ _("Name") }}</label>
+					<input type="text" class="form-control" id="new_customer_company_name" placeholder="{{ _('Company name') }}">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_customer_type">{{ _("Type") }}</label>
+					<select class="form-control" id="new_customer_type">
+						<option value="Individual" selected>{{ _("Individual") }}</option>
+						<option value="Company">{{ _("Company") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_customer_group">{{ _("Group") }}</label>
+					<select class="form-control" id="new_customer_group">
+						<option value="">{{ _("— None —") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_customer_company">{{ _("Company") }}</label>
+					<select class="form-control" id="new_customer_company">
+						{% for c in companies %}
+						<option value="{{ c.name }}" {{ "selected" if c.name == company else "" }}>{{ c.name }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<div class="col-md-2">
+					<button type="submit" class="btn btn-primary w-100" id="customer-add-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="customer-add-spinner" role="status" aria-hidden="true"></span>
+						<span id="customer-add-label">{{ _("Add Customer") }}</span>
+					</button>
+				</div>
+
+			</div>
+			<div class="customer-add-hint mt-1">
+				{{ _('Enter Individual names in "Firstname Lastname" order, not "Lastname, Firstname" — no comma. Middle names, suffixes (Jr, III), hyphens and accents are fine. Company names are saved in CAPITAL LETTERS.') }}
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="card form-card mt-4 customer-table-card">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-4">
+				<input type="text" class="form-control" id="customer_search" autocomplete="off" disabled
+					placeholder="{{ _('Loading customers…') }}">
+				<div class="form-text" id="customer_count_hint"></div>
+			</div>
+			<div class="col-md-3">
+				<select class="form-control" id="customer_company_filter">
+					{% for c in companies %}
+					<option value="{{ c.name }}" {{ "selected" if c.name == company else "" }}>{{ c.name }}</option>
+					{% endfor %}
+				</select>
+				{% if can_show_all %}
+				<div class="form-check mt-1">
+					<input type="checkbox" class="form-check-input" id="customer_show_all">
+					<label class="form-check-label small text-muted" for="customer_show_all">{{ _("Show all customers") }}</label>
+				</div>
+				{% endif %}
+			</div>
+			<div class="col-md-3">
+				<select class="form-control" id="customer_group_filter" disabled>
+					<option value="">{{ _("All Groups") }}</option>
+				</select>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered customer-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Name") }}</th>
+						<th>{{ _("Type") }}</th>
+						<th>{{ _("Group") }}</th>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Disabled") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="customer-table-body">
+					<tr><td colspan="6" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div id="customer-edit-overlay" class="customer-edit-overlay d-none" role="dialog" aria-modal="true" aria-labelledby="customer-edit-title">
+	<div class="card form-card customer-edit-dialog">
+		<div class="card-body">
+			<div class="d-flex justify-content-between align-items-center mb-3">
+				<h4 id="customer-edit-title" class="mb-0">{{ _("Edit Customer") }}</h4>
+				<button type="button" class="btn btn-sm btn-ghost" id="customer-edit-close" aria-label="{{ _('Close') }}">&times;</button>
+			</div>
+			<div id="customer-edit-alert" class="alert alert-warning d-none"></div>
+			<div class="row g-3">
+				<div class="col-md-8"><label class="form-label" for="customer-edit-name">{{ _("Name") }}</label><input class="form-control" id="customer-edit-name"></div>
+				<div class="col-md-4"><label class="form-label" for="customer-edit-middle">{{ _("Middle Name") }}</label><input class="form-control" id="customer-edit-middle"></div>
+				<div class="col-md-4"><label class="form-label" for="customer-edit-type">{{ _("Type") }}</label><select class="form-control" id="customer-edit-type"><option value="Individual">{{ _("Individual") }}</option><option value="Company">{{ _("Company") }}</option></select></div>
+				<div class="col-md-4"><label class="form-label" for="customer-edit-group">{{ _("Group") }}</label><select class="form-control" id="customer-edit-group"></select></div>
+				<div class="col-md-4"><label class="form-label" for="customer-edit-company">{{ _("Company") }}</label><select class="form-control" id="customer-edit-company">{% for c in companies %}<option value="{{ c.name }}">{{ c.name }}</option>{% endfor %}</select></div>
+				<div class="col-12"><label class="form-check"><input type="checkbox" class="form-check-input" id="customer-edit-disabled"> <span class="form-check-label">{{ _("Disabled") }}</span></label></div>
+			</div>
+			<div class="d-flex justify-content-end gap-2 mt-4">
+				<button type="button" class="btn btn-secondary" id="customer-edit-cancel">{{ _("Cancel") }}</button>
+				<button type="button" class="btn btn-primary" id="customer-edit-save"><span class="spinner-border spinner-border-sm d-none" id="customer-edit-spinner"></span> <span id="customer-edit-save-label">{{ _("Save") }}</span></button>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	// Mirrors _validate_individual_name() in customer.py: the only hard rule is
+	// "no comma" — that's the "Lastname, Firstname" pattern this page exists to
+	// stop. Middle names, suffixes (Jr, III), hyphens, apostrophes and accented
+	// letters are all fine. Checked here too so it's caught before a round trip.
+	var INVALID_NAME_MESSAGE = __('Remove the comma — enter the name as "Firstname Lastname", not "Lastname, Firstname".');
+
+	function is_valid_individual_name(value) {
+		var name = (value || "").trim().replace(/\s+/g, " ");
+		return name.length > 0 && name.indexOf(",") === -1;
+	}
+
+	var tbody = document.getElementById("customer-table-body");
+	var searchInput = document.getElementById("customer_search");
+	var groupFilterSelect = document.getElementById("customer_group_filter");
+	var companyFilterSelect = document.getElementById("customer_company_filter");
+	var showAllCheck = document.getElementById("customer_show_all");
+	var countHint = document.getElementById("customer_count_hint");
+
+	// Rendering all 650+ customers at once (each with an input + checkbox)
+	// would be slow enough to feel broken — same MAX_RESULTS-capped-render
+	// pattern Item Accounts uses, search narrows it down instead of paging.
+	var MAX_RESULTS = 50;
+	var allCustomers = [];
+	var allCustomerGroups = [];
+
+	// Strips everything but letters/digits before comparing, so punctuation/
+	// spacing differences between the typed query and the stored name don't
+	// prevent a match.
+	function normalize(text) {
+		return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+	}
+
+	function render_row(customer) {
+		var row = document.createElement("tr");
+		row.className = customer.disabled ? "disabled-row" : "";
+
+		var nameCell = document.createElement("td");
+		var nameWrap = document.createElement("div");
+		nameWrap.className = "name-cell";
+
+		var nameStatus = document.createElement("span");
+		nameStatus.className = "save-status";
+
+		function save_name(value) {
+			if (customer.customer_type === "Individual" && !is_valid_individual_name(value)) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.textContent = INVALID_NAME_MESSAGE;
+				return;
+			}
+			if (value === customer.customer_name) return;
+
+			nameStatus.className = "save-status is-saving";
+			nameStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {
+				name: customer.name,
+				field: "customer_name",
+				value: value
+			}).then(function (r) {
+				var renamed = r.message && r.message.name && r.message.name !== customer.name;
+				customer.customer_name = (r.message && r.message.value) || value;
+				if (r.message && r.message.name) customer.name = r.message.name;
+				nameStatus.className = "save-status is-saved";
+				nameStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (nameStatus.classList.contains("is-saved")) nameStatus.textContent = "";
+				}, 2500);
+				// The ID (docname) is kept in sync with the name server-side —
+				// when it actually changed, reload the table rather than trying
+				// to patch every place this row's old ID was captured (the
+				// disabled checkbox's own handler, the ID caption below, etc.).
+				if (renamed) load_customers();
+			}).catch(function (err) {
+				nameStatus.className = "save-status is-error";
+				nameStatus.innerHTML = extract_error_message(err);
+			});
+		}
+
+		if (customer.customer_type === "Individual") {
+			// Split into two small boxes to nudge "Firstname … Lastname" order
+			// (the point of this page) rather than one free field. Split on the
+			// first space, so a middle name / suffix rides along in the second
+			// box ("John" | "Michael Cruz") and rejoins unchanged on save; a
+			// legacy comma-first name lands wrong here and the admin fixes it.
+			var spaceIndex = customer.customer_name.indexOf(" ");
+			var firstPart = spaceIndex === -1 ? customer.customer_name : customer.customer_name.slice(0, spaceIndex);
+			var lastPart = spaceIndex === -1 ? "" : customer.customer_name.slice(spaceIndex + 1);
+
+			var firstInput = document.createElement("input");
+			firstInput.type = "text";
+			firstInput.className = "form-control customer-name-input customer-first-name-input";
+			firstInput.placeholder = __("First");
+			firstInput.value = firstPart;
+
+			var lastInput = document.createElement("input");
+			lastInput.type = "text";
+			lastInput.className = "form-control customer-name-input customer-last-name-input";
+			lastInput.placeholder = __("Last");
+			lastInput.value = lastPart;
+
+			function current_combined() {
+				return (firstInput.value.trim() + " " + lastInput.value.trim()).trim();
+			}
+
+			// Saves on blur, but only once focus actually leaves the First+Last
+			// pair — "focusout" bubbles (unlike "blur"), and relatedTarget is
+			// the element gaining focus, so tabbing from First to Last doesn't
+			// fire a save with a half-edited name; only tabbing/clicking
+			// somewhere outside both fields does.
+			nameWrap.addEventListener("focusout", function (e) {
+				if (nameWrap.contains(e.relatedTarget)) return;
+				save_name(current_combined());
+			});
+			[firstInput, lastInput].forEach(function (input) {
+				input.addEventListener("input", function () {
+					if (nameStatus.classList.contains("is-error")) nameStatus.textContent = "";
+				});
+				input.addEventListener("keydown", function (e) {
+					if (e.key === "Enter") {
+						e.preventDefault();
+						input.blur();
+					}
+				});
+			});
+
+			var middleInput = document.createElement("input");
+			middleInput.type = "text";
+			middleInput.className = "form-control customer-name-input customer-middle-name-input";
+			middleInput.placeholder = __("Middle");
+			middleInput.value = customer.custom_middle_name || "";
+			middleInput.addEventListener("blur", function () {
+				var value = middleInput.value.trim();
+				if (value === (customer.custom_middle_name || "")) return;
+				nameStatus.className = "save-status is-saving";
+				nameStatus.textContent = __("Saving…");
+				call("ez_accounting.www.forms.user.customer.update_customer_field", {
+					name: customer.name,
+					field: "custom_middle_name",
+					value: value
+				}).then(function (r) {
+					customer.custom_middle_name = (r.message && r.message.value) || value;
+					nameStatus.className = "save-status is-saved";
+					nameStatus.textContent = __("Saved");
+					setTimeout(function () {
+						if (nameStatus.classList.contains("is-saved")) nameStatus.textContent = "";
+					}, 2000);
+				}).catch(function (err) {
+					middleInput.value = customer.custom_middle_name || "";
+					nameStatus.className = "save-status is-error";
+					nameStatus.innerHTML = extract_error_message(err);
+				});
+			});
+			middleInput.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					middleInput.blur();
+				}
+			});
+
+			nameWrap.appendChild(firstInput);
+			nameWrap.appendChild(middleInput);
+			nameWrap.appendChild(lastInput);
+			nameWrap.appendChild(nameStatus);
+		} else {
+			var nameInput = document.createElement("input");
+			nameInput.type = "text";
+			nameInput.className = "form-control customer-name-input";
+			nameInput.value = customer.customer_name;
+
+			nameInput.addEventListener("input", function () {
+				if (nameStatus.classList.contains("is-error")) nameStatus.textContent = "";
+			});
+			nameInput.addEventListener("blur", function () {
+				save_name(nameInput.value);
+			});
+			nameInput.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					nameInput.blur();
+				}
+			});
+
+			nameWrap.appendChild(nameInput);
+			nameWrap.appendChild(nameStatus);
+		}
+
+		nameCell.appendChild(nameWrap);
+		// appendChild, not "nameCell.innerHTML +=" — the latter serializes the
+		// whole cell (including the inputs/button above, with their live event
+		// listeners) back to an HTML string and reparses it into brand-new,
+		// listener-less DOM nodes. The Save button would render but silently
+		// do nothing, since its click handler was bound to a node that no
+		// longer exists in the page the instant that line ran.
+		var codeDiv = document.createElement("div");
+		codeDiv.className = "customer-code";
+		codeDiv.textContent = customer.name;
+		nameCell.appendChild(codeDiv);
+		row.appendChild(nameCell);
+
+		var typeCell = document.createElement("td");
+		var typeSelect = document.createElement("select");
+		typeSelect.className = "form-control customer-type-select";
+		["Individual", "Company"].forEach(function (t) {
+			var opt = document.createElement("option");
+			opt.value = t;
+			opt.textContent = __(t);
+			opt.selected = customer.customer_type === t;
+			typeSelect.appendChild(opt);
+		});
+		typeSelect.addEventListener("change", function () {
+			var newType = typeSelect.value;
+			var previousType = customer.customer_type;
+			// Same fast-fail as the Name field itself — switching an existing
+			// Company-named customer to Individual would otherwise round-trip
+			// to the server just to be rejected there, since a name like
+			// "CWM Trust, LLC" doesn't fit "Firstname Lastname".
+			if (newType === "Individual" && !is_valid_individual_name(customer.customer_name)) {
+				alert(__('Fix the Name to "Firstname Lastname" before switching this customer to Individual.'));
+				typeSelect.value = previousType;
+				return;
+			}
+			typeSelect.disabled = true;
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {
+				name: customer.name,
+				field: "customer_type",
+				value: newType
+			}).then(function () {
+				// The Name cell's own structure (split First/Last vs. one
+				// free-text field) depends on customer_type — reloading the
+				// whole table is simpler and safer than trying to rebuild
+				// just this row's name inputs in place.
+				load_customers();
+			}).catch(function (err) {
+				typeSelect.disabled = false;
+				typeSelect.value = previousType;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		typeCell.appendChild(typeSelect);
+		row.appendChild(typeCell);
+
+		var groupCell = document.createElement("td");
+		var groupSelect = document.createElement("select");
+		groupSelect.className = "form-control customer-group-select";
+		allCustomerGroups.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			opt.selected = customer.customer_group === g.name;
+			groupSelect.appendChild(opt);
+		});
+		groupSelect.addEventListener("change", function () {
+			var newGroup = groupSelect.value;
+			var previousGroup = customer.customer_group;
+			groupSelect.disabled = true;
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {
+				name: customer.name,
+				field: "customer_group",
+				value: newGroup
+			}).then(function (r) {
+				customer.customer_group = (r.message && r.message.value) || newGroup;
+				groupSelect.disabled = false;
+			}).catch(function (err) {
+				groupSelect.disabled = false;
+				groupSelect.value = previousGroup;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		groupCell.appendChild(groupSelect);
+		row.appendChild(groupCell);
+
+		var companyCell = document.createElement("td");
+		var customerCompanySelect = document.createElement("select");
+		customerCompanySelect.className = "form-control customer-company-select";
+		{% for c in companies %}
+		var companyOption = document.createElement("option");
+		companyOption.value = {{ c.name | tojson }};
+		companyOption.textContent = {{ c.name | tojson }};
+		companyOption.selected = (customer.custom_company || companyFilterSelect.value) === companyOption.value;
+		customerCompanySelect.appendChild(companyOption);
+		{% endfor %}
+		customerCompanySelect.addEventListener("change", function () {
+			var previousCompany = customer.custom_company || companyFilterSelect.value;
+			customerCompanySelect.disabled = true;
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {name: customer.name, field: "custom_company", value: customerCompanySelect.value})
+				.then(function (r) { customer.custom_company = r.message.value; customerCompanySelect.disabled = false; })
+				.catch(function (err) { customerCompanySelect.value = previousCompany; customerCompanySelect.disabled = false; alert(extract_error_message(err).replace(/<br>/g, "\n")); });
+		});
+		companyCell.appendChild(customerCompanySelect);
+		row.appendChild(companyCell);
+
+		var disabledCell = document.createElement("td");
+		var disabledCheck = document.createElement("input");
+		disabledCheck.type = "checkbox";
+		disabledCheck.className = "form-check-input";
+		disabledCheck.checked = !!customer.disabled;
+		disabledCheck.addEventListener("change", function () {
+			call("ez_accounting.www.forms.user.customer.update_customer_field", {
+				name: customer.name,
+				field: "disabled",
+				value: disabledCheck.checked ? "1" : "0"
+			}).then(function () {
+				customer.disabled = disabledCheck.checked ? 1 : 0;
+				row.className = customer.disabled ? "disabled-row" : "";
+			}).catch(function (err) {
+				disabledCheck.checked = !!customer.disabled;
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+		});
+		disabledCell.appendChild(disabledCheck);
+		row.appendChild(disabledCell);
+
+		// Student Customers have their own dedicated profile (vacations,
+		// documents, sales history, ...) at /forms/user/student_customer_profile
+		// -- surfaced here instead of a separate nav link, since "Student" is
+		// just one Customer Group among others as far as this page is
+		// concerned, not a different kind of record.
+		var actionsCell = document.createElement("td");
+		actionsCell.className = "customer-actions-cell";
+		var editBtn = document.createElement("button");
+		editBtn.type = "button";
+		editBtn.className = "edit-customer-btn";
+		editBtn.innerHTML = '<i class="fa fa-pencil btn-icon" aria-hidden="true"></i>' + __("Edit");
+		editBtn.addEventListener("click", function () { open_edit_modal(customer); });
+		actionsCell.appendChild(editBtn);
+		var duplicateBtn = document.createElement("button");
+		duplicateBtn.type = "button";
+		duplicateBtn.className = "duplicate-customer-btn";
+		duplicateBtn.innerHTML = '<i class="fa fa-copy btn-icon" aria-hidden="true"></i>' + __("Duplicate");
+		duplicateBtn.addEventListener("click", function () {
+			typeSelect.value = customer.customer_type;
+			groupSelect.value = customer.customer_group || "";
+			document.getElementById("new_customer_company").value = customer.custom_company || companyFilterSelect.value;
+			apply_type_fields();
+			if (customer.customer_type === "Company") {
+				companyNameInput.value = customer.customer_name + " " + __("Copy");
+				companyNameInput.focus();
+				companyNameInput.select();
+			} else {
+				var parts = customer.customer_name.trim().split(/\s+/);
+				firstNameInput.value = parts.shift() || "";
+				lastNameInput.value = parts.join(" ");
+				middleNameInput.value = customer.custom_middle_name || "";
+				firstNameInput.focus();
+				firstNameInput.select();
+			}
+			addForm.scrollIntoView({behavior: "smooth", block: "center"});
+		});
+		actionsCell.appendChild(duplicateBtn);
+		var profileLink = document.createElement("a");
+		profileLink.className = "manage-student-btn";
+		profileLink.href = (window.FORMS_URL_PREFIX || "") +
+			(customer.customer_group === "Student"
+				? "/forms/user/student_customer_profile?customer="
+				: "/forms/user/customer_profile?customer=") + encodeURIComponent(customer.name);
+		profileLink.target = "_blank";
+		profileLink.rel = "noopener";
+		profileLink.innerHTML = '<i class="fa fa-user btn-icon" aria-hidden="true"></i>' + __("Profile");
+		actionsCell.appendChild(profileLink);
+
+		// Only actually succeeds if nothing references this Customer (Sales
+		// Invoice, Payment Entry, Quotation, ...) -- Frappe's own link-check
+		// blocks it and the specific linked record is named in the error,
+		// surfaced here as-is rather than caught and reworded (same "delete
+		// blocked, disable instead" pattern as Items).
+		var deleteBtn = document.createElement("button");
+		deleteBtn.type = "button";
+		deleteBtn.className = "delete-customer-btn";
+		deleteBtn.innerHTML = '<i class="fa fa-trash btn-icon" aria-hidden="true"></i>' + __("Delete");
+		deleteBtn.addEventListener("click", function () {
+			if (!window.confirm(__("Delete {0}? This can't be undone. If it has related records (invoices, payments, or other linked documents), the delete will be blocked instead.", [customer.customer_name || customer.name]))) {
+				return;
+			}
+			deleteBtn.disabled = true;
+			deleteBtn.textContent = __("Deleting…");
+			call("ez_accounting.www.forms.user.customer.delete_customer", { name: customer.name }).then(function () {
+				allCustomers = allCustomers.filter(function (c) { return c.name !== customer.name; });
+				render_table(searchInput.value);
+			}).catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				deleteBtn.disabled = false;
+				deleteBtn.innerHTML = '<i class="fa fa-trash btn-icon" aria-hidden="true"></i>' + __("Delete");
+			});
+		});
+		actionsCell.appendChild(deleteBtn);
+
+		row.appendChild(actionsCell);
+
+		return row;
+	}
+
+	function render_table(query) {
+		query = normalize(query);
+		var group = groupFilterSelect.value;
+
+		var matches = allCustomers.filter(function (customer) {
+			if (group && customer.customer_group !== group) return false;
+			if (!query) return true;
+			return normalize(customer.customer_name).indexOf(query) !== -1
+				|| normalize(customer.name).indexOf(query) !== -1;
+		});
+
+		countHint.textContent = matches.length > MAX_RESULTS
+			? __("{0} found — showing the first {1}. Keep typing to narrow down.", [matches.length, MAX_RESULTS])
+			: ((query || group) ? __("{0} found.", [matches.length]) : "");
+
+		tbody.innerHTML = "";
+		if (!matches.length) {
+			tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("No matching customers found.") + "</td></tr>";
+			return;
+		}
+		matches.slice(0, MAX_RESULTS).forEach(function (customer) {
+			tbody.appendChild(render_row(customer));
+		});
+	}
+
+	searchInput.addEventListener("input", function () {
+		render_table(searchInput.value);
+	});
+	groupFilterSelect.addEventListener("change", function () {
+		render_table(searchInput.value);
+	});
+
+	function load_customers() {
+		tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Loading…") + "</td></tr>";
+		return call("ez_accounting.www.forms.user.customer.get_customers", {
+			company: companyFilterSelect.value,
+			show_all: (showAllCheck && showAllCheck.checked) ? 1 : 0
+		}).then(function (r) {
+			allCustomers = r.message || [];
+			searchInput.disabled = false;
+			searchInput.placeholder = __("Search customers…");
+			if (!allCustomers.length) {
+				tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("No customers for this company yet — tick “Show all customers” to see every customer.") + "</td></tr>";
+				countHint.textContent = "";
+				return;
+			}
+			render_table(searchInput.value);
+		}).catch(function (err) {
+			tbody.innerHTML = '<tr><td colspan="5" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	companyFilterSelect.addEventListener("change", load_customers);
+	if (showAllCheck) showAllCheck.addEventListener("change", load_customers);
+
+	var editOverlay = document.getElementById("customer-edit-overlay");
+	var editAlert = document.getElementById("customer-edit-alert");
+	var editName = document.getElementById("customer-edit-name");
+	var editMiddle = document.getElementById("customer-edit-middle");
+	var editType = document.getElementById("customer-edit-type");
+	var editGroup = document.getElementById("customer-edit-group");
+	var editCompany = document.getElementById("customer-edit-company");
+	var editDisabled = document.getElementById("customer-edit-disabled");
+	var editSave = document.getElementById("customer-edit-save");
+	var editSpinner = document.getElementById("customer-edit-spinner");
+	var editSaveLabel = document.getElementById("customer-edit-save-label");
+	var editCtx = null;
+
+	function set_edit_loading(loading) {
+		editSave.disabled = loading;
+		editSpinner.classList.toggle("d-none", !loading);
+		editSaveLabel.textContent = loading ? __("Saving…") : __("Save");
+	}
+	function close_edit_modal() {
+		editOverlay.classList.add("d-none");
+		editCtx = null;
+	}
+	function open_edit_modal(customer) {
+		editCtx = customer;
+		editAlert.classList.add("d-none");
+		editName.value = customer.customer_name || customer.name;
+		editMiddle.value = customer.custom_middle_name || "";
+		editType.value = customer.customer_type || "Individual";
+		editGroup.innerHTML = "";
+		allCustomerGroups.forEach(function (group) {
+			var option = document.createElement("option");
+			option.value = group.name;
+			option.textContent = group.name;
+			editGroup.appendChild(option);
+		});
+		editGroup.value = customer.customer_group || "";
+		editCompany.value = customer.custom_company || companyFilterSelect.value;
+		editDisabled.checked = !!customer.disabled;
+		editMiddle.disabled = editType.value !== "Individual";
+		set_edit_loading(false);
+		editOverlay.classList.remove("d-none");
+		editName.focus();
+	}
+	editType.addEventListener("change", function () { editMiddle.disabled = editType.value !== "Individual"; });
+	document.getElementById("customer-edit-close").addEventListener("click", close_edit_modal);
+	document.getElementById("customer-edit-cancel").addEventListener("click", close_edit_modal);
+	document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !editOverlay.classList.contains("d-none")) close_edit_modal(); });
+	editSave.addEventListener("click", function () {
+		if (!editCtx) return;
+		editAlert.classList.add("d-none");
+		if (!editName.value.trim() || !editGroup.value || !editCompany.value) {
+			editAlert.textContent = __("Name, Group, and Company are required.");
+			editAlert.classList.remove("d-none");
+			return;
+		}
+		set_edit_loading(true);
+		call("ez_accounting.www.forms.user.customer.update_customer_details", {
+			name: editCtx.name,
+			customer_name: editName.value.trim(),
+			custom_middle_name: editMiddle.value.trim(),
+			customer_type: editType.value,
+			customer_group: editGroup.value,
+			company: editCompany.value,
+			disabled: editDisabled.checked ? 1 : 0
+		}).then(function () {
+			close_edit_modal();
+			load_customers();
+		}).catch(function (err) {
+			set_edit_loading(false);
+			editAlert.innerHTML = extract_error_message(err);
+			editAlert.classList.remove("d-none");
+		});
+	});
+
+	call("ez_accounting.www.forms.user.customer.get_customer_groups").then(function (r) {
+		allCustomerGroups = r.message || [];
+	}).catch(function () {
+		allCustomerGroups = [];
+	}).then(function () {
+		var addGroupSelect = document.getElementById("new_customer_group");
+		allCustomerGroups.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			addGroupSelect.appendChild(opt);
+
+			var filterOpt = document.createElement("option");
+			filterOpt.value = g.name;
+			filterOpt.textContent = g.name;
+			groupFilterSelect.appendChild(filterOpt);
+		});
+		groupFilterSelect.disabled = false;
+		load_customers();
+	});
+
+	// Add Customer form
+	var addForm = document.getElementById("customer-add-form");
+	var addAlert = document.getElementById("customer-add-alert");
+	var addSubmit = document.getElementById("customer-add-submit");
+	var addSpinner = document.getElementById("customer-add-spinner");
+	var addLabel = document.getElementById("customer-add-label");
+	var firstNameInput = document.getElementById("new_customer_first_name");
+	var middleNameInput = document.getElementById("new_customer_middle_name");
+	var lastNameInput = document.getElementById("new_customer_last_name");
+	var firstNameWrap = document.getElementById("new_customer_first_name_wrap");
+	var middleNameWrap = document.getElementById("new_customer_middle_name_wrap");
+	var lastNameWrap = document.getElementById("new_customer_last_name_wrap");
+	var companyNameInput = document.getElementById("new_customer_company_name");
+	var companyNameWrap = document.getElementById("new_customer_company_name_wrap");
+	var typeSelect = document.getElementById("new_customer_type");
+	var groupSelect = document.getElementById("new_customer_group");
+	var newCustomerCompany = document.getElementById("new_customer_company");
+
+	// Individual gets two small First/Last boxes (the format is enforced by
+	// the structure, not by typing "Firstname Lastname" correctly into one
+	// field); Company gets a single free-text Name field, since org names
+	// don't follow that shape.
+	function apply_type_fields() {
+		var isCompany = typeSelect.value === "Company";
+		firstNameWrap.classList.toggle("d-none", isCompany);
+		middleNameWrap.classList.toggle("d-none", isCompany);
+		lastNameWrap.classList.toggle("d-none", isCompany);
+		companyNameWrap.classList.toggle("d-none", !isCompany);
+	}
+	typeSelect.addEventListener("change", apply_type_fields);
+	apply_type_fields();
+
+	function show_alert(message, is_error) {
+		addAlert.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		addAlert.innerHTML = message;
+		addAlert.classList.remove("d-none");
+	}
+
+	function set_add_loading(is_loading) {
+		addSubmit.disabled = is_loading;
+		addSpinner.classList.toggle("d-none", !is_loading);
+		addLabel.textContent = is_loading ? __("Adding…") : __("Add Customer");
+	}
+
+	addForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		addAlert.classList.add("d-none");
+
+		var isCompany = typeSelect.value === "Company";
+		var customerName = isCompany
+			? companyNameInput.value.trim()
+			: (firstNameInput.value.trim() + " " + lastNameInput.value.trim()).trim();
+
+		if (!customerName) {
+			show_alert(__("Name is required."), true);
+			return;
+		}
+		if (!isCompany && !is_valid_individual_name(customerName)) {
+			show_alert(INVALID_NAME_MESSAGE, true);
+			return;
+		}
+
+		set_add_loading(true);
+		call("ez_accounting.www.forms.user.customer.create_customer", {
+			customer_name: customerName,
+			customer_type: typeSelect.value,
+			customer_group: groupSelect.value,
+			custom_middle_name: middleNameInput.value.trim(),
+			company: newCustomerCompany.value
+		}).then(function (r) {
+			set_add_loading(false);
+			var d = r.message || {};
+			show_alert(__("Added {0} as customer {1}.", [
+				"<strong>" + frappe.utils.escape_html(d.customer_name) + "</strong>",
+				frappe.utils.escape_html(d.name)
+			]), false);
+			firstNameInput.value = "";
+			middleNameInput.value = "";
+			lastNameInput.value = "";
+			companyNameInput.value = "";
+			typeSelect.value = "Individual";
+			groupSelect.value = "";
+			newCustomerCompany.value = {{ (company or "") | tojson }};
+			apply_type_fields();
+			firstNameInput.focus();
+			// A brand-new customer has no transactions yet, so it wouldn't
+			// show under the company filter — switch to "show all" so the
+			// admin can see what they just added (System Managers only; other
+			// users have no "show all" and stay company-filtered).
+			if (showAllCheck) showAllCheck.checked = true;
+			load_customers();
+		}).catch(function (err) {
+			set_add_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+{% endblock %}

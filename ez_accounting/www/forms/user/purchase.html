@@ -1,0 +1,2144 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+/* Scoped to .purchase-card only — mirrors the Express Payroll page's own
+   styling (bigger fields/buttons: single-admin data-entry form, not a dense
+   list view), without touching the shared forms_portal.css. */
+body.forms-portal-dark .purchase-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .purchase-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .purchase-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .purchase-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .purchase-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+/* Supplier/Item comboboxes: a plain text input + a positioned dropdown of
+   filtered matches, since the native <select> these replaced were unusable
+   with 150+ suppliers. Not a generic component — built for these fields,
+   given the forms-web bundle doesn't ship a real combobox control (see the
+   comment on the `call()` helper below for why: website pages don't load
+   desk assets). */
+body.forms-portal-dark .purchase-card .searchable-select,
+body.forms-portal-dark .purchase-history-card .searchable-select {
+	position: relative;
+}
+
+body.forms-portal-dark .purchase-card .searchable-select-options,
+body.forms-portal-dark .purchase-history-card .searchable-select-options {
+	position: absolute;
+	top: calc(100% + 0.35rem);
+	left: 0;
+	right: 0;
+	z-index: 20;
+	max-height: 16rem;
+	overflow-y: auto;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+}
+
+body.forms-portal-dark .purchase-card .searchable-select-option,
+body.forms-portal-dark .purchase-history-card .searchable-select-option {
+	padding: 0.65rem 1rem;
+	font-size: 1.05rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .purchase-card .searchable-select-option.is-active,
+body.forms-portal-dark .purchase-history-card .searchable-select-option.is-active {
+	background-color: rgba(91, 140, 255, 0.14);
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .purchase-card .searchable-select-option.is-empty,
+body.forms-portal-dark .purchase-history-card .searchable-select-option.is-empty {
+	color: #8a8f9c;
+	cursor: default;
+}
+
+body.forms-portal-dark .purchase-history-card .history-filter-row .searchable-select {
+	width: 15rem;
+}
+
+body.forms-portal-dark .purchase-card .stat-tile {
+	min-height: 54px;
+	justify-content: center;
+}
+
+body.forms-portal-dark .purchase-card .expense-account-preview,
+body.forms-portal-dark .purchase-card .pay-from-preview {
+	display: flex;
+	align-items: center;
+	min-height: 54px;
+	font-size: 1.1rem;
+	padding: 0.7rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+/* Repeatable Item rows — each row is its own independent
+   create_searchable_select() instance (same combobox used for Supplier),
+   plus Qty/Rate/Deduction/line-Amount/Expense-Account-preview/Remove.
+   Mirrors sales.html's own .item-row block. */
+body.forms-portal-dark .purchase-card .item-row {
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 0.9rem;
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .purchase-card .item-row-main {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .purchase-card .item-row-item {
+	flex: 1 1 220px;
+	min-width: 220px;
+}
+
+body.forms-portal-dark .purchase-card .item-row-qty {
+	width: 6.5rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .purchase-card .item-row-rate {
+	width: 8rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .purchase-card .item-row-deduction-wrap {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 54px;
+	padding: 0 0.4rem;
+	font-size: 0.85rem;
+	color: #c7cbd6;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .purchase-card .item-row-deduction-wrap input[type="checkbox"] {
+	width: 1.1rem;
+	height: 1.1rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .purchase-card .item-row-amount {
+	width: 8rem;
+	flex: 0 0 auto;
+	min-height: 54px;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 0.85rem 0.75rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+	background-color: #171920;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .purchase-card .item-row-amount.is-deduction {
+	color: #f0a8a8;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .purchase-card .item-row-remove {
+	flex: 0 0 auto;
+	width: 3.2rem;
+	min-height: 54px;
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	color: #f0a8a8;
+	font-size: 1.3rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .purchase-card .item-row-remove:hover {
+	background-color: #2a1616;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .purchase-card .item-row-remove:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+body.forms-portal-dark .purchase-card .item-row-description {
+	margin-top: 0.6rem;
+	height: auto;
+	min-height: 40px;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .purchase-card .item-row-expense-account {
+	margin-top: 0.6rem;
+	font-size: 0.9rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .purchase-card #add-item-row-btn {
+	min-height: 48px;
+}
+
+/* Payment mode — Full/Partial/Invoice Only choice. Plain radios (not real
+   <select>/button-group markup) so a native form.reset() restores the
+   default ("full") on its own, same reasoning that keeps this page away
+   from a JS-driven state machine for anything reset() already handles.
+   Mirrors sales.html's own payment-mode block. */
+body.forms-portal-dark .purchase-card .payment-mode-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+
+body.forms-portal-dark .purchase-card .payment-mode-option {
+	flex: 1 1 220px;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.85rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	cursor: pointer;
+	font-size: 1.05rem;
+	font-weight: 500;
+}
+
+body.forms-portal-dark .purchase-card .payment-mode-option input[type="radio"] {
+	width: 1.15rem;
+	height: 1.15rem;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .purchase-card .payment-mode-option.is-selected {
+	border-color: #5b8cff;
+	background-color: rgba(91, 140, 255, 0.12);
+}
+
+body.forms-portal-dark .purchase-card .stat-value {
+	font-size: 1.4rem;
+}
+
+body.forms-portal-dark .purchase-card #purchase-submit {
+	font-size: 1.2rem;
+	font-weight: 600;
+	padding: 1.1rem;
+	min-height: 60px;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .purchase-card #purchase-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .purchase-card .purchase-result .alert {
+	font-size: 1.05rem;
+	padding: 1.1rem 1.25rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .purchase-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Purchase Invoice History */
+body.forms-portal-dark .purchase-history-card td,
+body.forms-portal-dark .purchase-history-card th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .purchase-history-card tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+/* The row for a purchase just recorded through this page's own form — pulses
+   a few times then a lingering tinted background/left-border so it's still
+   easy to spot even after the pulse animation ends, scrolled into view by
+   load_purchase_invoice_history()'s highlightName argument. Mirrors
+   sales.html's own tr.is-new-row block. */
+body.forms-portal-dark .purchase-history-card tr.is-new-row td {
+	background-color: rgba(91, 140, 255, 0.16);
+	animation: purchase-row-highlight-pulse 2.4s ease-in-out;
+}
+
+body.forms-portal-dark .purchase-history-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #5b8cff;
+}
+
+@keyframes purchase-row-highlight-pulse {
+	0%, 100% { background-color: rgba(91, 140, 255, 0.16); }
+	15%, 45%, 75% { background-color: rgba(91, 140, 255, 0.5); }
+	30%, 60%, 90% { background-color: rgba(91, 140, 255, 0.16); }
+}
+
+body.forms-portal-dark .purchase-history-card a.history-row-link {
+	color: inherit;
+}
+
+body.forms-portal-dark .purchase-history-card a.history-row-link:hover {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .purchase-history-card .history-print-actions a.history-row-link {
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .purchase-history-card .history-print-actions a.history-row-link + a.history-row-link {
+	margin-left: 0.85rem;
+}
+
+body.forms-portal-dark .purchase-history-card .history-print-actions > * + * {
+	margin-left: 0.85rem;
+}
+
+body.forms-portal-dark .purchase-history-card button.cancel-purchase-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #f0a8a8;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .purchase-history-card button.cancel-purchase-btn:hover {
+	color: #f6c6c6;
+}
+
+body.forms-portal-dark .purchase-history-card button.cancel-purchase-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .purchase-history-card button.pay-invoice-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #7fd18a;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .purchase-history-card button.pay-invoice-btn:hover {
+	color: #a3e3ac;
+}
+
+body.forms-portal-dark .pill-cancelled {
+	background-color: #3a1f1f;
+	color: #f0a8a8;
+}
+
+/* Lightweight custom overlay/modal, not frappe.ui.Dialog (unavailable on
+   website pages, which only load frappe-web.bundle.js) and not a Bootstrap
+   JS modal (this app avoids depending on Bootstrap's JS plugins, only its
+   CSS). Shared by every modal on this page — Record Payment (reused for both
+   the just-created invoice's "Pay Now" button in purchase-result and every
+   outstanding row's own "Pay" button in Purchase Invoice History) and
+   Payment History — each its own #<name>-overlay instance of this same
+   markup/CSS. Mirrors sales.html's own modal blocks. */
+body.forms-portal-dark .forms-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .forms-modal {
+	background-color: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: 100%;
+	max-width: 480px;
+	max-height: 90vh;
+	overflow-y: auto;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+body.forms-portal-dark .forms-modal.forms-modal-wide {
+	max-width: 720px;
+}
+
+body.forms-portal-dark .forms-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.25rem 1.5rem;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .forms-modal-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.6rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+body.forms-portal-dark .forms-modal-close:hover {
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .forms-modal-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .pay-invoice-summary {
+	display: flex;
+	justify-content: space-between;
+	padding: 0.85rem 1rem;
+	margin-bottom: 1.25rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .pay-invoice-summary .stat-label {
+	display: block;
+}
+
+body.forms-portal-dark .forms-modal-body .form-label {
+	font-weight: 600;
+}
+
+body.forms-portal-dark .forms-modal-body #pay-invoice-alert {
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .payment-history-invoice {
+	margin-bottom: 1rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .purchase-history-card button.payment-history-btn,
+body.forms-portal-dark .purchase-history-card button.duplicate-purchase-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: inherit;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .purchase-history-card button.payment-history-btn:hover,
+body.forms-portal-dark .purchase-history-card button.duplicate-purchase-btn:hover {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .purchase-history-card button.duplicate-purchase-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero d-flex justify-content-between align-items-start flex-wrap" style="gap: 1rem;">
+	<div>
+		<h1 class="mb-1"><a href="">{{ _("Express Purchase") }}</a></h1>
+		<p class="dashboard-subtitle mb-0">
+			{{ _("Record one purchase for {0}: Purchase Invoice and payment in a single step.").format(company) }}
+		</p>
+	</div>
+	<a href="/forms/user/purchase_import" class="btn btn-outline-secondary">{{ icons.btn_icon("arrow-right") }}{{ _("Bulk Import") }}</a>
+</div>
+
+<div class="card form-card purchase-card">
+	<div class="card-body">
+
+		<div id="purchase-alert" class="alert d-none" role="alert"></div>
+
+		<form id="purchase-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-md-6">
+					<label class="form-label" for="supplier_search">{{ _("Supplier") }}</label>
+					<div class="searchable-select">
+						<input type="text" class="form-control" id="supplier_search" autocomplete="off"
+							placeholder="{{ _('Loading suppliers…') }}" required autofocus>
+						<input type="hidden" id="supplier" name="supplier">
+						<div class="searchable-select-options d-none" id="supplier_options"></div>
+					</div>
+					<div class="form-text" id="supplier_count_hint"></div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="posting_date">{{ _("Posting Date") }}</label>
+					<input type="date" class="form-control" id="posting_date" name="posting_date" required>
+					<div class="form-text">{{ _("Also used as the Due Date and the payment's reference date.") }}</div>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Items") }}</label>
+					<div id="purchase-items-container"></div>
+					<button type="button" class="btn btn-outline-secondary" id="add-item-row-btn">
+						{{ icons.btn_icon("arrow-right") }}{{ _("Add Item") }}
+					</button>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Payment") }}</label>
+					<div class="payment-mode-group" role="radiogroup">
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="full" checked>
+							{{ _("Full Payment") }}
+						</label>
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="partial">
+							{{ _("Partial Payment") }}
+						</label>
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="invoice_only">
+							{{ _("Invoice Only — No Payment") }}
+						</label>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label d-block">{{ _("Grand Total") }}</label>
+					<div id="amount-preview" class="stat-tile">
+						<span class="stat-value" id="amount-preview-value">&mdash;</span>
+					</div>
+				</div>
+
+				<div class="col-md-6 payment-partial-field d-none">
+					<label class="form-label" for="partial_amount">{{ _("Amount Paid Now") }}</label>
+					<input type="number" class="form-control" id="partial_amount" name="partial_amount" min="0.01" step="0.01">
+					<div class="form-text">{{ _("Must be less than the Grand Total — the rest stays outstanding on the invoice for a later payment.") }}</div>
+				</div>
+
+				<div class="col-md-6 payment-only-field">
+					<label class="form-label" for="mode_of_payment">{{ _("Mode of Payment") }}</label>
+					<select class="form-control" id="mode_of_payment" name="mode_of_payment">
+						<option value="" selected>{{ _("— None —") }}</option>
+					</select>
+					<div class="form-text">{{ _("Optional — if it has its own default account, payment is paid from that account. Otherwise the company's default account is used.") }}</div>
+				</div>
+
+				<div class="col-md-6 payment-only-field">
+					<label class="form-label d-block">{{ _("Pay From") }}</label>
+					<div id="pay-from-preview" class="pay-from-preview text-muted">
+						{{ _("Checking…") }}
+					</div>
+				</div>
+
+				<div class="col-md-6 payment-only-field">
+					<label class="form-label" for="reference_no">{{ _("Cheque/Reference No") }}</label>
+					<input type="text" class="form-control" id="reference_no" name="reference_no">
+					<div class="form-text">{{ _("Optional — defaults to the Purchase Invoice number if left blank.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="remarks">{{ _("Custom Remarks") }}</label>
+					<input type="text" class="form-control" id="remarks" name="remarks">
+					<div class="form-text">{{ _("Optional — defaults to the Payment Entry's own auto-generated summary if left blank.") }}</div>
+				</div>
+
+			</div>
+
+			<div class="d-grid mt-4">
+				<button type="submit" class="btn btn-primary" id="purchase-submit">
+					<span class="spinner-border spinner-border-sm d-none" id="purchase-spinner" role="status" aria-hidden="true"></span>
+					{{ icons.btn_icon("zap") }}<span id="purchase-submit-label">{{ _("Run Express Purchase & Record Payment") }}</span>
+				</button>
+			</div>
+		</form>
+
+		<div id="purchase-result" class="purchase-result d-none"></div>
+
+	</div>
+</div>
+
+<div class="card form-card mt-4 purchase-history-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Purchase Invoice History") }}</h4>
+		</div>
+		<div class="row g-2 align-items-end history-filter-row mb-3">
+			<div class="col-auto">
+				<label class="form-label" for="history_from_date">{{ _("From") }}</label>
+				<input type="date" class="form-control" id="history_from_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_to_date">{{ _("To") }}</label>
+				<input type="date" class="form-control" id="history_to_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_supplier_search">{{ _("Supplier") }}</label>
+				<div class="searchable-select">
+					<input type="text" class="form-control" id="history_supplier_search" autocomplete="off" placeholder="{{ _('Search supplier…') }}">
+					<input type="hidden" id="history_supplier">
+					<div class="searchable-select-options d-none" id="history_supplier_options"></div>
+				</div>
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_item_search">{{ _("Item") }}</label>
+				<div class="searchable-select">
+					<input type="text" class="form-control" id="history_item_search" autocomplete="off" placeholder="{{ _('Search item…') }}">
+					<input type="hidden" id="history_item">
+					<div class="searchable-select-options d-none" id="history_item_options"></div>
+				</div>
+			</div>
+			<div class="col-auto">
+				<button type="button" class="btn btn-outline-secondary" id="history_clear_dates">{{ _("Clear") }}</button>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Supplier") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th class="text-right">{{ _("Amount Pay") }}</th>
+						<th class="text-right">{{ _("Outstanding") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Pay From") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Check No") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="purchase-invoice-history-body">
+					<tr><td colspan="10" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div id="pay-invoice-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal">
+		<div class="forms-modal-header">
+			<h4 class="mb-0">{{ _("Record Payment") }}</h4>
+			<button type="button" class="forms-modal-close" id="pay-invoice-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div id="pay-invoice-alert" class="alert alert-warning d-none" role="alert"></div>
+			<div class="pay-invoice-summary">
+				<div><span class="stat-label">{{ _("Invoice") }}</span> <span id="pay-invoice-name"></span></div>
+				<div><span class="stat-label">{{ _("Outstanding") }}</span> <span id="pay-invoice-outstanding"></span></div>
+			</div>
+			<form id="pay-invoice-form" novalidate>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_amount">{{ _("Amount") }}</label>
+					<input type="number" class="form-control" id="pay_invoice_amount" min="0.01" step="0.01" required>
+					<div class="form-text">{{ _("Defaults to the full outstanding balance — lower it for a partial payment.") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_mode_of_payment">{{ _("Mode of Payment") }}</label>
+					<select class="form-control" id="pay_invoice_mode_of_payment">
+						<option value="" selected>{{ _("— None —") }}</option>
+					</select>
+				</div>
+				<div class="mb-3">
+					<label class="form-label d-block">{{ _("Pay From") }}</label>
+					<div id="pay-invoice-pay-from-preview" class="pay-from-preview text-muted">{{ _("Checking…") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_reference_no">{{ _("Cheque/Reference No") }}</label>
+					<input type="text" class="form-control" id="pay_invoice_reference_no">
+					<div class="form-text">{{ _("Optional — defaults to the Purchase Invoice number if left blank.") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_remarks">{{ _("Custom Remarks") }}</label>
+					<input type="text" class="form-control" id="pay_invoice_remarks">
+				</div>
+				<div class="d-grid">
+					<button type="submit" class="btn btn-primary" id="pay-invoice-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="pay-invoice-spinner" role="status" aria-hidden="true"></span>
+						<span id="pay-invoice-submit-label">{{ _("Record Payment") }}</span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div id="payment-history-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal forms-modal-wide">
+		<div class="forms-modal-header">
+			<h4 class="mb-0">{{ _("Payment History") }}</h4>
+			<button type="button" class="forms-modal-close" id="payment-history-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div class="payment-history-invoice">
+				<span class="stat-label">{{ _("Invoice") }}</span> <span id="payment-history-invoice-name"></span>
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered mb-0">
+					<thead>
+						<tr>
+							<th>{{ _("Date") }}</th>
+							<th>{{ _("Payment Entry") }}</th>
+							<th class="text-right">{{ _("Amount") }}</th>
+							<th>{{ _("Mode of Payment") }}</th>
+							<th>{{ _("Reference No") }}</th>
+							<th>{{ _("Status") }}</th>
+						</tr>
+					</thead>
+					<tbody id="payment-history-body">
+						<tr><td colspan="6" class="text-muted">{{ _("Loading…") }}</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var supplierInput = document.getElementById("supplier");
+	var supplierSearch = document.getElementById("supplier_search");
+	var supplierOptions = document.getElementById("supplier_options");
+	var modeOfPaymentSelect = document.getElementById("mode_of_payment");
+	var postingDateInput = document.getElementById("posting_date");
+	var referenceNoInput = document.getElementById("reference_no");
+	var remarksInput = document.getElementById("remarks");
+	var paymentModeRadios = document.querySelectorAll('input[name="payment_mode"]');
+	var partialAmountField = document.querySelector(".payment-partial-field");
+	var partialAmountInput = document.getElementById("partial_amount");
+	var paymentOnlyFields = document.querySelectorAll(".payment-only-field");
+	var partialAmountTouched = false;
+	var form = document.getElementById("purchase-form");
+	var submitBtn = document.getElementById("purchase-submit");
+	var spinner = document.getElementById("purchase-spinner");
+	var submitLabel = document.getElementById("purchase-submit-label");
+	var alertBox = document.getElementById("purchase-alert");
+	var resultBox = document.getElementById("purchase-result");
+
+	// This company's configured Print Format overrides (see
+	// /forms/user/printersettings) — {} until loaded, so every printer_link()
+	// call below falls back to its hardcoded default until this resolves.
+	// The initial history load is held behind printFormatSettingsLoaded so
+	// the very first render never races ahead of it; later reloads (after a
+	// submit, or a date-filter change) don't need to wait since by then this
+	// has already settled.
+	var printFormatSettings = {};
+	var printFormatSettingsLoaded = call("ez_accounting.api.get_print_format_settings", {}).then(function (r) {
+		printFormatSettings = r.message || {};
+	}).catch(function () {
+		printFormatSettings = {};
+	});
+
+	// Default Posting Date to today — the common case is recording today's
+	// purchase, not backdating one.
+	if (!postingDateInput.value) {
+		postingDateInput.value = frappe.datetime.get_today();
+	}
+
+	function populate_select(select, rows, value_field, label_field, empty_label) {
+		select.innerHTML = "";
+		if (!rows || !rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = empty_label;
+			select.appendChild(opt);
+			return false;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = rows.length > 1;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row[value_field];
+			opt.textContent = row[label_field] ? (row[label_field] + " (" + row[value_field] + ")") : row[value_field];
+			select.appendChild(opt);
+		});
+
+		if (rows.length === 1) {
+			select.value = rows[0][value_field];
+			select.selectedIndex = 1;
+			return true;
+		}
+		return false;
+	}
+
+	// A minimal text-input + filtered-dropdown combobox, for fields with too
+	// many options for a native <select> to stay usable (Supplier: 150+ rows).
+	// Keeps the same contract the rest of this page's submit logic already
+	// expects from a <select>: the hidden input's .value is the docname sent
+	// to the server.
+	function create_searchable_select(searchInput, hiddenInput, optionsBox, value_field, label_field, onSelect, hintEl) {
+		var MAX_RESULTS = 50;
+		var rows = [];
+		var filtered = [];
+		var activeIndex = -1;
+
+		function label_for(row) {
+			return row[label_field] || row[value_field];
+		}
+
+		function set_active(index) {
+			var options = optionsBox.querySelectorAll(".searchable-select-option:not(.is-empty)");
+			options.forEach(function (el) { el.classList.remove("is-active"); });
+			if (index >= 0 && options[index]) {
+				options[index].classList.add("is-active");
+				options[index].scrollIntoView({ block: "nearest" });
+			}
+			activeIndex = index;
+		}
+
+		function select_row(row) {
+			hiddenInput.value = row[value_field];
+			searchInput.value = label_for(row);
+			optionsBox.classList.add("d-none");
+			if (onSelect) onSelect(row);
+		}
+
+		function render(matches) {
+			filtered = matches;
+			activeIndex = -1;
+			optionsBox.innerHTML = "";
+			if (!matches.length) {
+				var empty = document.createElement("div");
+				empty.className = "searchable-select-option is-empty";
+				empty.textContent = __("No matches");
+				optionsBox.appendChild(empty);
+			} else {
+				matches.forEach(function (row) {
+					var opt = document.createElement("div");
+					opt.className = "searchable-select-option";
+					opt.textContent = label_for(row) + " (" + row[value_field] + ")";
+					// mousedown (not click) fires before the input's blur handler
+					// below closes the dropdown, so the click still registers.
+					opt.addEventListener("mousedown", function (e) {
+						e.preventDefault();
+						select_row(row);
+					});
+					optionsBox.appendChild(opt);
+				});
+			}
+			optionsBox.classList.remove("d-none");
+		}
+
+		// Strips everything but letters/digits before comparing, so spacing and
+		// punctuation differences between the typed query and the stored name
+		// don't prevent a match — e.g. "S&S" or "S&SCo.LTD" both find
+		// "S & S Co. LTD".
+		function normalize(text) {
+			return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+		}
+
+		function filter(query) {
+			query = normalize(query);
+			var matches = !query
+				? rows.slice(0, MAX_RESULTS)
+				: rows.filter(function (row) {
+					return normalize(label_for(row)).indexOf(query) !== -1
+						|| normalize(row[value_field]).indexOf(query) !== -1;
+				}).slice(0, MAX_RESULTS);
+			render(matches);
+		}
+
+		searchInput.addEventListener("input", function () {
+			hiddenInput.value = "";
+			filter(searchInput.value);
+		});
+
+		searchInput.addEventListener("focus", function () {
+			if (!searchInput.disabled) filter(searchInput.value);
+		});
+
+		searchInput.addEventListener("blur", function () {
+			// Delayed so a mousedown-selected option above still registers before
+			// this fires; also snaps the visible text back to blank if the admin
+			// left it half-typed without picking a real match.
+			setTimeout(function () {
+				optionsBox.classList.add("d-none");
+				if (!hiddenInput.value) searchInput.value = "";
+			}, 150);
+		});
+
+		searchInput.addEventListener("keydown", function (e) {
+			if (optionsBox.classList.contains("d-none")) return;
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				set_active(Math.min(activeIndex + 1, filtered.length - 1));
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				set_active(Math.max(activeIndex - 1, 0));
+			} else if (e.key === "Enter") {
+				e.preventDefault();
+				if (activeIndex >= 0 && filtered[activeIndex]) select_row(filtered[activeIndex]);
+			} else if (e.key === "Escape") {
+				optionsBox.classList.add("d-none");
+			}
+		});
+
+		return {
+			set_rows: function (newRows) {
+				rows = newRows || [];
+				// The dropdown only ever shows the first MAX_RESULTS matches (a
+				// large unfiltered list is unusable) — without this, an empty
+				// search on a big list (e.g. 150 suppliers) looks like there are
+				// only 50 records total instead of just 50 shown at once.
+				if (hintEl) {
+					hintEl.textContent = rows.length > MAX_RESULTS
+						? __("{0} found — showing the first {1}. Keep typing to narrow down.", [rows.length, MAX_RESULTS])
+						: "";
+				}
+			},
+			clear: function () {
+				hiddenInput.value = "";
+				searchInput.value = "";
+				optionsBox.classList.add("d-none");
+			},
+			// Programmatic selection (e.g. prefilling from a remembered default),
+			// as opposed to the user clicking/keying an option above — same
+			// select_row() path either way, including firing onSelect, so
+			// callers don't need to duplicate what happens after a real pick.
+			// Silently does nothing if the row isn't loaded (e.g. the
+			// remembered item is a disabled item that has since dropped out
+			// of this combo's list) rather than leaving stale UI state.
+			// `silent` skips onSelect entirely — used when restoring a saved
+			// draft, where the draft is already the authoritative state and
+			// onSelect's own side effects would overwrite exactly what's being
+			// restored.
+			select_value: function (value, silent) {
+				var row = rows.filter(function (r) { return String(r[value_field]) === String(value); })[0];
+				if (!row) return;
+				if (silent) {
+					hiddenInput.value = row[value_field];
+					searchInput.value = label_for(row);
+					optionsBox.classList.add("d-none");
+				} else {
+					select_row(row);
+				}
+			}
+		};
+	}
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong while running this. Check the Error Log for details.");
+	}
+
+	// Per-browser fallback for when a supplier has no binding yet (a brand
+	// new supplier, or one nobody's bought from through this page before) —
+	// whatever this admin's browser last successfully submitted, so the form
+	// still starts from something familiar instead of blank. Scoped to this
+	// company (companies share a browser but not a supplier base) and,
+	// unlike Forms Party Default, never synced to the server — purely a
+	// per-device convenience. Same field set as the per-supplier binding,
+	// Rate included (unlike Express Sales — Purchase items have no
+	// standard_rate to fall back on, see get_purchase_items()).
+	var LAST_DEFAULTS_KEY = "forms.purchase.last_defaults." + "{{ company }}";
+
+	function save_last_defaults(values) {
+		try {
+			localStorage.setItem(LAST_DEFAULTS_KEY, JSON.stringify(values));
+		} catch (e) { /* storage unavailable/full — not worth failing the purchase over */ }
+	}
+
+	function load_last_defaults() {
+		try {
+			var raw = localStorage.getItem(LAST_DEFAULTS_KEY);
+			var values = raw ? JSON.parse(raw) : null;
+			// Remarks are almost always specific to the one purchase they were
+			// typed for — carrying one over as a browser-wide default (as
+			// opposed to the server-side per-supplier binding, which is a
+			// deliberate memory) means it silently bleeds into the next,
+			// unrelated purchase. Stripped here too (not just where it's saved
+			// below) so an already-stored value from before this fix stops
+			// applying immediately, without waiting for a fresh save to
+			// overwrite it.
+			if (values) delete values.remarks;
+			return values;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// Shared by the per-supplier binding and the last-submitted-in-this-
+	// browser fallback — same shape, same fields, so applying either looks
+	// identical to the rest of the form. Only ever applied to the first item
+	// row — Forms Party Default (and the localStorage fallback) only ever
+	// remembers one item/rate pair, same reasoning as sales.html.
+	function apply_default_row(row) {
+		if (!row) return;
+		if (row.item && itemRows[0]) itemRows[0].combo.select_value(row.item);
+		if (row.rate && itemRows[0]) {
+			itemRows[0].rateInput.value = row.rate;
+			update_row_amount(itemRows[0]);
+		}
+		if (row.mode_of_payment) {
+			var hasOption = Array.prototype.some.call(modeOfPaymentSelect.options, function (o) {
+				return o.value === row.mode_of_payment;
+			});
+			if (hasOption) {
+				modeOfPaymentSelect.value = row.mode_of_payment;
+				// Setting .value directly doesn't fire the select's own
+				// "change" listener, which is what normally drives this —
+				// without calling it explicitly, Pay From stays stuck showing
+				// whatever it resolved before a default was applied.
+				refresh_pay_from_preview();
+			}
+		}
+		referenceNoInput.value = row.reference_no || "";
+		remarksInput.value = row.remarks || "";
+	}
+
+	// Prefills from whatever this supplier's last Express Purchase used
+	// (ez_accounting.api.upsert_party_default writes these after every successful
+	// purchase) — editable directly on /forms/user/binding too. Falls back
+	// to this browser's own last-submitted values (see above) the first
+	// time a given supplier is ever picked, rather than leaving the form
+	// blank.
+	function apply_supplier_default(supplier) {
+		call("ez_accounting.api.get_party_default", {party_type: "Supplier", party: supplier, company: "{{ company }}"})
+			.then(function (r) {
+				apply_default_row(r.message || load_last_defaults());
+			});
+	}
+
+	var supplierCombo = create_searchable_select(supplierSearch, supplierInput, supplierOptions, "name", "supplier_name", function (row) {
+		itemRows.forEach(refresh_row_expense_account_preview);
+		apply_supplier_default(row.name);
+	}, document.getElementById("supplier_count_hint"));
+
+	var suppliersLoaded = call("ez_accounting.www.forms.user.purchase.get_suppliers").then(function (r) {
+		var rows = r.message || [];
+		supplierCombo.set_rows(rows);
+		supplierSearch.disabled = !rows.length;
+		supplierSearch.placeholder = rows.length ? __("Search suppliers…") : __("No active suppliers found");
+	}).catch(function () {
+		supplierSearch.disabled = true;
+		supplierSearch.placeholder = __("Could not load suppliers");
+	});
+	supplierSearch.addEventListener("input", function () {
+		itemRows.forEach(refresh_row_expense_account_preview);
+	});
+
+	// ---- Repeatable Item rows ----
+	// Each row is its own independent create_searchable_select() instance
+	// (same combobox factory Supplier uses above), plus Qty/Rate/Deduction/
+	// line-Amount/Expense-Account-preview/Remove — built via
+	// insertAdjacentHTML (not createElement+later innerHTML on the same node
+	// — see customer.html's history for why mixing those silently drops
+	// event listeners). Mirrors sales.html's own Item rows block.
+	var itemsContainer = document.getElementById("purchase-items-container");
+	var addItemRowBtn = document.getElementById("add-item-row-btn");
+	var itemRows = [];
+	var purchaseItemsData = [];
+	var amountPreviewValue = document.getElementById("amount-preview-value");
+
+	function fmt_currency(value) {
+		return frappe.format(value, {fieldtype: "Currency"}, {only_value: true});
+	}
+
+	// A "Deduction" row (e.g. a supplier credit/rebate Item) subtracts
+	// instead of adding — Rate itself always stays the positive magnitude the
+	// admin typed (avoids the fat-finger risk of typing a negative number by
+	// hand); the checkbox is what flips the sign, both here for the live
+	// preview and server-side in _parse_line_items() for the real submit.
+	function row_amount(r) {
+		var qty = parseFloat(r.qtyInput.value) || 0;
+		var rate = parseFloat(r.rateInput.value) || 0;
+		return qty * rate * (r.deductionInput.checked ? -1 : 1);
+	}
+
+	function current_grand_total() {
+		var total = 0;
+		itemRows.forEach(function (r) { total += row_amount(r); });
+		return total;
+	}
+
+	// Whether at least one row has real qty+rate entered — distinguishes "an
+	// empty form" (show the "—" placeholder) from "deductions currently
+	// outweigh charges" (a real, possibly negative or zero total that should
+	// still be shown as a number, not hidden behind the empty-form placeholder).
+	function has_any_row_amount() {
+		return itemRows.some(function (r) {
+			return (parseFloat(r.qtyInput.value) || 0) > 0 && (parseFloat(r.rateInput.value) || 0) > 0;
+		});
+	}
+
+	function update_grand_total() {
+		var total = current_grand_total();
+		var hasAmount = has_any_row_amount();
+		amountPreviewValue.textContent = hasAmount ? fmt_currency(total) : "—";
+		// Keeps "Amount Paid Now" tracking the Grand Total by default as items
+		// change — but only until the admin actually types their own partial
+		// amount (partialAmountTouched), since at that point it's a deliberate
+		// choice this shouldn't silently overwrite.
+		if (!partialAmountTouched) {
+			partialAmountInput.value = hasAmount ? total.toFixed(2) : "";
+		}
+	}
+
+	function update_row_amount(r) {
+		var qty = parseFloat(r.qtyInput.value) || 0;
+		var rate = parseFloat(r.rateInput.value) || 0;
+		var amount = row_amount(r);
+		r.amountEl.textContent = (qty && rate) ? fmt_currency(amount) : "—";
+		r.amountEl.classList.toggle("is-deduction", r.deductionInput.checked && !!(qty && rate));
+		update_grand_total();
+	}
+
+	// ---- Payment mode: Full / Partial / Invoice Only ----
+	function current_payment_mode() {
+		var checked = document.querySelector('input[name="payment_mode"]:checked');
+		return checked ? checked.value : "full";
+	}
+
+	function update_payment_mode_ui() {
+		var mode = current_payment_mode();
+		paymentModeRadios.forEach(function (r) {
+			r.closest(".payment-mode-option").classList.toggle("is-selected", r.checked);
+		});
+		partialAmountField.classList.toggle("d-none", mode !== "partial");
+		// Mode of Payment/Pay From/Reference No are all meaningless without an
+		// actual payment being recorded — hidden (not just left blank) for
+		// Invoice Only so it's visually obvious this run won't touch a bank
+		// account at all, mirroring how server-side process_express_purchase()
+		// ignores them in that mode regardless of what's left in them.
+		paymentOnlyFields.forEach(function (el) {
+			el.classList.toggle("d-none", mode === "invoice_only");
+		});
+		if (mode === "partial" && !partialAmountInput.value) {
+			var total = current_grand_total();
+			partialAmountInput.value = total > 0 ? total.toFixed(2) : "";
+		}
+	}
+	paymentModeRadios.forEach(function (r) {
+		r.addEventListener("change", update_payment_mode_ui);
+	});
+	partialAmountInput.addEventListener("input", function () {
+		partialAmountTouched = true;
+	});
+	update_payment_mode_ui();
+
+	// Buying-side counterpart of Express Sales' Income Account preview, now
+	// resolved per row instead of once for the page — each row can be a
+	// different item, so each needs its own Expense Account resolved
+	// separately (Item Default -> Item Group Default -> Company default,
+	// same resolution a real submit uses).
+	function refresh_row_expense_account_preview(r) {
+		var supplier = supplierInput.value;
+		var item = r.itemInput.value;
+
+		if (!supplier || !item) {
+			r.expenseAccountEl.className = "item-row-expense-account text-muted";
+			r.expenseAccountEl.textContent = __("Select a supplier and item to see the expense account.");
+			return;
+		}
+
+		r.expenseAccountEl.className = "item-row-expense-account text-muted";
+		r.expenseAccountEl.textContent = __("Checking…");
+
+		call("ez_accounting.www.forms.user.purchase.get_expense_account_preview", {supplier: supplier, item: item})
+			.then(function (resp) {
+				if (!resp.message) return;
+				r.expenseAccountEl.className = "item-row-expense-account";
+				r.expenseAccountEl.textContent = __("Expense Account") + ": " + resp.message.expense_account;
+			})
+			.catch(function (err) {
+				r.expenseAccountEl.className = "item-row-expense-account text-danger";
+				r.expenseAccountEl.innerHTML = extract_error_message(err);
+			});
+	}
+
+	function apply_purchase_items_to_row(r) {
+		r.combo.set_rows(purchaseItemsData);
+		r.itemSearch.disabled = !purchaseItemsData.length;
+		r.itemSearch.placeholder = purchaseItemsData.length ? __("Search items…") : __("No active purchase items found");
+	}
+
+	function update_remove_buttons() {
+		itemRows.forEach(function (r) {
+			r.removeBtn.disabled = itemRows.length <= 1;
+		});
+	}
+
+	function create_item_row() {
+		itemsContainer.insertAdjacentHTML("beforeend",
+			'<div class="item-row">' +
+				'<div class="item-row-main">' +
+					'<div class="searchable-select item-row-item">' +
+						'<input type="text" class="form-control item-row-search" autocomplete="off" placeholder="' + __("Loading items…") + '">' +
+						'<input type="hidden" class="item-row-hidden">' +
+						'<div class="searchable-select-options d-none"></div>' +
+					'</div>' +
+					'<input type="number" class="form-control item-row-qty" min="0" step="0.01" value="1" placeholder="' + __("Qty") + '">' +
+					'<input type="number" class="form-control item-row-rate" min="0" step="0.01" placeholder="' + __("Rate") + '">' +
+					'<label class="item-row-deduction-wrap">' +
+						'<input type="checkbox" class="item-row-deduction">' + __("Deduction") +
+					'</label>' +
+					'<div class="item-row-amount">&mdash;</div>' +
+					'<button type="button" class="item-row-remove" aria-label="' + __("Remove") + '">&times;</button>' +
+				'</div>' +
+				'<input type="text" class="form-control item-row-description" maxlength="140" placeholder="' + __("Description (optional — defaults to the item's own description)") + '">' +
+				'<div class="item-row-expense-account text-muted">' + __("Select a supplier and item to see the expense account.") + '</div>' +
+			'</div>'
+		);
+
+		var rowEl = itemsContainer.lastElementChild;
+		var r = {
+			row: rowEl,
+			itemSearch: rowEl.querySelector(".item-row-search"),
+			itemInput: rowEl.querySelector(".item-row-hidden"),
+			itemOptions: rowEl.querySelector(".searchable-select-options"),
+			qtyInput: rowEl.querySelector(".item-row-qty"),
+			rateInput: rowEl.querySelector(".item-row-rate"),
+			deductionInput: rowEl.querySelector(".item-row-deduction"),
+			amountEl: rowEl.querySelector(".item-row-amount"),
+			descriptionInput: rowEl.querySelector(".item-row-description"),
+			expenseAccountEl: rowEl.querySelector(".item-row-expense-account"),
+			removeBtn: rowEl.querySelector(".item-row-remove")
+		};
+
+		// Unlike Express Sales' items, Purchase items carry no standard_rate
+		// (see get_purchase_items()) — selecting one only refreshes the
+		// Expense Account preview, Rate is always left for the admin to type
+		// from the actual bill.
+		r.combo = create_searchable_select(r.itemSearch, r.itemInput, r.itemOptions, "name", "item_name", function () {
+			refresh_row_expense_account_preview(r);
+		});
+		apply_purchase_items_to_row(r);
+
+		r.qtyInput.addEventListener("input", function () { update_row_amount(r); });
+		r.rateInput.addEventListener("input", function () { update_row_amount(r); });
+		r.deductionInput.addEventListener("change", function () { update_row_amount(r); });
+		r.itemSearch.addEventListener("input", function () { refresh_row_expense_account_preview(r); });
+
+		r.removeBtn.addEventListener("click", function () {
+			if (itemRows.length <= 1) return;
+			var idx = itemRows.indexOf(r);
+			if (idx !== -1) itemRows.splice(idx, 1);
+			rowEl.remove();
+			update_grand_total();
+			update_remove_buttons();
+		});
+
+		itemRows.push(r);
+		update_remove_buttons();
+		return r;
+	}
+
+	addItemRowBtn.addEventListener("click", function () {
+		create_item_row();
+	});
+
+	// Starts with one row — matches the original single-item form for the
+	// common case, "Add Item" is opt-in for anything more.
+	create_item_row();
+
+	var itemsLoaded = call("ez_accounting.www.forms.user.purchase.get_purchase_items").then(function (r) {
+		purchaseItemsData = r.message || [];
+		itemRows.forEach(apply_purchase_items_to_row);
+	}).catch(function () {
+		itemRows.forEach(function (r) {
+			r.itemSearch.disabled = true;
+			r.itemSearch.placeholder = __("Could not load items");
+		});
+	});
+
+	// Optional field — the "— None —" option already in the markup stays as
+	// the default, so this just appends real choices after it rather than
+	// using populate_select()'s disabled-placeholder pattern (built for
+	// required fields).
+	var modesLoaded = call("ez_accounting.www.forms.user.purchase.get_modes_of_payment").then(function (r) {
+		(r.message || []).forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			modeOfPaymentSelect.appendChild(opt);
+		});
+	});
+
+	// "Pay From" preview — resolved server-side (Mode of Payment's own
+	// account if configured, else the company's default bank account), so
+	// the admin can see exactly which account is about to pay before
+	// submitting. There is no separate Bank Account field on this form; this
+	// is the only account-selection surface, and it's read-only by design —
+	// the real fix for a wrong default is fixing the Mode of Payment/Company
+	// configuration in Desk, not overriding it per-run.
+	var payFromPreview = document.getElementById("pay-from-preview");
+	function show_missing_pay_from(preview, refreshCallback) {
+		preview.className = "pay-from-preview text-danger";
+		preview.innerHTML = '<span>' + __("No account could be resolved — set a default bank account for this company.") + '</span> ' +
+			'<button type="button" class="btn btn-sm btn-outline-secondary set-default-bank-btn">' +
+				'<i class="fa fa-bank btn-icon" aria-hidden="true"></i>' + __("Set Default Bank") + '</button>';
+		var button = preview.querySelector(".set-default-bank-btn");
+		button.addEventListener("click", function () {
+			button.disabled = true;
+			button.textContent = __("Setting…");
+			call("ez_accounting.www.forms.user.purchase.set_default_bank_account").then(function (r) {
+				if (!r.message || !r.message.account) return;
+				refreshCallback();
+			}).catch(function (err) {
+				preview.className = "pay-from-preview text-danger";
+				preview.innerHTML = extract_error_message(err);
+			});
+		});
+	}
+	function refresh_pay_from_preview() {
+		payFromPreview.className = "pay-from-preview text-muted";
+		payFromPreview.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.purchase.get_pay_from_preview", {mode_of_payment: modeOfPaymentSelect.value}).then(function (r) {
+			if (!r.message) return;
+			if (r.message.account) {
+				payFromPreview.className = "pay-from-preview";
+				payFromPreview.textContent = r.message.account;
+			} else {
+				show_missing_pay_from(payFromPreview, refresh_pay_from_preview);
+			}
+		}).catch(function (err) {
+			payFromPreview.className = "pay-from-preview text-danger";
+			payFromPreview.innerHTML = extract_error_message(err);
+		});
+	}
+	modeOfPaymentSelect.addEventListener("change", refresh_pay_from_preview);
+	refresh_pay_from_preview();
+
+	// ---- Draft autosave (localStorage) ----
+	// Scoped per-company (this bench is multi-company, see [[forms-multi-company]])
+	// so switching companies never shows/overwrites another company's in-progress
+	// draft. Only the main purchase-form is covered — the separate Pay Invoice
+	// modal further down is its own short-lived workflow against an *existing*
+	// invoice, not a draft worth persisting across page loads.
+	var DRAFT_KEY = "forms-purchase-draft::{{ company }}";
+
+	function serialize_draft() {
+		return {
+			supplier: supplierInput.value,
+			posting_date: postingDateInput.value,
+			payment_mode: current_payment_mode(),
+			partial_amount: partialAmountInput.value,
+			mode_of_payment: modeOfPaymentSelect.value,
+			reference_no: referenceNoInput.value,
+			remarks: remarksInput.value,
+			items: itemRows.map(function (r) {
+				return {
+					item: r.itemInput.value,
+					qty: r.qtyInput.value,
+					rate: r.rateInput.value,
+					description: r.descriptionInput.value,
+					is_deduction: r.deductionInput.checked
+				};
+			})
+		};
+	}
+
+	function save_draft() {
+		try {
+			localStorage.setItem(DRAFT_KEY, JSON.stringify(serialize_draft()));
+		} catch (e) { /* localStorage unavailable (private browsing, quota, etc.) — skip silently */ }
+	}
+
+	function clear_draft() {
+		try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+	}
+
+	// A single delegated listener on the form (rather than wiring every field,
+	// including every dynamically-added item row individually) catches every
+	// change automatically via event bubbling — "input" for text/number
+	// fields as they're typed, "change" for the payment-mode radios and the
+	// Mode of Payment <select>.
+	form.addEventListener("input", save_draft);
+	form.addEventListener("change", save_draft);
+
+	function restore_draft() {
+		var raw;
+		try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return; }
+		if (!raw) return;
+
+		var draft;
+		try { draft = JSON.parse(raw); } catch (e) { return; }
+		if (!draft) return;
+
+		// Supplier first — refresh_row_expense_account_preview (called per
+		// item row below) reads supplierInput.value, so it needs to already be
+		// set by the time each row is restored.
+		if (draft.supplier) supplierCombo.select_value(draft.supplier, true);
+
+		var draftItems = draft.items || [];
+		while (itemRows.length < draftItems.length) create_item_row();
+
+		itemRows.forEach(function (r, idx) {
+			var item = draftItems[idx];
+			if (!item) return;
+			if (item.item) r.combo.select_value(item.item, true);
+			if (item.qty) r.qtyInput.value = item.qty;
+			if (item.rate) r.rateInput.value = item.rate;
+			if (item.description) r.descriptionInput.value = item.description;
+			r.deductionInput.checked = !!item.is_deduction;
+			update_row_amount(r);
+			refresh_row_expense_account_preview(r);
+		});
+
+		if (draft.posting_date) postingDateInput.value = draft.posting_date;
+
+		if (draft.payment_mode) {
+			var radio = document.querySelector('input[name="payment_mode"][value="' + draft.payment_mode + '"]');
+			if (radio) radio.checked = true;
+			update_payment_mode_ui();
+		}
+		// Restored after the item rows above — update_row_amount()/
+		// update_grand_total() would otherwise auto-fill Amount Paid Now from
+		// the recalculated total and clobber the restored value, exactly the
+		// same "untouched" guard that protects a manually-typed partial amount.
+		if (draft.partial_amount) {
+			partialAmountInput.value = draft.partial_amount;
+			partialAmountTouched = true;
+		}
+
+		if (draft.mode_of_payment) {
+			var hasOption = Array.prototype.some.call(modeOfPaymentSelect.options, function (o) {
+				return o.value === draft.mode_of_payment;
+			});
+			if (hasOption) {
+				modeOfPaymentSelect.value = draft.mode_of_payment;
+				refresh_pay_from_preview();
+			}
+		}
+
+		referenceNoInput.value = draft.reference_no || "";
+		remarksInput.value = draft.remarks || "";
+
+		show_alert(__("Restored your unsaved draft from this browser."), false);
+	}
+
+	// Waits for Supplier/Item/Mode of Payment data to finish loading before
+	// restoring — select_value(..., true) silently no-ops on a combo whose
+	// rows aren't loaded yet, and the Mode of Payment <select> has no matching
+	// <option> to set until its own call() resolves.
+	Promise.all([suppliersLoaded, itemsLoaded, modesLoaded]).then(restore_draft);
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading ? __("Running…") : __("Run Express Purchase & Record Payment");
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	// Sends the admin to /forms/user/printer with the document ID (and
+	// desired format) pre-filled — its own true-Letter-size preview + native
+	// browser print() replaces every direct /desk/print or download_pdf link
+	// on this page (Invoice, Receipt, Print Check): it sidesteps the
+	// wkhtmltopdf margin-extraction bug already hit once on this exact
+	// "FHB Check" format (see the 2026-08-25 entry in this file), and lets
+	// the admin actually see the document at real size before it prints.
+	// doctype isn't part of the link — /forms/user/printer detects it from
+	// the ID itself (or, once a format is also given, resolves it straight
+	// from that format's own doc_type).
+	function printer_link(id, format) {
+		var url = "/forms/user/printer?id=" + encodeURIComponent(id);
+		if (format) url += "&format=" + encodeURIComponent(format);
+		return url;
+	}
+
+	// Purchase Invoice History — loaded once on page load, then reloaded after
+	// every successful run so the new invoice shows up without a manual page
+	// refresh, and again whenever the From/To date filter changes.
+	var historyBody = document.getElementById("purchase-invoice-history-body");
+	var historyFromDate = document.getElementById("history_from_date");
+	var historyToDate = document.getElementById("history_to_date");
+	var historySupplierSearch = document.getElementById("history_supplier_search");
+	var historyItemSearch = document.getElementById("history_item_search");
+	var historySupplierHidden = document.getElementById("history_supplier");
+	var historyItemHidden = document.getElementById("history_item");
+	var historySupplierOptions = document.getElementById("history_supplier_options");
+	var historyItemOptions = document.getElementById("history_item_options");
+	var historyClearDates = document.getElementById("history_clear_dates");
+	var STATUS_PILL_CLASS = { Paid: "pill-final", Cancelled: "pill-cancelled", Overdue: "pill-overdue" };
+
+	// ---- Record Payment modal (Pay button — history rows + purchase-result) ----
+	// One shared overlay instance for both entry points: a row's own "Pay"
+	// button in Purchase Invoice History (any outstanding balance, not just a
+	// purchase just made through this form), and the "Pay" button that
+	// appears in purchase-result right after creating a Partial/Invoice Only
+	// purchase, for paying (the rest of) it without hunting for its row
+	// below. Mirrors sales.html's own Record Payment modal.
+	var payInvoiceOverlay = document.getElementById("pay-invoice-overlay");
+	var payInvoiceForm = document.getElementById("pay-invoice-form");
+	var payInvoiceClose = document.getElementById("pay-invoice-close");
+	var payInvoiceAlert = document.getElementById("pay-invoice-alert");
+	var payInvoiceNameEl = document.getElementById("pay-invoice-name");
+	var payInvoiceOutstandingEl = document.getElementById("pay-invoice-outstanding");
+	var payInvoiceAmountInput = document.getElementById("pay_invoice_amount");
+	var payInvoiceModeSelect = document.getElementById("pay_invoice_mode_of_payment");
+	var payInvoicePayFromPreview = document.getElementById("pay-invoice-pay-from-preview");
+	var payInvoiceReferenceNoInput = document.getElementById("pay_invoice_reference_no");
+	var payInvoiceRemarksInput = document.getElementById("pay_invoice_remarks");
+	var payInvoiceSubmitBtn = document.getElementById("pay-invoice-submit");
+	var payInvoiceSpinner = document.getElementById("pay-invoice-spinner");
+	var payInvoiceSubmitLabel = document.getElementById("pay-invoice-submit-label");
+	var payInvoiceCurrentInvoice = null;
+	var payInvoiceCurrentOutstanding = 0;
+
+	call("ez_accounting.www.forms.user.purchase.get_modes_of_payment").then(function (r) {
+		(r.message || []).forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			payInvoiceModeSelect.appendChild(opt);
+		});
+	});
+
+	function refresh_pay_invoice_pay_from_preview() {
+		payInvoicePayFromPreview.className = "pay-from-preview text-muted";
+		payInvoicePayFromPreview.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.purchase.get_pay_from_preview", {mode_of_payment: payInvoiceModeSelect.value})
+			.then(function (r) {
+				if (!r.message) return;
+				if (r.message.account) {
+					payInvoicePayFromPreview.className = "pay-from-preview";
+					payInvoicePayFromPreview.textContent = r.message.account;
+				} else {
+					show_missing_pay_from(payInvoicePayFromPreview, refresh_pay_invoice_pay_from_preview);
+				}
+			})
+			.catch(function (err) {
+				payInvoicePayFromPreview.className = "pay-from-preview text-danger";
+				payInvoicePayFromPreview.innerHTML = extract_error_message(err);
+			});
+	}
+	payInvoiceModeSelect.addEventListener("change", refresh_pay_invoice_pay_from_preview);
+
+	function show_pay_invoice_alert(message) {
+		payInvoiceAlert.innerHTML = message;
+		payInvoiceAlert.classList.remove("d-none");
+	}
+
+	function open_pay_invoice_modal(purchaseInvoice, outstanding) {
+		payInvoiceCurrentInvoice = purchaseInvoice;
+		payInvoiceCurrentOutstanding = outstanding;
+		payInvoiceAlert.classList.add("d-none");
+		payInvoiceNameEl.textContent = purchaseInvoice;
+		payInvoiceOutstandingEl.textContent = fmt_currency(outstanding);
+		payInvoiceAmountInput.value = outstanding.toFixed(2);
+		payInvoiceAmountInput.max = outstanding;
+		payInvoiceModeSelect.value = "";
+		payInvoiceReferenceNoInput.value = "";
+		payInvoiceRemarksInput.value = "";
+		refresh_pay_invoice_pay_from_preview();
+		payInvoiceOverlay.classList.remove("d-none");
+	}
+
+	function close_pay_invoice_modal() {
+		payInvoiceOverlay.classList.add("d-none");
+		payInvoiceCurrentInvoice = null;
+	}
+
+	payInvoiceClose.addEventListener("click", close_pay_invoice_modal);
+	// Deliberately no backdrop-click-to-close — this modal holds a form the
+	// admin is filling in, so an accidental click outside it must not discard
+	// it. Close via the × button or Escape only.
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape" && !payInvoiceOverlay.classList.contains("d-none")) close_pay_invoice_modal();
+	});
+
+	payInvoiceForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		payInvoiceAlert.classList.add("d-none");
+
+		var amount = parseFloat(payInvoiceAmountInput.value) || 0;
+		if (amount <= 0) {
+			show_pay_invoice_alert(__("Enter an amount greater than zero."));
+			return;
+		}
+		// A small epsilon guards against float rounding (e.g. an outstanding
+		// balance of 59.99999999998 from prior partial payments) rejecting a
+		// deliberate "pay it all off" amount typed as the exact displayed figure.
+		if (amount > payInvoiceCurrentOutstanding + 0.005) {
+			show_pay_invoice_alert(__("Amount can't be more than the outstanding balance."));
+			return;
+		}
+
+		var payingInvoice = payInvoiceCurrentInvoice;
+		payInvoiceSubmitBtn.disabled = true;
+		payInvoiceSpinner.classList.remove("d-none");
+		payInvoiceSubmitLabel.textContent = __("Recording…");
+
+		call("ez_accounting.www.forms.user.purchase.pay_purchase_invoice", {
+			purchase_invoice: payingInvoice,
+			amount: amount,
+			mode_of_payment: payInvoiceModeSelect.value,
+			reference_no: payInvoiceReferenceNoInput.value,
+			remarks: payInvoiceRemarksInput.value
+		}).then(function () {
+			payInvoiceSubmitBtn.disabled = false;
+			payInvoiceSpinner.classList.add("d-none");
+			payInvoiceSubmitLabel.textContent = __("Record Payment");
+			close_pay_invoice_modal();
+			load_purchase_invoice_history(payingInvoice);
+		}).catch(function (err) {
+			payInvoiceSubmitBtn.disabled = false;
+			payInvoiceSpinner.classList.add("d-none");
+			payInvoiceSubmitLabel.textContent = __("Record Payment");
+			show_pay_invoice_alert(extract_error_message(err));
+		});
+	});
+
+	// Delegated on the tbody (bound once) rather than per-button — the whole
+	// tbody is rebuilt from an HTML string on every load/reload, which would
+	// silently drop any listeners attached directly to the row's own buttons.
+	historyBody.addEventListener("click", function (e) {
+		var duplicateBtn = e.target.closest(".duplicate-purchase-btn");
+		if (duplicateBtn) {
+			duplicate_purchase(duplicateBtn.dataset.purchaseInvoice, duplicateBtn);
+			return;
+		}
+
+		var payBtn = e.target.closest(".pay-invoice-btn");
+		if (payBtn) {
+			open_pay_invoice_modal(payBtn.dataset.purchaseInvoice, parseFloat(payBtn.dataset.outstanding) || 0);
+			return;
+		}
+
+		var historyBtn = e.target.closest(".payment-history-btn");
+		if (historyBtn) {
+			open_payment_history_modal(historyBtn.dataset.purchaseInvoice);
+			return;
+		}
+
+		var btn = e.target.closest(".cancel-purchase-btn");
+		if (!btn) return;
+
+		var purchaseInvoice = btn.dataset.purchaseInvoice;
+		if (!window.confirm(__("Cancel {0}? This cancels its Payment Entry and the Purchase Invoice together — this can't be undone from here.", [purchaseInvoice]))) {
+			return;
+		}
+
+		btn.disabled = true;
+		btn.textContent = __("Cancelling…");
+		call("ez_accounting.www.forms.user.purchase.cancel_express_purchase", {purchase_invoice: purchaseInvoice})
+			.then(function () {
+				load_purchase_invoice_history();
+			})
+			.catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel");
+			});
+	});
+
+	function duplicate_purchase(purchaseInvoice, button) {
+		var formHasData = supplierInput.value || itemRows.some(function (row) { return row.itemInput.value; });
+		if (formHasData && !window.confirm(__("Replace the current purchase form with a copy of {0}?", [purchaseInvoice]))) {
+			return;
+		}
+
+		button.disabled = true;
+		var originalHtml = button.innerHTML;
+		button.textContent = __("Loading…");
+
+		Promise.all([
+			call("ez_accounting.www.forms.user.purchase.get_purchase_invoice_for_duplicate", {purchase_invoice: purchaseInvoice}),
+			suppliersLoaded,
+			itemsLoaded,
+			modesLoaded
+		]).then(function (results) {
+			var data = results[0].message;
+			if (!data) throw new Error(__("Could not load the purchase."));
+
+			form.reset();
+			supplierCombo.clear();
+			supplierCombo.select_value(data.supplier, true);
+			postingDateInput.value = frappe.datetime.get_today();
+			itemsContainer.innerHTML = "";
+			itemRows = [];
+
+			(data.items || []).forEach(function (item) {
+				var row = create_item_row();
+				row.combo.select_value(item.item, true);
+				row.qtyInput.value = item.qty;
+				row.rateInput.value = item.rate;
+				row.descriptionInput.value = item.description || "";
+				row.deductionInput.checked = !!item.is_deduction;
+				update_row_amount(row);
+				refresh_row_expense_account_preview(row);
+			});
+			if (!itemRows.length) create_item_row();
+
+			remarksInput.value = data.remarks || "";
+			referenceNoInput.value = "";
+			partialAmountInput.value = "";
+			partialAmountTouched = false;
+			update_payment_mode_ui();
+			update_grand_total();
+			refresh_pay_from_preview();
+			save_draft();
+
+			show_alert(__("Copied {0}. Review the new purchase before submitting.", [purchaseInvoice]), false);
+			form.scrollIntoView({behavior: "smooth", block: "start"});
+		}).catch(function (err) {
+			show_alert(extract_error_message(err), true);
+		}).then(function () {
+			button.disabled = false;
+			button.innerHTML = originalHtml;
+		});
+	}
+
+	// Same modal, opened from the "Pay Now" button in purchase-result instead
+	// of a history row — bound once here (not inside the submit handler that
+	// rebuilds resultBox's innerHTML each time) so it's never re-attached or
+	// left stacked across repeated purchases.
+	resultBox.addEventListener("click", function (e) {
+		var payBtn = e.target.closest(".result-pay-invoice-btn");
+		if (!payBtn) return;
+		open_pay_invoice_modal(payBtn.dataset.purchaseInvoice, parseFloat(payBtn.dataset.outstanding) || 0);
+	});
+
+	// ---- Payment History modal ----
+	// Every Payment Entry ever recorded against one invoice, not just the
+	// single one Purchase Invoice History's own row shows (get_purchase_
+	// invoice_history() only ever surfaces the first submitted Payment Entry
+	// it finds — fine for a normal one-payment purchase, but a Partial
+	// Payment followed by one or more later "Pay" payments needs the whole
+	// trail, including anything that was later cancelled). Mirrors
+	// sales.html's own Payment History modal.
+	var paymentHistoryOverlay = document.getElementById("payment-history-overlay");
+	var paymentHistoryClose = document.getElementById("payment-history-close");
+	var paymentHistoryInvoiceNameEl = document.getElementById("payment-history-invoice-name");
+	var paymentHistoryBody = document.getElementById("payment-history-body");
+	var PAYMENT_STATUS_PILL_CLASS = { Submitted: "pill-final", Cancelled: "pill-cancelled" };
+
+	function close_payment_history_modal() {
+		paymentHistoryOverlay.classList.add("d-none");
+	}
+	paymentHistoryClose.addEventListener("click", close_payment_history_modal);
+	// Close via the × button or Escape only — no backdrop-click-to-close,
+	// consistent with the Pay modal above.
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape" && !paymentHistoryOverlay.classList.contains("d-none")) close_payment_history_modal();
+	});
+
+	function open_payment_history_modal(purchaseInvoice) {
+		paymentHistoryInvoiceNameEl.textContent = purchaseInvoice;
+		paymentHistoryBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("Loading…") + "</td></tr>";
+		paymentHistoryOverlay.classList.remove("d-none");
+
+		call("ez_accounting.www.forms.user.purchase.get_purchase_invoice_payment_history", {purchase_invoice: purchaseInvoice})
+			.then(function (r) {
+				var rows = r.message || [];
+				if (!rows.length) {
+					paymentHistoryBody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("No payments recorded yet.") + "</td></tr>";
+					return;
+				}
+				paymentHistoryBody.innerHTML = rows.map(function (row) {
+					var pillClass = PAYMENT_STATUS_PILL_CLASS[row.status] || "pill-draft";
+					return (
+						"<tr>" +
+						"<td>" + date_in_words(row.posting_date) + "</td>" +
+						'<td><a class="history-row-link" target="_blank" href="' + doc_link("payment-entry", row.name) + '">' + frappe.utils.escape_html(row.name) + "</a></td>" +
+						'<td class="text-right">' + frappe.format(row.allocated_amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+						"<td>" + (row.mode_of_payment ? frappe.utils.escape_html(row.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+						"<td>" + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+						'<td><span class="status-pill ' + pillClass + '">' + frappe.utils.escape_html(row.status) + "</span></td>" +
+						"</tr>"
+					);
+				}).join("");
+			})
+			.catch(function () {
+				paymentHistoryBody.innerHTML = '<tr><td colspan="6" class="text-danger">' + __("Could not load payment history.") + "</td></tr>";
+			});
+	}
+
+	var MONTH_NAMES = ["Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.", "Sept.", "Oct.", "Nov.", "Dec."];
+
+	// "2026-09-24" -> "Sept. 24, 2026"
+	function date_in_words(iso) {
+		var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+		if (!m) return iso || "";
+		return __(MONTH_NAMES[parseInt(m[2], 10) - 1]) + " " + parseInt(m[3], 10) + ", " + m[1];
+	}
+
+	// "2026-09-24 15:20:04" -> "Sept. 24, 2026 15:20"
+	function created_in_words(value) {
+		var t = /[ T](\d{2}:\d{2})/.exec(value || "");
+		return date_in_words(value) + (t ? " " + t[1] : "");
+	}
+
+	// row.creation is a full datetime (unlike posting_date, a business date
+	// the admin can backdate) — str_to_user formats it per the site's date/
+	// time display settings; falls back to the raw value if that ever throws
+	// (e.g. an unexpected format), so a formatting hiccup never blanks the cell.
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	// highlightInvoice: the just-created Purchase Invoice's name, if this
+	// reload follows a successful submit (see the submit handler below) —
+	// that row gets a pulsing highlight (is-new-row, styled above) and is
+	// scrolled into view, so a fresh purchase is easy to spot in a list that
+	// can otherwise run to dozens of rows. Omitted for every other reload
+	// (page load, date-filter changes, cancel) since there's no "just did
+	// this" row to point at.
+	function load_purchase_invoice_history(highlightInvoice, supplierSearchOverride, itemSearchOverride) {
+		// supplierSearchOverride/itemSearchOverride: same snapshot-at-keystroke
+		// mechanism as sales.html's own load_sales_invoice_history() — see its
+		// comment for why (the searchable-select combo below clears its own
+		// text ~150ms after blur if nothing was picked, which can race ahead
+		// of a slower debounce).
+		call("ez_accounting.www.forms.user.purchase.get_purchase_invoice_history", {
+			from_date: historyFromDate.value,
+			to_date: historyToDate.value,
+			supplier_search: (supplierSearchOverride !== undefined ? supplierSearchOverride : historySupplierSearch.value).trim(),
+			item_search: (itemSearchOverride !== undefined ? itemSearchOverride : historyItemSearch.value).trim()
+		}).then(function (r) {
+			var rows = r.message || [];
+			if (!rows.length) {
+				historyBody.innerHTML = '<tr><td colspan="10" class="text-muted">' + __("No purchase invoices found for this filter.") + "</td></tr>";
+				return;
+			}
+			historyBody.innerHTML = rows.map(function (row) {
+				var link = doc_link("purchase-invoice", row.name);
+				var pillClass = STATUS_PILL_CLASS[row.status] || "pill-draft";
+				var rowClass = row.name === highlightInvoice ? ' class="is-new-row"' : "";
+				return (
+					"<tr" + rowClass + ">" +
+					"<td>" + date_in_words(row.posting_date) + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' +
+						frappe.utils.escape_html(row.supplier_name) + "</a></td>" +
+					"<td>" + (row.created_by ? frappe.utils.escape_html(row.created_by) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td class="text-right">' + frappe.format(row.grand_total, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td class="text-right">' + frappe.format(row.outstanding_amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td><span class="status-pill ' + pillClass + '">' + frappe.utils.escape_html(row.status) + "</span></td>" +
+					'<td>' + (row.pay_from ? frappe.utils.escape_html(row.pay_from) : '<span class="text-muted">&mdash;</span>') + '</td>' +
+					'<td>' + (row.mode_of_payment ? frappe.utils.escape_html(row.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + '</td>' +
+'<td>' + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + '</td>' +
+					'<td class="history-print-actions">' +
+						'<a class="history-row-link" target="_blank" href="' + printer_link(row.name, printFormatSettings.purchase_invoice_format || "Purchase Invoice with Remarks") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Invoice") + "</a>" +
+						(row.payment_entry
+							? '<a class="history-row-link" target="_blank" href="' + printer_link(row.payment_entry, printFormatSettings.purchase_receipt_format || undefined) + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Receipt") + "</a>" +
+								'<a class="history-row-link" target="_blank" href="' + printer_link(row.payment_entry, printFormatSettings.purchase_check_format || "FHB Check") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Print Check") + "</a>"
+							: '<span class="text-muted">' + __("No payment") + "</span>") +
+						'<button type="button" class="history-row-link payment-history-btn" data-purchase-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+							'<i class="fa fa-list btn-icon" aria-hidden="true"></i>' + __("History") + "</button>" +
+						'<button type="button" class="history-row-link duplicate-purchase-btn" data-purchase-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+							'<i class="fa fa-copy btn-icon" aria-hidden="true"></i>' + __("Duplicate") + "</button>" +
+						(row.status !== "Cancelled" && row.outstanding_amount > 0
+							? '<button type="button" class="history-row-link pay-invoice-btn" data-purchase-invoice="' + frappe.utils.escape_html(row.name) + '" data-outstanding="' + row.outstanding_amount + '">' +
+								'<i class="fa fa-money btn-icon" aria-hidden="true"></i>' + __("Pay") + "</button>"
+							: "") +
+						(row.status !== "Cancelled"
+							? '<button type="button" class="history-row-link cancel-purchase-btn" data-purchase-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+								'<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel") + "</button>"
+							: "") + '</td>' +
+					"</tr>"
+				);
+			}).join("");
+
+			if (highlightInvoice) {
+				var newRow = historyBody.querySelector("tr.is-new-row");
+				// rAF, not immediate — scrollIntoView on a row whose layout
+				// hasn't settled yet (innerHTML was just replaced above) can
+				// measure the wrong position and land short.
+				if (newRow) {
+					window.requestAnimationFrame(function () {
+						newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+					});
+				}
+			}
+		}).catch(function () {
+			historyBody.innerHTML = '<tr><td colspan="10" class="text-danger">' + __("Could not load purchase invoice history.") + "</td></tr>";
+		});
+	}
+	printFormatSettingsLoaded.then(load_purchase_invoice_history);
+
+	historyFromDate.addEventListener("change", load_purchase_invoice_history);
+	historyToDate.addEventListener("change", load_purchase_invoice_history);
+
+	// Debounced (not on every keystroke) — a real server round trip, unlike
+	// the plain client-side filtering the searchable-select combo below
+	// already does against its own loaded dropdown. Snapshots each box's
+	// typed text *now* — mirrors sales.html's own history search debounce
+	// (see its comment on why the snapshot matters).
+	var historySearchDebounce = null;
+	function debounced_reload_history() {
+		var supplierTerm = historySupplierSearch.value;
+		var itemTerm = historyItemSearch.value;
+		clearTimeout(historySearchDebounce);
+		historySearchDebounce = setTimeout(function () {
+			load_purchase_invoice_history(undefined, supplierTerm, itemTerm);
+		}, 350);
+	}
+	historySupplierSearch.addEventListener("input", debounced_reload_history);
+	historyItemSearch.addEventListener("input", debounced_reload_history);
+
+	// Same combobox factory the Supplier/Item fields in the form above use —
+	// mirrors sales.html's own history combos (see its comment for the full
+	// reasoning). Loads its own copy of the supplier/item lists rather than
+	// sharing the form's own combos' internal state, which isn't exposed.
+	var historySupplierCombo = create_searchable_select(
+		historySupplierSearch, historySupplierHidden, historySupplierOptions,
+		"name", "supplier_name",
+		function () { load_purchase_invoice_history(); }
+	);
+	call("ez_accounting.www.forms.user.purchase.get_suppliers").then(function (r) {
+		historySupplierCombo.set_rows(r.message || []);
+	});
+
+	var historyItemCombo = create_searchable_select(
+		historyItemSearch, historyItemHidden, historyItemOptions,
+		"name", "item_name",
+		function () { load_purchase_invoice_history(); }
+	);
+	call("ez_accounting.www.forms.user.purchase.get_purchase_items").then(function (r) {
+		historyItemCombo.set_rows(r.message || []);
+	});
+
+	historyClearDates.addEventListener("click", function () {
+		historyFromDate.value = "";
+		historyToDate.value = "";
+		historySupplierCombo.clear();
+		historyItemCombo.clear();
+		load_purchase_invoice_history();
+	});
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		// Rows with no item picked are silently dropped (the admin clicked
+		// "Add Item" then changed their mind) rather than blocking submit;
+		// any row that DOES have an item picked must have valid qty/rate.
+		var lineItems = [];
+		var lineItemError = null;
+		itemRows.forEach(function (r) {
+			if (!r.itemInput.value) return;
+			var qty = parseFloat(r.qtyInput.value) || 0;
+			var rate = parseFloat(r.rateInput.value) || 0;
+			if (qty <= 0 || rate <= 0) {
+				lineItemError = __("Quantity and Rate must both be greater than zero for every item row.");
+			}
+			lineItems.push({item: r.itemInput.value, qty: qty, rate: rate, description: r.descriptionInput.value.trim(), is_deduction: r.deductionInput.checked});
+		});
+
+		var paymentMode = current_payment_mode();
+		var partialAmount = parseFloat(partialAmountInput.value) || 0;
+		var grandTotal = current_grand_total();
+
+		var args = {
+			supplier: supplierInput.value,
+			items: JSON.stringify(lineItems),
+			posting_date: postingDateInput.value,
+			payment_mode: paymentMode,
+			partial_amount: paymentMode === "partial" ? partialAmount : 0,
+			// Meaningless without an actual payment — blanked here (not just
+			// hidden) so a value left over from before switching to Invoice
+			// Only doesn't get sent along looking like it was actually used.
+			mode_of_payment: paymentMode === "invoice_only" ? "" : modeOfPaymentSelect.value,
+			reference_no: paymentMode === "invoice_only" ? "" : referenceNoInput.value,
+			remarks: remarksInput.value
+		};
+
+		if (!args.supplier || !lineItems.length) {
+			show_alert(__("Please fill in all required fields."), true);
+			return;
+		}
+		if (lineItemError) {
+			show_alert(lineItemError, true);
+			return;
+		}
+		if (paymentMode === "partial") {
+			if (partialAmount <= 0) {
+				show_alert(__("Enter an amount greater than zero for the partial payment."), true);
+				return;
+			}
+			if (partialAmount > grandTotal) {
+				show_alert(__("The partial payment amount can't be more than the Grand Total."), true);
+				return;
+			}
+		}
+
+		set_loading(true);
+
+		call("ez_accounting.www.forms.user.purchase.process_express_purchase", args).then(function (r) {
+			set_loading(false);
+			if (!r.message) return;
+			var d = r.message;
+
+			save_last_defaults({
+				item: lineItems[0].item,
+				rate: lineItems[0].rate,
+				mode_of_payment: args.mode_of_payment,
+				reference_no: args.reference_no
+			});
+
+			resultBox.innerHTML =
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Purchase recorded for {0}", [frappe.utils.escape_html(d.supplier_name)]) + '</strong>' +
+					'<div class="mt-2">' +
+						'<a target="_blank" href="' + doc_link("purchase-invoice", d.purchase_invoice) + '">' + __("Purchase Invoice") + '</a>' +
+						(d.payment_entry
+							? ' &middot; <a target="_blank" href="' + doc_link("payment-entry", d.payment_entry) + '">' + __("Payment Entry") + '</a>' +
+								' &middot; <a target="_blank" href="' + printer_link(d.payment_entry, printFormatSettings.purchase_check_format || "FHB Check") + '">' + __("Print Check") + '</a>'
+							: '') +
+					'</div>' +
+					'<div class="mt-2 text-muted">' + __("Grand Total") + ': ' + frappe.format(d.grand_total, {fieldtype: "Currency"}, {only_value: true}) + '</div>' +
+					(d.outstanding_amount > 0
+						? '<div class="mt-2 text-muted">' + __("Outstanding") + ': ' + frappe.format(d.outstanding_amount, {fieldtype: "Currency"}, {only_value: true}) + '</div>'
+						: '') +
+					(d.payment_entry
+						? '<div class="mt-2 text-muted">' + __("Paid from") + ': ' + frappe.utils.escape_html(d.paid_from_account) + '</div>'
+						: '') +
+					(d.outstanding_amount > 0
+						? '<div class="mt-2">' +
+							'<button type="button" class="btn btn-outline-secondary btn-sm result-pay-invoice-btn" data-purchase-invoice="' + frappe.utils.escape_html(d.purchase_invoice) + '" data-outstanding="' + d.outstanding_amount + '">' +
+								__("Pay Now") +
+							'</button>' +
+						'</div>'
+						: '') +
+				'</div>';
+			resultBox.classList.remove("d-none");
+			clear_draft();
+
+			// Posting Date is kept as-is (not reset to today) — entering a batch
+			// of purchases for the same (possibly backdated) date is the common case.
+			var lastPostingDate = postingDateInput.value;
+			form.reset();
+			postingDateInput.value = lastPostingDate;
+			supplierCombo.clear();
+
+			// Rebuilt from scratch (rather than relying on native form.reset()
+			// for these dynamically-created rows) so it unambiguously ends up
+			// back at exactly one empty row, regardless of how many there
+			// were or what native reset() would have done to elements it
+			// didn't create.
+			itemsContainer.innerHTML = "";
+			itemRows = [];
+			create_item_row();
+			update_grand_total();
+
+			// form.reset() above already put payment_mode back on "full" (its
+			// checked-by-default radio) and cleared partial_amount — just
+			// re-sync the derived UI (is-selected classes, hidden fields,
+			// the "untouched" tracking flag) to match.
+			partialAmountTouched = false;
+			update_payment_mode_ui();
+
+			refresh_pay_from_preview();
+			// Passing the new invoice's name highlights + scrolls to its row
+			// (see load_purchase_invoice_history's highlightInvoice param
+			// above) — the whole point being to make the purchase just
+			// recorded easy to find in a history table that can run to dozens
+			// of rows.
+			load_purchase_invoice_history(d.purchase_invoice);
+			supplierSearch.focus();
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+
+{% endblock %}

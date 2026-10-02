@@ -1,0 +1,375 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .purchase-import-card .card-body {
+	padding: 1.75rem 2rem;
+}
+
+body.forms-portal-dark .purchase-import-template {
+	white-space: pre;
+	overflow-x: auto;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 1rem;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 0.9rem;
+	color: #e6e8eb;
+	margin-bottom: 0.85rem;
+}
+
+body.forms-portal-dark #purchase-import-csv {
+	width: 100%;
+	min-height: 220px;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 0.92rem;
+	line-height: 1.5;
+	background-color: #12141a;
+	color: #e6e8eb;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 1rem;
+	resize: vertical;
+}
+
+body.forms-portal-dark #purchase-import-csv:focus {
+	outline: none;
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+	border-color: #5b8cff;
+}
+
+body.forms-portal-dark .purchase-import-summary {
+	font-size: 1rem;
+	margin: 1rem 0;
+}
+
+body.forms-portal-dark .purchase-import-table td,
+body.forms-portal-dark .purchase-import-table th {
+	vertical-align: middle;
+	font-size: 0.9rem;
+}
+
+body.forms-portal-dark tr.import-row-invalid td,
+body.forms-portal-dark tr.import-row-error td {
+	background-color: #2a1616;
+}
+
+body.forms-portal-dark tr.import-row-created td {
+	background-color: #12331f;
+}
+
+body.forms-portal-dark tr.import-row-skipped td {
+	opacity: 0.6;
+}
+
+body.forms-portal-dark .import-row-errors {
+	color: #f0a8a8;
+	font-size: 0.85rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero d-flex justify-content-between align-items-start flex-wrap" style="gap: 1rem;">
+	<div>
+		<h1 class="mb-1"><a href="">{{ _("Import Purchases") }}</a></h1>
+		<p class="dashboard-subtitle mb-0">
+			{{ _("Bulk-create purchases for {0} from pasted CSV — one row is one Purchase Invoice and its full payment.").format(company) }}
+		</p>
+	</div>
+	<a href="/forms/user/purchase" class="btn btn-outline-secondary">{{ _("Back to Express Purchase") }}</a>
+</div>
+
+<div class="card form-card purchase-import-card mb-4">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("CSV Template") }}</h4>
+		</div>
+		<div class="purchase-import-template" id="purchase-import-template-text">{{ csv_template }}</div>
+		<div class="form-text mb-3">
+			{{ _("Required: supplier, item, qty, rate. Optional: posting_date (YYYY-MM-DD, defaults to today), mode_of_payment, reference_no, remarks. Each row becomes one Purchase Invoice + its full payment — multi-item invoices aren't supported by this import.") }}
+		</div>
+		<button type="button" class="btn btn-outline-secondary btn-sm" id="purchase-import-copy-btn">{{ _("Copy Template") }}</button>
+		<button type="button" class="btn btn-outline-secondary btn-sm" id="purchase-import-load-example-btn">{{ _("Load Example Into Textarea") }}</button>
+	</div>
+</div>
+
+<div class="card form-card purchase-import-card mb-4">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Paste CSV") }}</h4>
+		</div>
+		<div id="purchase-import-alert" class="alert d-none" role="alert"></div>
+		<textarea id="purchase-import-csv" spellcheck="false" placeholder="{{ _('Paste CSV here, including the header row…') }}"></textarea>
+		<div class="d-grid mt-3">
+			<button type="button" class="btn btn-outline-secondary" id="purchase-import-preview-btn">{{ icons.btn_icon("arrow-right") }}{{ _("Preview") }}</button>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card purchase-import-card mb-4 d-none" id="purchase-import-preview-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Preview") }}</h4>
+		</div>
+		<div class="purchase-import-summary" id="purchase-import-preview-summary"></div>
+		<div class="table-responsive">
+			<table class="table table-bordered purchase-import-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Row") }}</th>
+						<th>{{ _("Supplier") }}</th>
+						<th>{{ _("Item") }}</th>
+						<th class="text-right">{{ _("Qty") }}</th>
+						<th class="text-right">{{ _("Rate") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Status") }}</th>
+					</tr>
+				</thead>
+				<tbody id="purchase-import-preview-body"></tbody>
+			</table>
+		</div>
+		<div class="d-grid mt-3">
+			<button type="button" class="btn btn-primary" id="purchase-import-submit-btn" disabled>
+				<span class="spinner-border spinner-border-sm d-none" id="purchase-import-submit-spinner" role="status" aria-hidden="true"></span>
+				<span id="purchase-import-submit-label">{{ _("Import Valid Rows") }}</span>
+			</button>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card purchase-import-card d-none" id="purchase-import-results-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Import Results") }}</h4>
+		</div>
+		<div class="purchase-import-summary" id="purchase-import-results-summary"></div>
+		<div class="table-responsive">
+			<table class="table table-bordered purchase-import-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Row") }}</th>
+						<th>{{ _("Supplier") }}</th>
+						<th>{{ _("Item") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="purchase-import-results-body"></tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var csvInput = document.getElementById("purchase-import-csv");
+	var alertBox = document.getElementById("purchase-import-alert");
+	var templateText = document.getElementById("purchase-import-template-text").textContent;
+	var copyBtn = document.getElementById("purchase-import-copy-btn");
+	var loadExampleBtn = document.getElementById("purchase-import-load-example-btn");
+	var previewBtn = document.getElementById("purchase-import-preview-btn");
+	var previewCard = document.getElementById("purchase-import-preview-card");
+	var previewSummary = document.getElementById("purchase-import-preview-summary");
+	var previewBody = document.getElementById("purchase-import-preview-body");
+	var submitBtn = document.getElementById("purchase-import-submit-btn");
+	var submitSpinner = document.getElementById("purchase-import-submit-spinner");
+	var submitLabel = document.getElementById("purchase-import-submit-label");
+	var resultsCard = document.getElementById("purchase-import-results-card");
+	var resultsSummary = document.getElementById("purchase-import-results-summary");
+	var resultsBody = document.getElementById("purchase-import-results-body");
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — same reasoning as every
+	// other Express page in this app.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function fmt_currency(value) {
+		return frappe.format(value, {fieldtype: "Currency"}, {only_value: true});
+	}
+
+	copyBtn.addEventListener("click", function () {
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(templateText).then(function () {
+				show_alert(__("Template copied to clipboard."));
+			}).catch(function () {
+				show_alert(__("Could not copy — select the template text manually instead."), true);
+			});
+		} else {
+			show_alert(__("Clipboard isn't available — select the template text manually instead."), true);
+		}
+	});
+
+	loadExampleBtn.addEventListener("click", function () {
+		csvInput.value = templateText;
+	});
+
+	// Only re-enabled once a fresh Preview confirms this exact pasted text —
+	// editing the textarea after a preview invalidates it, since Import
+	// re-parses whatever's currently in the box, not a frozen snapshot of
+	// what was last previewed.
+	csvInput.addEventListener("input", function () {
+		submitBtn.disabled = true;
+	});
+
+	previewBtn.addEventListener("click", function () {
+		alertBox.classList.add("d-none");
+		resultsCard.classList.add("d-none");
+		submitBtn.disabled = true;
+
+		call("ez_accounting.www.forms.user.purchase_import.preview_import", {csv_text: csvInput.value})
+			.then(function (r) {
+				var data = r.message || {};
+				var rows = data.rows || [];
+
+				previewSummary.textContent = __("{0} valid, {1} invalid — only valid rows will be imported.", [
+					data.valid_count, data.invalid_count
+				]);
+
+				previewBody.innerHTML = rows.map(function (row) {
+					var rowClass = row.valid ? "" : "import-row-invalid";
+					var statusCell = row.valid
+						? '<span class="status-pill pill-final">' + __("Valid") + "</span>"
+						: '<span class="status-pill pill-cancelled">' + __("Invalid") + "</span>" +
+							'<div class="import-row-errors">' + row.errors.map(frappe.utils.escape_html).join("<br>") + "</div>";
+					return (
+						'<tr class="' + rowClass + '">' +
+						"<td>" + row.row + "</td>" +
+						"<td>" + frappe.utils.escape_html(row.supplier_name || row.supplier || "") + "</td>" +
+						"<td>" + frappe.utils.escape_html(row.item_name || row.item || "") + "</td>" +
+						'<td class="text-right">' + row.qty + "</td>" +
+						'<td class="text-right">' + fmt_currency(row.rate) + "</td>" +
+						'<td class="text-right">' + fmt_currency(row.amount) + "</td>" +
+						"<td>" + (row.posting_date || "") + "</td>" +
+						"<td>" + (row.mode_of_payment ? frappe.utils.escape_html(row.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+						"<td>" + statusCell + "</td>" +
+						"</tr>"
+					);
+				}).join("");
+
+				previewCard.classList.remove("d-none");
+				submitBtn.disabled = data.valid_count <= 0;
+			})
+			.catch(function (err) {
+				show_alert(extract_error_message(err), true);
+			});
+	});
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	submitBtn.addEventListener("click", function () {
+		submitBtn.disabled = true;
+		submitSpinner.classList.remove("d-none");
+		submitLabel.textContent = __("Importing…");
+
+		call("ez_accounting.www.forms.user.purchase_import.import_purchases", {csv_text: csvInput.value})
+			.then(function (r) {
+				submitSpinner.classList.add("d-none");
+				submitLabel.textContent = __("Import Valid Rows");
+
+				var data = r.message || {};
+				var results = data.results || [];
+
+				resultsSummary.textContent = __("{0} created, {1} failed, {2} skipped.", [
+					data.created_count, data.error_count, data.skipped_count
+				]);
+
+				resultsBody.innerHTML = results.map(function (row) {
+					var rowClass = "import-row-" + row.status;
+					var statusCell;
+					if (row.status === "created") {
+						statusCell = '<span class="status-pill pill-final">' + __("Created") + "</span>";
+					} else if (row.status === "error") {
+						statusCell = '<span class="status-pill pill-cancelled">' + __("Error") + "</span>" +
+							'<div class="import-row-errors">' + frappe.utils.escape_html(row.error || "") + "</div>";
+					} else {
+						statusCell = '<span class="status-pill pill-draft">' + __("Skipped") + "</span>" +
+							'<div class="import-row-errors">' + (row.errors || []).map(frappe.utils.escape_html).join("<br>") + "</div>";
+					}
+					var linksCell = row.status === "created"
+						? '<a target="_blank" href="' + doc_link("purchase-invoice", row.purchase_invoice) + '">' + __("Invoice") + "</a>" +
+							' &middot; <a target="_blank" href="' + doc_link("payment-entry", row.payment_entry) + '">' + __("Payment") + "</a>"
+						: "";
+					return (
+						'<tr class="' + rowClass + '">' +
+						"<td>" + row.row + "</td>" +
+						"<td>" + frappe.utils.escape_html(row.supplier_name || row.supplier || "") + "</td>" +
+						"<td>" + frappe.utils.escape_html(row.item_name || row.item || "") + "</td>" +
+						'<td class="text-right">' + fmt_currency(row.amount) + "</td>" +
+						"<td>" + statusCell + "</td>" +
+						"<td>" + linksCell + "</td>" +
+						"</tr>"
+					);
+				}).join("");
+
+				resultsCard.classList.remove("d-none");
+				resultsCard.scrollIntoView({behavior: "smooth", block: "start"});
+			})
+			.catch(function (err) {
+				submitSpinner.classList.add("d-none");
+				submitLabel.textContent = __("Import Valid Rows");
+				submitBtn.disabled = false;
+				show_alert(extract_error_message(err), true);
+			});
+	});
+});
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{#
+	Bare, self-contained "Check Register" content -- no {% extends %}, no site
+	chrome. Rendered by /forms/user/printerhtml (kind=check_register) and
+	iframed by /forms/user/printer at true 8.5in x 11in size.
+
+	Context (money + dates are pre-formatted strings -- see printerhtml.py's
+	_render_check_register()):
+	  company, period, printed_at
+	  checks: list of {check_no, date, payee, cash_account, amount, void}
+	  report_total
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.ckr-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.ckr-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.ckr-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.ckr-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+	table.ckr-table th, table.ckr-table td { text-align: left; padding: 0.05in 0.09in; vertical-align: top; }
+
+	table.ckr-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7.5pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+
+	table.ckr-table th.num, table.ckr-table td.num { text-align: right; white-space: nowrap; }
+	table.ckr-table th:first-child, table.ckr-table td:first-child { padding-left: 0; }
+	table.ckr-table th:last-child, table.ckr-table td:last-child { padding-right: 0; }
+
+	table.ckr-table td { border-bottom: 0.5px solid #ddd; }
+	tr.is-void td { color: #777; }
+	tr.is-void td.ckr-void { color: #000; font-weight: 700; }
+
+	tfoot tr.ckr-total td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 10pt;
+	}
+
+	.ckr-empty { color: #555; padding: 0.3in 0; }
+
+	.ckr-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print { thead { display: table-header-group; } }
+</style>
+
+<div class="ckr-company">{{ company }}</div>
+<div class="ckr-title">{{ _("Check Register") }}</div>
+<div class="ckr-subtitle">{{ _("For the Period {0}").format(period) }}</div>
+
+{% if not checks %}
+<p class="ckr-empty">{{ _("No checks in this period.") }}</p>
+{% else %}
+<table class="ckr-table">
+	<thead>
+		<tr>
+			<th>{{ _("Check #") }}</th>
+			<th>{{ _("Date") }}</th>
+			<th>{{ _("Payee") }}</th>
+			<th>{{ _("Cash Account") }}</th>
+			<th class="num">{{ _("Amount") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for c in checks %}
+		<tr class="{{ 'is-void' if c.void else '' }}">
+			<td>{{ c.check_no }}{% if c.void %} <span class="ckr-void">{{ _("VOID") }}</span>{% endif %}</td>
+			<td>{{ c.date }}</td>
+			<td>{{ c.payee }}</td>
+			<td>{{ c.cash_account }}</td>
+			<td class="num">{{ "" if c.void else c.amount }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="ckr-total">
+			<td colspan="4">{{ _("Total") }}</td>
+			<td class="num">{{ report_total }}</td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="ckr-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

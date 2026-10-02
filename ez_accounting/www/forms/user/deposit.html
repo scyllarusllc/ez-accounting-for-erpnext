@@ -1,0 +1,1369 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .deposit-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .deposit-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .deposit-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .deposit-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .deposit-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark .deposit-card .stat-tile,
+body.forms-portal-dark .deposit-card .value-preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 54px;
+	font-size: 1.1rem;
+	padding: 0.7rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .deposit-card .value-preview.text-danger {
+	border-color: #5a2323;
+	font-weight: 600;
+}
+
+body.forms-portal-dark .deposit-card .summary-section {
+	margin-top: 0.5rem;
+	padding-top: 1.5rem;
+	border-top: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .deposit-card .summary-section .form-label {
+	font-size: 1.15rem;
+}
+
+body.forms-portal-dark .deposit-card .value-preview.summary-value {
+	font-size: 1.35rem;
+	font-weight: 700;
+	min-height: 60px;
+}
+
+body.forms-portal-dark .deposit-history-card tfoot td {
+	font-weight: 700;
+	border-top: 2px solid #2a2e37;
+	background-color: #171920;
+}
+
+body.forms-portal-dark .deposit-card #deposit-submit {
+	font-size: 1.2rem;
+	font-weight: 600;
+	padding: 1.1rem;
+	min-height: 60px;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .deposit-card #deposit-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .deposit-card .deposit-result .alert {
+	font-size: 1.05rem;
+	padding: 1.1rem 1.25rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .deposit-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Deposit History */
+body.forms-portal-dark .deposit-history-card td,
+body.forms-portal-dark .deposit-history-card th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .deposit-history-card tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+/* The row for a deposit sheet just submitted through this page's own form —
+   pulses a few times then a lingering tinted background/left-border so it's
+   still easy to spot even after the pulse animation ends, scrolled into view
+   by load_deposit_history()'s highlightName argument. Mirrors Express Sales'
+   own is-new-row treatment (sales.html) exactly, just re-scoped to
+   .deposit-history-card. */
+body.forms-portal-dark .deposit-history-card tr.is-new-row td {
+	background-color: rgba(91, 140, 255, 0.16);
+	animation: deposit-row-highlight-pulse 2.4s ease-in-out;
+}
+
+body.forms-portal-dark .deposit-history-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #5b8cff;
+}
+
+@keyframes deposit-row-highlight-pulse {
+	0%, 100% { background-color: rgba(91, 140, 255, 0.16); }
+	15%, 45%, 75% { background-color: rgba(91, 140, 255, 0.5); }
+	30%, 60%, 90% { background-color: rgba(91, 140, 255, 0.16); }
+}
+
+body.forms-portal-dark .pill-cancelled {
+	background-color: #3a1f1f;
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .deposit-result .gl-entries-table {
+	margin-top: 1rem;
+}
+
+body.forms-portal-dark .gl-entries-row td {
+	background-color: #12141a;
+	padding: 1rem 1.25rem;
+}
+
+body.forms-portal-dark .history-action-link {
+	white-space: nowrap;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Bank Deposit Sheet") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Count physical cash for {0} and compare it to what the system expects for the receipt period.").format(company) }}
+	</p>
+</div>
+
+<div class="card form-card deposit-entries-card mb-4">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Not Yet Deposited") }}</h4>
+		</div>
+		<p class="text-muted">{{ _("Cash and check Payment Entries with no submitted deposit sheet covering their date yet — the receipts still to be deposited.") }}</p>
+		<div class="row g-3 mb-3">
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Entries") }}</label>
+				<div id="undep-summary-count" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total Cash") }}</label>
+				<div id="undep-summary-cash" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total Checks") }}</label>
+				<div id="undep-summary-checks" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total") }}</label>
+				<div id="undep-summary-total" class="value-preview summary-value">&mdash;</div>
+			</div>
+		</div>
+		<div id="undep-range-hint" class="mb-3 d-none">
+			<span class="text-muted" id="undep-range-text"></span>
+			<button type="button" class="btn btn-sm btn-outline-secondary" style="margin-left: 0.6rem;" id="undep-use-dates">{{ _("Use this range") }}</button>
+		</div>
+		<div class="row g-2 align-items-end mb-3">
+			<div class="col-auto">
+				<label class="form-label" for="customer_filter">{{ _("Customer") }}</label>
+				<input type="text" class="form-control" id="customer_filter" autocomplete="off" placeholder="{{ _('Filter by customer…') }}">
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Party") }}</th>
+						<th>{{ _("Type") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Deposit to") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th>{{ _("Reference No") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="undep-table-body">
+					<tr><td colspan="9" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card deposit-card">
+	<div class="card-body">
+
+		<div id="deposit-alert" class="alert d-none" role="alert"></div>
+		{% if amend_from %}
+		<div class="alert alert-warning" id="deposit-amend-banner">
+			{{ _("Amending {0} — edit the deposit details and submit to create a corrected deposit sheet.").format(amend_from) }}
+		</div>
+		{% endif %}
+
+		<form id="deposit-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-md-12">
+					<label class="form-label" for="deposit_to_account">{{ _("Deposit to") }}</label>
+					<select class="form-control" id="deposit_to_account" name="deposit_to_account" required>
+						<option value="" selected disabled>{{ _("Select a bank account…") }}</option>
+					</select>
+					<div class="form-text">{{ _("Pick this first. Expected Cash / Checks below only count receipts for items bound to this account (Item → Deposit to, on the Item Accounts page).") }}</div>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="deposit_date">{{ _("Deposit Date") }}</label>
+					<input type="date" class="form-control" id="deposit_date" name="deposit_date" required>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="from_receipt_date">{{ _("From Receipt Date") }}</label>
+					<input type="date" class="form-control" id="from_receipt_date" name="from_receipt_date" required>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label" for="to_receipt_date">{{ _("To Receipt Date") }}</label>
+					<input type="date" class="form-control" id="to_receipt_date" name="to_receipt_date" required>
+				</div>
+
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd100">{{ _("USD100") }}</label>
+					<input type="number" class="form-control" id="usd100" name="usd100" min="0" step="1" value="0">
+				</div>
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd50">{{ _("USD50") }}</label>
+					<input type="number" class="form-control" id="usd50" name="usd50" min="0" step="1" value="0">
+				</div>
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd20">{{ _("USD20") }}</label>
+					<input type="number" class="form-control" id="usd20" name="usd20" min="0" step="1" value="0">
+				</div>
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd10">{{ _("USD10") }}</label>
+					<input type="number" class="form-control" id="usd10" name="usd10" min="0" step="1" value="0">
+				</div>
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd5">{{ _("USD5") }}</label>
+					<input type="number" class="form-control" id="usd5" name="usd5" min="0" step="1" value="0">
+				</div>
+				<div class="col-md-2 col-6">
+					<label class="form-label" for="usd1">{{ _("USD1") }}</label>
+					<input type="number" class="form-control" id="usd1" name="usd1" min="0" step="1" value="0">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="coins">{{ _("Coins") }}</label>
+					<input type="number" class="form-control" id="coins" name="coins" min="0" step="0.01" value="0">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label d-block">{{ _("Total Physical Cash") }}</label>
+					<div id="total-preview" class="value-preview">&mdash;</div>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label d-block">{{ _("System Expected Cash") }}</label>
+					<div id="expected-preview" class="value-preview text-muted">{{ _("Checking…") }}</div>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label d-block">{{ _("Variance") }}</label>
+					<div id="variance-preview" class="value-preview">&mdash;</div>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="check_amount">{{ _("Check Amount") }}</label>
+					<input type="number" class="form-control" id="check_amount" name="check_amount" min="0" step="0.01" value="0">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label d-block">{{ _("System Expected Checks") }}</label>
+					<div id="expected-checks-preview" class="value-preview text-muted">{{ _("Checking…") }}</div>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label d-block">{{ _("Check Variance") }}</label>
+					<div id="check-variance-preview" class="value-preview">&mdash;</div>
+				</div>
+
+				<div class="col-12 summary-section"></div>
+
+				<div class="col-md-4">
+					<label class="form-label d-block">{{ _("Total Deposit") }}</label>
+					<div id="total-deposit-preview" class="value-preview summary-value">&mdash;</div>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label d-block">{{ _("Total Expected") }}</label>
+					<div id="total-expected-preview" class="value-preview summary-value text-muted">{{ _("Checking…") }}</div>
+				</div>
+
+				<div class="col-md-4">
+					<label class="form-label d-block">{{ _("Total Variance") }}</label>
+					<div id="total-variance-preview" class="value-preview summary-value">&mdash;</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="cash_account">{{ _("Cash Account") }}</label>
+					<select class="form-control" id="cash_account" name="cash_account" required>
+						<option value="" selected disabled>{{ _("Loading cash accounts…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="bank_account">{{ _("Bank Account") }}</label>
+					<select class="form-control" id="bank_account" name="bank_account" required>
+						<option value="" selected disabled>{{ _("Loading bank accounts…") }}</option>
+					</select>
+					<div class="form-text">{{ _("Reference only — which account the counted cash will be deposited into.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="checks_account">{{ _("Checks Account") }}</label>
+					<select class="form-control" id="checks_account" name="checks_account" required>
+						<option value="" selected disabled>{{ _("Loading checks accounts…") }}</option>
+					</select>
+					<div class="form-text">{{ _("Where checks are held before deposit — an Undeposited Funds account, or the bank account itself.") }}</div>
+				</div>
+
+			</div>
+
+			<div class="d-grid mt-4">
+				<button type="submit" class="btn btn-primary" id="deposit-submit">
+					<span class="spinner-border spinner-border-sm d-none" id="deposit-spinner" role="status" aria-hidden="true"></span>
+					{{ icons.btn_icon("zap") }}<span id="deposit-submit-label">{{ _("Submit Amended Deposit Sheet") if amend_from else _("Submit Deposit Sheet") }}</span>
+				</button>
+			</div>
+		</form>
+
+		<div id="deposit-result" class="deposit-result d-none"></div>
+
+	</div>
+</div>
+
+<div class="card form-card mt-4 deposit-entries-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Payment Entries in Range") }}</h4>
+		</div>
+		<p class="text-muted">{{ _("The individual Payment Entries the System Expected Cash/Checks figures above are totaled from, for the selected receipt date range and accounts.") }}</p>
+		<div class="row g-3 mb-3">
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Entries") }}</label>
+				<div id="entries-summary-count" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total Cash") }}</label>
+				<div id="entries-summary-cash" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total Checks") }}</label>
+				<div id="entries-summary-checks" class="value-preview">&mdash;</div>
+			</div>
+			<div class="col-md-3">
+				<label class="form-label d-block">{{ _("Total") }}</label>
+				<div id="entries-summary-total" class="value-preview summary-value">&mdash;</div>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Party") }}</th>
+						<th>{{ _("Type") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th class="text-right">{{ _("Amount") }}</th>
+						<th>{{ _("Reference No") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="entries-table-body">
+					<tr><td colspan="8" class="text-muted">{{ _("Select a receipt date range above.") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card mt-4 deposit-history-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Deposit History") }}</h4>
+		</div>
+		<div class="row g-2 align-items-end mb-3 deposit-history-filter-row">
+			<div class="col-auto">
+				<label class="form-label" for="history_from_date">{{ _("From") }}</label>
+				<input type="date" class="form-control" id="history_from_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_to_date">{{ _("To") }}</label>
+				<input type="date" class="form-control" id="history_to_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_doc_no">{{ _("Doc No") }}</label>
+				<input type="text" class="form-control" id="history_doc_no" autocomplete="off" placeholder="{{ _('Search doc number…') }}">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_customer">{{ _("Customer") }}</label>
+				<input type="text" class="form-control" id="history_customer" autocomplete="off" placeholder="{{ _('Customer name or ID…') }}">
+			</div>
+			<div class="col-auto">
+				<button type="button" class="btn btn-outline-secondary" id="history_clear_filters">{{ _("Clear") }}</button>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Doc No") }}</th>
+						<th>{{ _("Company") }}</th>
+						<th>{{ _("Deposit to") }}</th>
+						<th>{{ _("Deposit Date") }}</th>
+						<th>{{ _("Receipt Period") }}</th>
+						<th class="text-right">{{ _("Total") }}</th>
+						<th class="text-right">{{ _("Total Variance") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Created") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="deposit-history-body">
+					<tr><td colspan="11" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+				<tfoot id="deposit-history-foot" class="d-none">
+					<tr>
+						<td colspan="5">{{ _("Total (submitted only)") }}</td>
+						<td class="text-right" id="foot-total"></td>
+						<td class="text-right" id="foot-total-variance"></td>
+						<td></td>
+						<td></td>
+						<td></td>
+						<td></td>
+					</tr>
+				</tfoot>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var depositDateInput = document.getElementById("deposit_date");
+	var fromDateInput = document.getElementById("from_receipt_date");
+	var toDateInput = document.getElementById("to_receipt_date");
+	var denomInputs = ["usd100", "usd50", "usd20", "usd10", "usd5", "usd1", "coins"].map(function (id) {
+		return document.getElementById(id);
+	});
+	var depositToSelect = document.getElementById("deposit_to_account");
+	var cashAccountSelect = document.getElementById("cash_account");
+	var bankAccountSelect = document.getElementById("bank_account");
+	var checksAccountSelect = document.getElementById("checks_account");
+	var checkAmountInput = document.getElementById("check_amount");
+	var form = document.getElementById("deposit-form");
+	// Set once the user picks a Bank Account by hand — until then, changing
+	// "Deposit to" keeps Bank Account mirrored to it (common case: they're
+	// the same account).
+	var bankAccountTouched = false;
+
+	// Select-all on focus for every input in this form — a denomination
+	// count or account amount is almost always being *replaced* wholesale,
+	// not edited in place, so landing with the old value pre-selected (one
+	// keystroke away from being overwritten) is faster than the default
+	// caret-at-click-position behavior, especially when tabbing through the
+	// six denomination fields in a row. "focusin" (not "focus", which
+	// doesn't bubble) delegated on the form itself covers every input,
+	// including ones added later, with one listener.
+	form.addEventListener("focusin", function (e) {
+		if (e.target.tagName === "INPUT") e.target.select();
+	});
+
+	var submitBtn = document.getElementById("deposit-submit");
+	var spinner = document.getElementById("deposit-spinner");
+	var submitLabel = document.getElementById("deposit-submit-label");
+	var alertBox = document.getElementById("deposit-alert");
+	var resultBox = document.getElementById("deposit-result");
+	var amendFrom = {{ (amend_from or "") | tojson }};
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			cache: "no-store",
+			headers: {
+				"Content-Type": "application/json",
+				"Cache-Control": "no-cache",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function populate_select(select, rows, value_field, label_field, empty_label) {
+		select.innerHTML = "";
+		if (!rows || !rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = empty_label;
+			select.appendChild(opt);
+			return false;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = rows.length > 1;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row[value_field];
+			opt.textContent = row[label_field] || row[value_field];
+			select.appendChild(opt);
+		});
+
+		if (rows.length === 1) {
+			select.value = rows[0][value_field];
+			select.selectedIndex = 1;
+			return true;
+		}
+		return false;
+	}
+
+	// Pre-selects a server-guessed default (from Mode of Payment
+	// configuration — see _resolve_default_account() in deposit.py) when the
+	// select has more than one option and so didn't already auto-select via
+	// populate_select() above. Still just a suggestion — a normal, editable
+	// <select> the admin can change before submitting, same as any other field.
+	function select_default(select, value) {
+		if (!value || select.value) return;
+		var option = select.querySelector('option[value="' + CSS.escape(value) + '"]');
+		if (option) select.value = value;
+	}
+
+	// Default dates to today, matching the common case of recording today's count.
+	[depositDateInput, fromDateInput, toDateInput].forEach(function (el) {
+		if (!el.value) el.value = frappe.datetime.get_today();
+	});
+
+	var depositToAccountsCache = [];
+	call("ez_accounting.www.forms.user.deposit.get_accounts").then(function (r) {
+		var data = r.message || {};
+		// "Deposit to" is deliberately NOT pre-filled with a default when there
+		// is more than one option — the admin must pick which account this
+		// deposit is for (it's the filter). A single-bank company auto-selects.
+		depositToAccountsCache = data.deposit_to_accounts || [];
+		populate_select(depositToSelect, data.deposit_to_accounts, "name", "name", __("No Bank accounts found for this company"));
+		populate_select(cashAccountSelect, data.cash_accounts, "name", "name", __("No Cash accounts found for this company"));
+		populate_select(bankAccountSelect, data.bank_accounts, "name", "name", __("No Bank accounts found for this company"));
+		populate_select(checksAccountSelect, data.checks_accounts, "name", "name", __("No accounts found for this company"));
+		select_default(cashAccountSelect, data.default_cash_account);
+		select_default(bankAccountSelect, data.default_bank_account);
+		select_default(checksAccountSelect, data.default_checks_account);
+		sync_bank_account_to_deposit_to();
+		refresh_expected_preview();
+		refresh_expected_checks_preview();
+		refresh_payment_entries_preview();
+		refresh_undeposited();
+		if (amendFrom) {
+			call("ez_accounting.www.forms.user.deposit.get_amend_form_data", {name: amendFrom}).then(function (response) {
+				var data = response.message || {};
+				["deposit_date", "from_receipt_date", "to_receipt_date"].forEach(function (id) {
+					document.getElementById(id).value = data[id] || "";
+				});
+				["usd100", "usd50", "usd20", "usd10", "usd5", "usd1", "coins", "check_amount"].forEach(function (id) {
+					document.getElementById(id).value = data[id] || 0;
+				});
+				depositToSelect.value = data.deposit_to_account || "";
+				cashAccountSelect.value = data.cash_account || "";
+				bankAccountSelect.value = data.bank_account || "";
+				checksAccountSelect.value = data.checks_account || "";
+				bankAccountTouched = true;
+				update_total_and_variance();
+				refresh_expected_preview();
+				refresh_expected_checks_preview();
+				refresh_payment_entries_preview();
+			}).catch(function (err) {
+				show_alert(extract_error_message(err), true);
+			});
+		}
+	}).catch(function () {
+		populate_select(depositToSelect, [], "name", "name", __("Could not load accounts"));
+		populate_select(cashAccountSelect, [], "name", "name", __("Could not load accounts"));
+		populate_select(bankAccountSelect, [], "name", "name", __("Could not load accounts"));
+		populate_select(checksAccountSelect, [], "name", "name", __("Could not load accounts"));
+	});
+
+	// Keep Bank Account mirrored to "Deposit to" until the admin overrides it.
+	function sync_bank_account_to_deposit_to() {
+		if (bankAccountTouched || !depositToSelect.value) return;
+		var opt = bankAccountSelect.querySelector('option[value="' + CSS.escape(depositToSelect.value) + '"]');
+		if (opt) bankAccountSelect.value = depositToSelect.value;
+	}
+	bankAccountSelect.addEventListener("change", function () { bankAccountTouched = true; });
+	depositToSelect.addEventListener("change", function () {
+		sync_bank_account_to_deposit_to();
+		refresh_expected_preview();
+		refresh_expected_checks_preview();
+		refresh_payment_entries_preview();
+		refresh_undeposited();
+	});
+
+	function preview_state() {
+		return [
+			depositToSelect.value || "",
+			fromDateInput.value || "",
+			toDateInput.value || "",
+			cashAccountSelect.value || "",
+			bankAccountSelect.value || "",
+			checksAccountSelect.value || ""
+		].join("\u001f");
+	}
+
+	// ---- Not Yet Deposited panel (top of page) ----
+	var undepBody = document.getElementById("undep-table-body");
+	var undepCount = document.getElementById("undep-summary-count");
+	var undepCash = document.getElementById("undep-summary-cash");
+	var undepChecks = document.getElementById("undep-summary-checks");
+	var undepTotal = document.getElementById("undep-summary-total");
+	var undepRangeHint = document.getElementById("undep-range-hint");
+	var undepRangeText = document.getElementById("undep-range-text");
+	var undepUseDates = document.getElementById("undep-use-dates");
+	var undepRange = { earliest: null, latest: null };
+
+	// Customer filter — display-only, hides rows in the two Payment Entry
+	// lists whose party doesn't match; the summary totals stay the full
+	// figures because they describe what a deposit sheet would cover.
+	var customerFilter = document.getElementById("customer_filter");
+	function apply_customer_filter() {
+		var term = customerFilter.value.trim().toLowerCase();
+		document.querySelectorAll("#undep-table-body tr[data-party], #entries-table-body tr[data-party]").forEach(function (tr) {
+			tr.classList.toggle("d-none", !!term && tr.dataset.party.indexOf(term) === -1);
+		});
+	}
+	customerFilter.addEventListener("input", apply_customer_filter);
+
+	function refresh_undeposited() {
+		var state = preview_state();
+		undepBody.innerHTML = '<tr><td colspan="9" class="text-muted">' + __("Loading…") + "</td></tr>";
+		call("ez_accounting.www.forms.user.deposit.get_undeposited_payment_entries", {
+			deposit_to_account: depositToSelect.value || ""
+		}).then(function (r) {
+			if (state !== preview_state()) return;
+			if (!r.message) return;
+			var entries = r.message.entries || [];
+			var s = r.message.summary || {};
+			undepCount.textContent = s.count || 0;
+			undepCash.textContent = money(s.total_cash || 0);
+			undepChecks.textContent = money(s.total_checks || 0);
+			undepTotal.textContent = money(s.total || 0);
+
+			undepRange = { earliest: s.earliest, latest: s.latest };
+			if (s.earliest && s.count) {
+				undepRangeText.textContent = __("Receipts from {0} to {1}", [s.earliest, s.latest]);
+				undepRangeHint.classList.remove("d-none");
+			} else {
+				undepRangeHint.classList.add("d-none");
+			}
+
+			if (!entries.length) {
+				undepBody.innerHTML = '<tr><td colspan="9" class="text-muted">' + __("Nothing outstanding — every receipt is covered by a deposit sheet.") + "</td></tr>";
+				return;
+			}
+			undepBody.innerHTML = entries.map(function (row) {
+				var bucketClass = row.bucket === "Cash" ? "pill-final" : "pill-draft";
+				return (
+					'<tr data-party="' + frappe.utils.escape_html((row.party_name || "") + " " + (row.party || "")).toLowerCase() + '">' +
+					"<td>" + frappe.utils.escape_html(row.company || "") + "</td>" +
+					"<td>" + row.posting_date + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.party_name || row.party || "") + "</td>" +
+					'<td><span class="status-pill ' + bucketClass + '">' + frappe.utils.escape_html(row.bucket) + "</span></td>" +
+					"<td>" + frappe.utils.escape_html(row.mode_of_payment || "") + "</td>" +
+					"<td>" + (row.deposit_to_account ? frappe.utils.escape_html(row.deposit_to_account) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td class="text-right">' + money(row.paid_amount) + "</td>" +
+					"<td>" + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + doc_link("payment-entry", row.name) + '">' + __("View") + "</a></td>" +
+					"</tr>"
+				);
+			}).join("");
+			apply_customer_filter();
+		}).catch(function (err) {
+			if (state !== preview_state()) return;
+			undepBody.innerHTML = '<tr><td colspan="9" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+
+	undepUseDates.addEventListener("click", function () {
+		if (undepRange.earliest) fromDateInput.value = undepRange.earliest;
+		if (undepRange.latest) toDateInput.value = undepRange.latest;
+		refresh_expected_preview();
+		refresh_expected_checks_preview();
+		refresh_payment_entries_preview();
+	});
+
+	// Total Physical Cash — computed client-side purely for immediate visual
+	// feedback as the admin types; the server (Forms Bank Deposit Sheet.validate())
+	// always recomputes this from the same denomination fields before saving,
+	// so a stale or tampered client value can never end up on the saved record.
+	var totalPreview = document.getElementById("total-preview");
+	var varianceExpected = 0;
+	var checksExpected = 0;
+	function current_total() {
+		return (
+			(parseFloat(document.getElementById("usd100").value) || 0) * 100 +
+			(parseFloat(document.getElementById("usd50").value) || 0) * 50 +
+			(parseFloat(document.getElementById("usd20").value) || 0) * 20 +
+			(parseFloat(document.getElementById("usd10").value) || 0) * 10 +
+			(parseFloat(document.getElementById("usd5").value) || 0) * 5 +
+			(parseFloat(document.getElementById("usd1").value) || 0) * 1 +
+			(parseFloat(document.getElementById("coins").value) || 0)
+		);
+	}
+	function update_total_and_variance() {
+		var total = current_total();
+		totalPreview.textContent = frappe.format(total, {fieldtype: "Currency"}, {only_value: true});
+		update_variance_preview(total);
+	}
+
+	var variancePreview = document.getElementById("variance-preview");
+	function update_variance_preview(total) {
+		var variance = total - varianceExpected;
+		variancePreview.className = "value-preview" + (variance !== 0 ? " text-danger" : "");
+		variancePreview.textContent = frappe.format(variance, {fieldtype: "Currency"}, {only_value: true});
+		update_summary_preview();
+	}
+
+	// Summary tiles — Total Deposit/Expected/Variance are just Cash + Checks
+	// added together, recomputed client-side from the same numbers already
+	// driving the cash and check tiles above (no extra round trip; the server
+	// computes the authoritative totals the same way in validate()).
+	var totalDepositPreview = document.getElementById("total-deposit-preview");
+	var totalExpectedPreview = document.getElementById("total-expected-preview");
+	var totalVariancePreview = document.getElementById("total-variance-preview");
+	function update_summary_preview() {
+		var totalDeposit = current_total() + (parseFloat(checkAmountInput.value) || 0);
+		var totalExpected = varianceExpected + checksExpected;
+		var totalVariance = totalDeposit - totalExpected;
+
+		totalDepositPreview.textContent = frappe.format(totalDeposit, {fieldtype: "Currency"}, {only_value: true});
+
+		totalExpectedPreview.className = "value-preview summary-value";
+		totalExpectedPreview.textContent = frappe.format(totalExpected, {fieldtype: "Currency"}, {only_value: true});
+
+		totalVariancePreview.className = "value-preview summary-value" + (totalVariance !== 0 ? " text-danger" : "");
+		totalVariancePreview.textContent = frappe.format(totalVariance, {fieldtype: "Currency"}, {only_value: true});
+	}
+
+	denomInputs.forEach(function (el) {
+		el.addEventListener("input", update_total_and_variance);
+	});
+	update_total_and_variance();
+
+	// System Expected Cash — resolved server-side (same calculation the real
+	// submit uses), refreshed whenever the receipt date range or Cash Account
+	// changes.
+	var expectedPreview = document.getElementById("expected-preview");
+	function refresh_expected_preview() {
+		if (!fromDateInput.value || !toDateInput.value) return;
+		if (!depositToSelect.value) {
+			expectedPreview.className = "value-preview text-muted";
+			expectedPreview.textContent = __("Select a Deposit to account");
+			return;
+		}
+		expectedPreview.className = "value-preview text-muted";
+		expectedPreview.textContent = __("Checking…");
+		var state = preview_state();
+		call("ez_accounting.www.forms.user.deposit.get_expected_cash_preview", {
+			from_receipt_date: fromDateInput.value,
+			to_receipt_date: toDateInput.value,
+			cash_account: cashAccountSelect.value,
+			deposit_to_account: depositToSelect.value
+		}).then(function (r) {
+			if (state !== preview_state()) return;
+			if (!r.message) return;
+			varianceExpected = parseFloat(r.message.expected_cash) || 0;
+			expectedPreview.className = "value-preview";
+			expectedPreview.textContent = frappe.format(varianceExpected, {fieldtype: "Currency"}, {only_value: true});
+			update_variance_preview(current_total());
+		}).catch(function (err) {
+			if (state !== preview_state()) return;
+			expectedPreview.className = "value-preview text-danger";
+			expectedPreview.innerHTML = extract_error_message(err);
+		});
+	}
+	fromDateInput.addEventListener("change", refresh_expected_preview);
+	toDateInput.addEventListener("change", refresh_expected_preview);
+	cashAccountSelect.addEventListener("change", refresh_expected_preview);
+
+	// Check Variance — mirrors the cash variance above, but the "physical"
+	// side is just the Check Amount input directly (no denominations for checks).
+	var checkVariancePreview = document.getElementById("check-variance-preview");
+	function update_check_variance_preview() {
+		var checkAmount = parseFloat(checkAmountInput.value) || 0;
+		var variance = checkAmount - checksExpected;
+		checkVariancePreview.className = "value-preview" + (variance !== 0 ? " text-danger" : "");
+		checkVariancePreview.textContent = frappe.format(variance, {fieldtype: "Currency"}, {only_value: true});
+		update_summary_preview();
+	}
+	checkAmountInput.addEventListener("input", update_check_variance_preview);
+	update_check_variance_preview();
+
+	// System Expected Checks — resolved server-side (same calculation the real
+	// submit uses), refreshed whenever the receipt date range or Checks Account changes.
+	var expectedChecksPreview = document.getElementById("expected-checks-preview");
+	function refresh_expected_checks_preview() {
+		if (!fromDateInput.value || !toDateInput.value) return;
+		if (!depositToSelect.value) {
+			expectedChecksPreview.className = "value-preview text-muted";
+			expectedChecksPreview.textContent = __("Select a Deposit to account");
+			return;
+		}
+		expectedChecksPreview.className = "value-preview text-muted";
+		expectedChecksPreview.textContent = __("Checking…");
+		var state = preview_state();
+		call("ez_accounting.www.forms.user.deposit.get_expected_checks_preview", {
+			from_receipt_date: fromDateInput.value,
+			to_receipt_date: toDateInput.value,
+			checks_account: checksAccountSelect.value,
+			deposit_to_account: depositToSelect.value
+		}).then(function (r) {
+			if (state !== preview_state()) return;
+			if (!r.message) return;
+			checksExpected = parseFloat(r.message.expected_checks) || 0;
+			expectedChecksPreview.className = "value-preview";
+			expectedChecksPreview.textContent = frappe.format(checksExpected, {fieldtype: "Currency"}, {only_value: true});
+			update_check_variance_preview();
+		}).catch(function (err) {
+			if (state !== preview_state()) return;
+			expectedChecksPreview.className = "value-preview text-danger";
+			expectedChecksPreview.innerHTML = extract_error_message(err);
+		});
+	}
+	fromDateInput.addEventListener("change", refresh_expected_checks_preview);
+	toDateInput.addEventListener("change", refresh_expected_checks_preview);
+	checksAccountSelect.addEventListener("change", refresh_expected_checks_preview);
+
+	// Payment Entries in Range — the actual entries System Expected Cash/
+	// Checks are totaled from, resolved server-side via the exact same
+	// filtering (ez_accounting.www.forms.user.deposit.get_payment_entries_preview
+	// shares its helpers with get_expected_cash/checks_preview above, so this
+	// list and those two totals can never disagree). Refreshed on the same
+	// triggers as both of those previews since it depends on everything they do.
+	var entriesBody = document.getElementById("entries-table-body");
+	var entriesSummaryCount = document.getElementById("entries-summary-count");
+	var entriesSummaryCash = document.getElementById("entries-summary-cash");
+	var entriesSummaryChecks = document.getElementById("entries-summary-checks");
+	var entriesSummaryTotal = document.getElementById("entries-summary-total");
+
+	function refresh_payment_entries_preview() {
+		if (!fromDateInput.value || !toDateInput.value) return;
+		if (!depositToSelect.value) {
+			entriesBody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("Select a Deposit to account above.") + "</td></tr>";
+			return;
+		}
+		entriesBody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("Loading…") + "</td></tr>";
+		var state = preview_state();
+		call("ez_accounting.www.forms.user.deposit.get_payment_entries_preview", {
+			from_receipt_date: fromDateInput.value,
+			to_receipt_date: toDateInput.value,
+			cash_account: cashAccountSelect.value,
+			checks_account: checksAccountSelect.value,
+			deposit_to_account: depositToSelect.value
+		}).then(function (r) {
+			if (state !== preview_state()) return;
+			if (!r.message) return;
+			var entries = r.message.entries || [];
+			var summary = r.message.summary || {};
+
+			entriesSummaryCount.textContent = summary.count || 0;
+			entriesSummaryCash.textContent = frappe.format(summary.total_cash || 0, {fieldtype: "Currency"}, {only_value: true});
+			entriesSummaryChecks.textContent = frappe.format(summary.total_checks || 0, {fieldtype: "Currency"}, {only_value: true});
+			entriesSummaryTotal.textContent = frappe.format(summary.total || 0, {fieldtype: "Currency"}, {only_value: true});
+
+			if (!entries.length) {
+				entriesBody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("No Payment Entries found for this range.") + "</td></tr>";
+				return;
+			}
+			entriesBody.innerHTML = entries.map(function (row) {
+				var bucketClass = row.bucket === "Cash" ? "pill-final" : "pill-draft";
+				return (
+					'<tr data-party="' + frappe.utils.escape_html((row.party_name || "") + " " + (row.party || "")).toLowerCase() + '">' +
+					"<td>" + frappe.utils.escape_html(row.company || "") + "</td>" +
+					"<td>" + row.posting_date + "</td>" +
+					"<td>" + frappe.utils.escape_html(row.party_name || row.party || "") + "</td>" +
+					'<td><span class="status-pill ' + bucketClass + '">' + frappe.utils.escape_html(row.bucket) + "</span></td>" +
+					"<td>" + frappe.utils.escape_html(row.mode_of_payment || "") + "</td>" +
+					'<td class="text-right">' + frappe.format(row.paid_amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					"<td>" + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + doc_link("payment-entry", row.name) + '">' + __("View") + "</a></td>" +
+					"</tr>"
+				);
+			}).join("");
+			apply_customer_filter();
+		}).catch(function (err) {
+			if (state !== preview_state()) return;
+			entriesBody.innerHTML = '<tr><td colspan="8" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	fromDateInput.addEventListener("change", refresh_payment_entries_preview);
+	toDateInput.addEventListener("change", refresh_payment_entries_preview);
+	cashAccountSelect.addEventListener("change", refresh_payment_entries_preview);
+	checksAccountSelect.addEventListener("change", refresh_payment_entries_preview);
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading ? __("Submitting…") : __("Submit Deposit Sheet");
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	// The forms-portal read-only view of a deposit sheet — used for the
+	// Deposit History "Doc No" (and date) links so an admin never lands in
+	// /desk from here. Same page the Sales page's "Deposited" pill opens.
+	function deposit_detail_link(name) {
+		return "/forms/user/deposit_detail?id=" + encodeURIComponent(name);
+	}
+
+	function money(v) {
+		return frappe.format(v, { fieldtype: "Currency" }, { only_value: true });
+	}
+
+	// Sends the admin to /forms/user/printer with the document ID (and
+	// desired format) pre-filled — same pattern Express Sales/Purchase/
+	// Payroll's own "Print"/"Invoice"/"Receipt" links already use, see
+	// [[forms-printer-app]]. Format is fixed to the one-copy compact format
+	// with the all-payment-modes period table here
+	// (not user-configurable via Forms Print Settings, unlike those other
+	// pages) since this page only ever has the one document type to print.
+	function printer_link(id, format) {
+		var url = "/forms/user/printer?id=" + encodeURIComponent(id);
+		if (format) url += "&format=" + encodeURIComponent(format);
+		return url;
+	}
+
+	// row.creation is a full datetime (unlike deposit_date, a business date
+	// the admin can backdate) — creation is when the record actually got
+	// entered.
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	// GL Entries table — the actual ledger postings behind a deposit's Payment
+	// Entries (ez_accounting.www.forms.user.deposit._get_deposit_gl_entries), shown
+	// both right after submitting and, on demand, for any past submitted sheet
+	// in the history table below. This page's own doctype never posts GL
+	// itself (see process_express_deposit's docstring) — these rows always
+	// belong to the underlying Payment Entries, linked back to them here.
+	function render_gl_entries_table(entries) {
+		if (!entries || !entries.length) {
+			return '<p class="text-muted mb-0">' + __("No GL Entries found for these Payment Entries.") + "</p>";
+		}
+		var totalDebit = 0, totalCredit = 0;
+		var rows = entries.map(function (e) {
+			totalDebit += parseFloat(e.debit) || 0;
+			totalCredit += parseFloat(e.credit) || 0;
+			var voucherLabel = frappe.utils.escape_html(e.voucher_type || "") + " " + frappe.utils.escape_html(e.voucher_no || "");
+			return (
+				"<tr>" +
+				'<td><a target="_blank" href="' + doc_link(e.voucher_type, e.voucher_no) + '">' + voucherLabel + "</a></td>" +
+				"<td>" + frappe.utils.escape_html(e.account || "") + "</td>" +
+				"<td>" + frappe.utils.escape_html(e.against || "") + "</td>" +
+				'<td class="text-right">' + (parseFloat(e.debit) ? frappe.format(e.debit, {fieldtype: "Currency"}, {only_value: true}) : "") + "</td>" +
+				'<td class="text-right">' + (parseFloat(e.credit) ? frappe.format(e.credit, {fieldtype: "Currency"}, {only_value: true}) : "") + "</td>" +
+				"</tr>"
+			);
+		}).join("");
+		return (
+			'<div class="table-responsive gl-entries-table">' +
+			'<table class="table table-bordered table-sm mb-0">' +
+			"<thead><tr>" +
+			"<th>" + __("Voucher") + "</th>" +
+			"<th>" + __("Account") + "</th>" +
+			"<th>" + __("Against") + "</th>" +
+			'<th class="text-right">' + __("Debit") + "</th>" +
+			'<th class="text-right">' + __("Credit") + "</th>" +
+			"</tr></thead><tbody>" + rows +
+			'<tr><td colspan="3"><strong>' + __("Total") + "</strong></td>" +
+			'<td class="text-right"><strong>' + frappe.format(totalDebit, {fieldtype: "Currency"}, {only_value: true}) + "</strong></td>" +
+			'<td class="text-right"><strong>' + frappe.format(totalCredit, {fieldtype: "Currency"}, {only_value: true}) + "</strong></td></tr>" +
+			"</tbody></table></div>"
+		);
+	}
+
+	var STATUS_PILL_CLASS = { 1: "pill-final", 2: "pill-cancelled" };
+	var STATUS_LABEL = { 1: __("Submitted"), 2: __("Cancelled") };
+	var historyBody = document.getElementById("deposit-history-body");
+	var historyFoot = document.getElementById("deposit-history-foot");
+	var historyFromDate = document.getElementById("history_from_date");
+	var historyToDate = document.getElementById("history_to_date");
+	var historyDocNo = document.getElementById("history_doc_no");
+	var historyCustomer = document.getElementById("history_customer");
+	var historyClearFilters = document.getElementById("history_clear_filters");
+
+	function sum_field(rows, field) {
+		return rows.reduce(function (total, row) { return total + (parseFloat(row[field]) || 0); }, 0);
+	}
+
+	function update_history_summary(rows) {
+		// Only submitted sheets count toward the summary — a cancelled sheet's
+		// physical count never happened as far as the books are concerned.
+		var submitted = rows.filter(function (row) { return row.docstatus === 1; });
+		if (!submitted.length) {
+			historyFoot.classList.add("d-none");
+			return;
+		}
+		var fields = {
+			"foot-total": "total_deposit",
+			"foot-total-variance": "total_variance"
+		};
+		Object.keys(fields).forEach(function (id) {
+			var total = sum_field(submitted, fields[id]);
+			var el = document.getElementById(id);
+			el.textContent = frappe.format(total, {fieldtype: "Currency"}, {only_value: true});
+			if (id === "foot-total-variance" && total !== 0) {
+				el.classList.add("text-danger");
+			} else {
+				el.classList.remove("text-danger");
+			}
+		});
+		historyFoot.classList.remove("d-none");
+	}
+
+	// highlightName: the just-submitted deposit sheet's name, if this reload
+	// follows a successful submit (see the submit handler below) — same
+	// pulsing-highlight-then-scroll-into-view treatment Express Sales' own
+	// history table already gives a just-recorded sale (is-new-row, styled
+	// above), so a fresh deposit is easy to spot in a history that can run
+	// to dozens of rows. Omitted for every other reload (page load, GL
+	// Entries toggle, cancel) since there's no "just did this" row to point at.
+	function load_deposit_history(highlightName, docNoSearchOverride) {
+		// docNoSearchOverride: snapshot of the search box's text taken at
+		// keystroke time by the debounced reload below, same reasoning as
+		// sales.html's history search.
+		call("ez_accounting.www.forms.user.deposit.get_deposit_history", {
+			from_date: historyFromDate.value,
+			to_date: historyToDate.value,
+			customer_search: historyCustomer.value.trim(),
+			doc_no_search: (docNoSearchOverride !== undefined ? docNoSearchOverride : historyDocNo.value).trim()
+		}).then(function (r) {
+			var rows = r.message || [];
+			if (!rows.length) {
+				historyBody.innerHTML = '<tr><td colspan="11" class="text-muted">' + __("No deposit sheets found for this filter.") + "</td></tr>";
+				historyFoot.classList.add("d-none");
+				return;
+			}
+			historyBody.innerHTML = rows.map(function (row) {
+				var link = deposit_detail_link(row.name);
+				var pillClass = STATUS_PILL_CLASS[row.docstatus] || "pill-draft";
+				var totalVarianceClass = row.total_variance != 0 ? "text-danger" : "";
+				var rowId = "gl-details-" + row.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+				var glAction = row.docstatus === 1
+					? '<a href="#" class="history-action-link gl-entries-toggle" data-name="' + frappe.utils.escape_html(row.name) + '" data-target="' + rowId + '">' + __("GL Entries") + "</a>"
+					: "";
+				var printAction = '<a class="history-action-link" target="_blank" href="' + printer_link(row.name, "Bank Deposit Compact_with_all_payment_modes") + '">' + __("Print") + "</a>";
+				var cancelAction = row.docstatus === 1
+					? '<a href="#" class="history-action-link deposit-cancel-btn" data-name="' + frappe.utils.escape_html(row.name) + '">' + __("Cancel") + "</a>"
+					: "";
+				var actions = [printAction, glAction, cancelAction].filter(Boolean).join(" &middot; ");
+				var rowClass = row.name === highlightName ? ' class="is-new-row"' : "";
+				return (
+					"<tr" + rowClass + ">" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' + frappe.utils.escape_html(row.name) + "</a></td>" +
+					"<td>" + frappe.utils.escape_html(row.company || "") + "</td>" +
+					"<td>" + (row.deposit_to_account ? frappe.utils.escape_html(row.deposit_to_account) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' + row.deposit_date + "</a></td>" +
+					"<td>" + row.from_receipt_date + " → " + row.to_receipt_date + "</td>" +
+					'<td class="text-right">' + frappe.format(row.total_deposit, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td class="text-right ' + totalVarianceClass + '">' + frappe.format(row.total_variance, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td><span class="status-pill ' + pillClass + '">' + (STATUS_LABEL[row.docstatus] || row.docstatus) + "</span></td>" +
+					"<td>" + format_timestamp(row.creation) + "</td>" +
+					"<td>" + (row.created_by ? frappe.utils.escape_html(row.created_by) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					"<td>" + actions + "</td>" +
+					"</tr>" +
+					'<tr class="gl-entries-row d-none" id="' + rowId + '"><td colspan="11"></td></tr>'
+				);
+			}).join("");
+			update_history_summary(rows);
+
+			if (highlightName) {
+				var newRow = historyBody.querySelector("tr.is-new-row");
+				// rAF, not immediate — scrollIntoView on a row whose layout
+				// hasn't settled yet (innerHTML was just replaced above) can
+				// measure the wrong position and land short.
+				if (newRow) {
+					window.requestAnimationFrame(function () {
+						newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+					});
+				}
+			}
+		}).catch(function () {
+			historyBody.innerHTML = '<tr><td colspan="11" class="text-danger">' + __("Could not load deposit history.") + "</td></tr>";
+			historyFoot.classList.add("d-none");
+		});
+	}
+	load_deposit_history();
+
+	// ---- Deposit history filters (deposit_date range + doc-number substring) ----
+	historyFromDate.addEventListener("change", function () { load_deposit_history(); });
+	historyToDate.addEventListener("change", function () { load_deposit_history(); });
+
+	// Debounced — a real server round trip per change, same 350ms shape as
+	// sales.html's history search. Snapshots the typed text now, not when the
+	// timer fires.
+	var historyCustomerDebounce = null;
+	historyCustomer.addEventListener("input", function () {
+		clearTimeout(historyCustomerDebounce);
+		historyCustomerDebounce = setTimeout(function () { load_deposit_history(); }, 350);
+	});
+	var historyDocNoDebounce = null;
+	historyDocNo.addEventListener("input", function () {
+		var term = historyDocNo.value;
+		clearTimeout(historyDocNoDebounce);
+		historyDocNoDebounce = setTimeout(function () {
+			load_deposit_history(undefined, term);
+		}, 350);
+	});
+
+	historyClearFilters.addEventListener("click", function () {
+		historyFromDate.value = "";
+		historyToDate.value = "";
+		historyDocNo.value = "";
+		historyCustomer.value = "";
+		load_deposit_history();
+	});
+
+	// GL Entries per history row — fetched lazily on first click, then just
+	// toggled open/closed (get_deposit_gl_entries recomputes from the sheet's
+	// stored date range/accounts, so it stays correct even if called again
+	// after other data changes, but there's no need to re-fetch every toggle).
+	historyBody.addEventListener("click", function (e) {
+		var toggle = e.target.closest(".gl-entries-toggle");
+		if (!toggle) return;
+		e.preventDefault();
+
+		var detailsRow = document.getElementById(toggle.dataset.target);
+		if (!detailsRow) return;
+
+		if (!detailsRow.classList.contains("d-none")) {
+			detailsRow.classList.add("d-none");
+			return;
+		}
+
+		if (detailsRow.dataset.loaded) {
+			detailsRow.classList.remove("d-none");
+			return;
+		}
+
+		var cell = detailsRow.querySelector("td");
+		cell.innerHTML = '<span class="text-muted">' + __("Loading…") + "</span>";
+		detailsRow.classList.remove("d-none");
+
+		call("ez_accounting.www.forms.user.deposit.get_deposit_gl_entries", { name: toggle.dataset.name }).then(function (r) {
+			cell.innerHTML = render_gl_entries_table(r.message || []);
+			detailsRow.dataset.loaded = "1";
+		}).catch(function (err) {
+			cell.innerHTML = '<span class="text-danger">' + extract_error_message(err) + "</span>";
+		});
+	});
+
+	// Cancel a submitted deposit sheet — a separate delegated listener
+	// (rather than folding into the GL Entries one above) since it acts on
+	// the row's link itself, not a details row it toggles.
+	historyBody.addEventListener("click", function (e) {
+		var btn = e.target.closest(".deposit-cancel-btn");
+		if (!btn) return;
+		e.preventDefault();
+
+		var name = btn.dataset.name;
+		if (!window.confirm(__("Cancel {0}? This cancels its Journal Entry too — this can't be undone from here.", [name]))) {
+			return;
+		}
+
+		btn.textContent = __("Cancelling…");
+		call("ez_accounting.www.forms.user.deposit.cancel_express_deposit", { name: name })
+			.then(function () {
+				load_deposit_history();
+				refresh_undeposited();
+			})
+			.catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				btn.textContent = __("Cancel");
+			});
+	});
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		var args = {
+			deposit_date: depositDateInput.value,
+			deposit_to_account: depositToSelect.value,
+			from_receipt_date: fromDateInput.value,
+			to_receipt_date: toDateInput.value,
+			cash_account: cashAccountSelect.value,
+			bank_account: bankAccountSelect.value,
+			checks_account: checksAccountSelect.value,
+			usd100: document.getElementById("usd100").value || 0,
+			usd50: document.getElementById("usd50").value || 0,
+			usd20: document.getElementById("usd20").value || 0,
+			usd10: document.getElementById("usd10").value || 0,
+			usd5: document.getElementById("usd5").value || 0,
+			usd1: document.getElementById("usd1").value || 0,
+			coins: document.getElementById("coins").value || 0,
+			check_amount: checkAmountInput.value || 0,
+			amended_from: amendFrom
+		};
+
+		if (!args.deposit_to_account) {
+			show_alert(__("Select a Deposit to account first."), true);
+			return;
+		}
+		if (!args.from_receipt_date || !args.to_receipt_date || !args.cash_account || !args.bank_account || !args.checks_account) {
+			show_alert(__("Please fill in all required fields."), true);
+			return;
+		}
+		var totalVariance = current_total() + (parseFloat(checkAmountInput.value) || 0) - varianceExpected - checksExpected;
+		if (Math.abs(totalVariance) > 0.000001) {
+			show_alert(__("Cannot submit a deposit while Total Variance is {0}.", [money(totalVariance)]), true);
+			return;
+		}
+
+		set_loading(true);
+
+		call("ez_accounting.www.forms.user.deposit.process_express_deposit", args).then(function (r) {
+			set_loading(false);
+			if (!r.message) return;
+			var d = r.message;
+			resultBox.innerHTML =
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Deposit sheet {0} submitted", [frappe.utils.escape_html(d.name)]) + '</strong>' +
+					'<div class="mt-2">' +
+						'<a target="_blank" href="' + doc_link("forms-bank-deposit-sheet", d.name) + '">' + __("View Deposit Sheet") + '</a>' +
+						(d.deposit_journal_entry
+							? ' &middot; <a target="_blank" href="' + doc_link("journal-entry", d.deposit_journal_entry) + '">' + __("View Deposit Journal Entry") + '</a>'
+							: '') +
+					'</div>' +
+					'<div class="mt-2 text-muted">' + __("Physical Cash") + ': ' + frappe.format(d.total_physical_cash, {fieldtype: "Currency"}, {only_value: true}) +
+						' &middot; ' + __("Variance") + ': ' + frappe.format(d.variance, {fieldtype: "Currency"}, {only_value: true}) +
+					'</div>' +
+					'<div class="mt-2 text-muted">' + __("Checks") + ': ' + frappe.format(d.check_amount, {fieldtype: "Currency"}, {only_value: true}) +
+						' &middot; ' + __("Check Variance") + ': ' + frappe.format(d.check_variance, {fieldtype: "Currency"}, {only_value: true}) +
+					'</div>' +
+					'<div class="mt-2"><strong>' + __("Total") + ': ' + frappe.format(d.total_deposit, {fieldtype: "Currency"}, {only_value: true}) +
+						' &middot; ' + __("Total Variance") + ': ' + frappe.format(d.total_variance, {fieldtype: "Currency"}, {only_value: true}) + '</strong>' +
+					'</div>' +
+					'<div class="mt-3"><h6 class="mb-2">' + __("GL Entries") + '</h6>' + render_gl_entries_table(d.gl_entries) + '</div>' +
+				'</div>';
+			resultBox.classList.remove("d-none");
+			amendFrom = "";
+			submitLabel.textContent = __("Submit Deposit Sheet");
+
+			form.reset();
+			[depositDateInput, fromDateInput, toDateInput].forEach(function (el) {
+				el.value = frappe.datetime.get_today();
+			});
+			denomInputs.forEach(function (el) { el.value = 0; });
+			checkAmountInput.value = 0;
+			// form.reset() drops the <select> options' JS-set state — rebuild
+			// "Deposit to" so a single-bank company re-auto-selects.
+			bankAccountTouched = false;
+			populate_select(depositToSelect, depositToAccountsCache, "name", "name", __("No Bank accounts found for this company"));
+			sync_bank_account_to_deposit_to();
+			update_total_and_variance();
+			update_check_variance_preview();
+			refresh_expected_preview();
+			refresh_expected_checks_preview();
+			refresh_payment_entries_preview();
+			refresh_undeposited();
+			load_deposit_history(d.name);
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+
+{% endblock %}

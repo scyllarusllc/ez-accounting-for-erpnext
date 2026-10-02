@@ -1,0 +1,193 @@
+{
+ "actions": [],
+ "creation": "2026-09-23 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enabled",
+  "admin_only",
+  "allow_code_editing",
+  "agent_name",
+  "assistant_subtitle",
+  "avatar",
+  "column_break_identity",
+  "provider",
+  "model",
+  "effort",
+  "timeout_seconds",
+  "max_history_turns",
+  "section_ai_read",
+  "ai_read_provider",
+  "ai_read_model",
+  "ai_read_effort",
+  "section_behavior",
+  "greeting_message",
+  "system_prompt"
+ ],
+ "fields": [
+  {
+   "default": "1",
+   "description": "Turns the floating chat button on or off, site-wide, for every /forms/* page.",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled"
+  },
+  {
+   "default": "0",
+   "description": "When on, only users with an administrator role see the floating chat button and can chat.",
+   "fieldname": "admin_only",
+   "fieldtype": "Check",
+   "label": "Administrators Only"
+  },
+  {
+   "default": "0",
+   "description": "Allows Codex to edit this Frappe bench when the person chatting has an administrator role. Other users remain read-only.",
+   "fieldname": "allow_code_editing",
+   "fieldtype": "Check",
+   "label": "Allow Code Editing for Administrators"
+  },
+  {
+   "default": "mini Martin",
+   "fieldname": "agent_name",
+   "fieldtype": "Data",
+   "label": "Agent Name",
+   "reqd": 1
+  },
+  {
+   "default": "Virtual Martin · {provider}",
+   "description": "Text shown below the assistant name. Use {provider} to insert the selected CLI provider.",
+   "fieldname": "assistant_subtitle",
+   "fieldtype": "Data",
+   "label": "Assistant Subtitle"
+  },
+  {
+   "default": "/files/mini-martin.jpg",
+   "description": "A public file URL (e.g. /files/your-image.jpg) -- upload an image via the desk File Manager first, then paste its URL here.",
+   "fieldname": "avatar",
+   "fieldtype": "Data",
+   "label": "Avatar URL"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Claude CLI",
+   "description": "Local command-line AI provider used for mini Martin chat.",
+   "fieldname": "provider",
+   "fieldtype": "Select",
+   "label": "CLI Provider",
+   "options": "Claude CLI\nCodex CLI",
+   "reqd": 1
+  },
+  {
+   "default": "claude-haiku-4-5",
+   "fieldname": "model",
+   "fieldtype": "Select",
+   "label": "Model",
+   "options": "claude-haiku-4-5\nclaude-sonnet-5\nclaude-opus-5\ngpt-6-luna\ngpt-6-astra\ngpt-5.6-sol",
+   "reqd": 1
+  },
+  {
+   "default": "medium",
+   "description": "Thinking depth (low = fastest/cheapest, max = most thorough/most expensive). \"medium\" is a reasonable default for a simple chat like this.",
+   "fieldname": "effort",
+   "fieldtype": "Select",
+   "label": "Effort",
+   "options": "low\nmedium\nhigh\nxhigh\nmax",
+   "reqd": 1
+  },
+  {
+   "default": "45",
+   "description": "How long to wait for a reply before giving up (maximum 1800 seconds). Long tasks run in the background.",
+   "fieldname": "timeout_seconds",
+   "fieldtype": "Int",
+   "label": "Timeout (seconds)",
+   "non_negative": 1
+  },
+  {
+   "default": "20",
+   "description": "How many prior turns of conversation get resent as context on each new message.",
+   "fieldname": "max_history_turns",
+   "fieldtype": "Int",
+   "label": "Max History Turns",
+   "non_negative": 1
+  },
+  {
+   "fieldname": "section_ai_read",
+   "fieldtype": "Section Break",
+   "label": "Document AI Read"
+  },
+  {
+   "default": "Claude CLI",
+   "description": "Local command-line AI provider used by the AI Read buttons in Document Finder.",
+   "fieldname": "ai_read_provider",
+   "fieldtype": "Select",
+   "label": "AI Read CLI Provider",
+   "options": "Claude CLI\nCodex CLI",
+   "reqd": 1
+  },
+  {
+   "default": "claude-haiku-4-5",
+   "description": "Model used to extract document text, metadata, and company matches.",
+   "fieldname": "ai_read_model",
+   "fieldtype": "Select",
+   "label": "AI Read Model",
+   "options": "claude-haiku-4-5\nclaude-sonnet-5\nclaude-opus-5\ngpt-6-luna\ngpt-6-astra\ngpt-5.6-sol",
+   "reqd": 1
+  },
+  {
+   "default": "medium",
+   "description": "Thinking depth used for document extraction and company matching.",
+   "fieldname": "ai_read_effort",
+   "fieldtype": "Select",
+   "label": "AI Read Thinking Depth",
+   "options": "low\nmedium\nhigh\nxhigh\nmax",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_behavior",
+   "fieldtype": "Section Break",
+   "label": "Behavior"
+  },
+  {
+   "default": "Hi, I'm mini Martin — ask me anything!",
+   "description": "Shown as the assistant's first message when the chat panel opens.",
+   "fieldname": "greeting_message",
+   "fieldtype": "Small Text",
+   "label": "Greeting Message"
+  },
+  {
+   "default": "You are \"mini Martin\", a friendly, concise AI assistant embedded as a floating chat button in the EUCON Forms internal business portal (an accounting/payroll/student-records admin tool for school companies). You have no access to this system's live data, files, or tools -- you can only chat in plain text. The user's message tells you which page URL they're asking from -- use that to understand what they're likely looking at or trying to do, but you still can't read what's actually on that page. If asked about specific records, balances, invoices, or documents, say plainly that you can't look those up and, if you can guess which part of the portal might have it, suggest that. Keep replies short, warm, and to the point.",
+   "description": "The persona/instructions sent to the model ahead of every conversation.",
+   "fieldname": "system_prompt",
+   "fieldtype": "Long Text",
+   "label": "System Prompt",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-09-23 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms AI Agent Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "read": 1,
+   "role": "Ez Accounting Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

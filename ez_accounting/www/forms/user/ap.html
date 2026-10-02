@@ -1,0 +1,174 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .ap-bucket-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 1rem;
+	margin-bottom: 1.5rem;
+}
+body.forms-portal-dark .ap-bucket-card .card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	padding: 1rem 1.15rem;
+}
+body.forms-portal-dark .ap-bucket-label { font-size: 0.78rem; color: #9aa1ac; }
+body.forms-portal-dark .ap-bucket-value { font-size: 1.25rem; font-weight: 700; }
+body.forms-portal-dark .ap-bucket-card.is-total .ap-bucket-value { color: #5b8cff; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Aged Payables") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Every unpaid Purchase Invoice for {0}, aged by due date as of {1}.").format(company, frappe.utils.format_date(as_of)) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>
+
+<div class="card form-card mb-4 no-print">
+	<div class="card-body">
+		<div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+			<form method="GET" class="date-range-row">
+				<div class="form-group mb-0">
+					<label>{{ _("As of") }}</label>
+					<input type="date" class="form-control" name="as_of" value="{{ as_of }}" max="{{ today }}">
+				</div>
+				<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+				{% if as_of != today %}
+				<a href="/forms/user/ap" class="btn btn-outline-light">{{ icons.btn_icon("x") }}{{ _("Today") }}</a>
+				{% endif %}
+			</form>
+			{% if company %}
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" href="/api/method/ez_accounting.www.forms.user.ap.download_excel?as_of={{ as_of }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" href="/forms/user/printer?kind=aged_payables&as_of={{ as_of }}">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+{% if company %}
+<div class="ap-bucket-grid">
+	{% for key, label in buckets %}
+	<div class="card form-card ap-bucket-card">
+		<div class="card-body">
+			<span class="ap-bucket-label">{{ _(label) }}</span>
+			<span class="ap-bucket-value">{{ frappe.utils.fmt_money(totals.get(key, 0)) }}</span>
+		</div>
+	</div>
+	{% endfor %}
+	<div class="card form-card ap-bucket-card is-total">
+		<div class="card-body">
+			<span class="ap-bucket-label">{{ _("Total Payable") }}</span>
+			<span class="ap-bucket-value">{{ frappe.utils.fmt_money(totals.get("total", 0)) }}</span>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card mt-4">
+	<div class="card-body">
+		<h5 class="mb-3">{{ _("By Vendor") }}</h5>
+		<div class="table-responsive">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th>{{ _("Vendor") }}</th>
+						{% for key, label in buckets %}
+						<th class="text-right">{{ _(label) }}</th>
+						{% endfor %}
+						<th class="text-right">{{ _("Total") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for v in suppliers %}
+					<tr>
+						<td>{{ v.supplier }}</td>
+						{% for key, label in buckets %}
+						<td class="text-right">{{ frappe.utils.fmt_money(v[key]) if v[key] else "" }}</td>
+						{% endfor %}
+						<td class="text-right"><strong>{{ frappe.utils.fmt_money(v.total) }}</strong></td>
+					</tr>
+					{% else %}
+					<tr><td colspan="{{ buckets|length + 2 }}">{{ _("Nothing payable.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if suppliers %}
+				<tfoot>
+					<tr>
+						<th>{{ _("All Vendors") }}</th>
+						{% for key, label in buckets %}
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.get(key, 0)) }}</th>
+						{% endfor %}
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.get("total", 0)) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card mt-4">
+	<div class="card-body">
+		<h5 class="mb-3">{{ _("Unpaid Invoices") }}</h5>
+		<div class="table-responsive">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th>{{ _("Vendor") }}</th>
+						<th>{{ _("Invoice") }}</th>
+						<th>{{ _("Bill No") }}</th>
+						<th>{{ _("Posting Date") }}</th>
+						<th>{{ _("Due Date") }}</th>
+						<th class="text-right">{{ _("Days Past Due") }}</th>
+						<th>{{ _("Bucket") }}</th>
+						<th class="text-right">{{ _("Grand Total") }}</th>
+						<th class="text-right">{{ _("Amount Due") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for inv in invoices %}
+					<tr>
+						<td>{{ inv.supplier }}</td>
+						<td><a href="/forms/user/printer?id={{ inv.name | urlencode }}" target="_blank" rel="noopener">{{ inv.name }}</a></td>
+						<td>{{ inv.bill_no }}</td>
+						<td>{{ frappe.utils.format_date(inv.posting_date) }}</td>
+						<td>{{ frappe.utils.format_date(inv.due_date) if inv.due_date else "" }}</td>
+						<td class="text-right">{{ inv.days_past_due if inv.days_past_due else "" }}</td>
+						<td>{{ _(inv.bucket_label) }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(inv.grand_total) }}</td>
+						<td class="text-right"><strong>{{ frappe.utils.fmt_money(inv.outstanding_amount) }}</strong></td>
+					</tr>
+					{% else %}
+					<tr><td colspan="9">{{ _("Nothing payable.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if invoices %}
+				<tfoot>
+					<tr>
+						<th colspan="8">{{ _("Total") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.get("total", 0)) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+{% endblock %}

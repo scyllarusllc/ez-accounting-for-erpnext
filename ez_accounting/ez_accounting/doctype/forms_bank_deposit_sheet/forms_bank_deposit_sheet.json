@@ -1,0 +1,326 @@
+{
+ "actions": [],
+ "autoname": "format:BDS-{deposit_date}-{#####}",
+ "creation": "2026-08-20 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "deposit_to_account",
+  "deposit_date",
+  "column_break_dates",
+  "from_receipt_date",
+  "to_receipt_date",
+  "section_denominations",
+  "usd100",
+  "usd50",
+  "usd20",
+  "column_break_denom",
+  "usd10",
+  "usd5",
+  "usd1",
+  "coins",
+  "section_checks",
+  "check_amount",
+  "section_totals",
+  "total_physical_cash",
+  "column_break_totals",
+  "system_expected_cash",
+  "variance",
+  "column_break_check_totals",
+  "system_expected_checks",
+  "check_variance",
+  "section_summary",
+  "total_deposit",
+  "column_break_summary",
+  "total_expected",
+  "total_variance",
+  "section_accounts",
+  "cash_account",
+  "column_break_accounts",
+  "bank_account",
+  "checks_account",
+  "deposit_journal_entry",
+  "amended_from"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "description": "Which bank account this deposit is for. On /forms/user/deposit this scopes the expected-cash/checks totals to receipts whose invoice items are bound (Item Default → Deposit To Account, set on /forms/user/items) to this account. Blank on sheets created before this field existed.",
+   "fieldname": "deposit_to_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Deposit To Account",
+   "options": "Account"
+  },
+  {
+   "default": "Today",
+   "fieldname": "deposit_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Deposit Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_dates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "Today",
+   "description": "The date range of cash receipts being counted and deposited.",
+   "fieldname": "from_receipt_date",
+   "fieldtype": "Date",
+   "label": "From Receipt Date",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "to_receipt_date",
+   "fieldtype": "Date",
+   "label": "To Receipt Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_denominations",
+   "fieldtype": "Section Break",
+   "label": "Physical Cash Count"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd100",
+   "fieldtype": "Int",
+   "label": "USD100"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd50",
+   "fieldtype": "Int",
+   "label": "USD50"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd20",
+   "fieldtype": "Int",
+   "label": "USD20"
+  },
+  {
+   "fieldname": "column_break_denom",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd10",
+   "fieldtype": "Int",
+   "label": "USD10"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd5",
+   "fieldtype": "Int",
+   "label": "USD5"
+  },
+  {
+   "default": "0",
+   "fieldname": "usd1",
+   "fieldtype": "Int",
+   "label": "USD1"
+  },
+  {
+   "default": "0",
+   "fieldname": "coins",
+   "fieldtype": "Currency",
+   "label": "Coins"
+  },
+  {
+   "fieldname": "section_checks",
+   "fieldtype": "Section Break",
+   "label": "Physical Checks Count"
+  },
+  {
+   "default": "0",
+   "description": "Total dollar amount of checks being physically deposited — checks don't break down into denominations the way cash does.",
+   "fieldname": "check_amount",
+   "fieldtype": "Currency",
+   "label": "Check Amount"
+  },
+  {
+   "fieldname": "section_totals",
+   "fieldtype": "Section Break",
+   "label": "Totals"
+  },
+  {
+   "description": "Computed server-side from the denomination count above — cannot be edited directly.",
+   "fieldname": "total_physical_cash",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Physical Cash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Cash Payment Entries received in the receipt date range, minus what prior submitted deposit sheets for that same range already account for.",
+   "fieldname": "system_expected_cash",
+   "fieldtype": "Currency",
+   "label": "System Expected Cash",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_check_totals",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Check Payment Entries received in the receipt date range, minus what prior submitted deposit sheets for that same range already account for.",
+   "fieldname": "system_expected_checks",
+   "fieldtype": "Currency",
+   "label": "System Expected Checks",
+   "read_only": 1
+  },
+  {
+   "fieldname": "check_variance",
+   "fieldtype": "Currency",
+   "label": "Check Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_summary",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "description": "Total Physical Cash + Check Amount.",
+   "fieldname": "total_deposit",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Deposit",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_summary",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "System Expected Cash + System Expected Checks.",
+   "fieldname": "total_expected",
+   "fieldtype": "Currency",
+   "label": "Total Expected",
+   "read_only": 1
+  },
+  {
+   "description": "Variance + Check Variance.",
+   "fieldname": "total_variance",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Total Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_accounts",
+   "fieldtype": "Section Break",
+   "label": "Accounts"
+  },
+  {
+   "fieldname": "cash_account",
+   "fieldtype": "Link",
+   "label": "Cash Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_accounts",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "description": "Where checks are held before deposit — e.g. an Undeposited Funds account, or the bank account checks are deposited directly into.",
+   "fieldname": "checks_account",
+   "fieldtype": "Link",
+   "label": "Checks Account",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "description": "Posted automatically on submit: Debit Bank Account, Credit Cash Account/Checks Account for the physically counted amount actually deposited. Empty if nothing needed transferring (e.g. every account involved already was the Bank Account).",
+   "fieldname": "deposit_journal_entry",
+   "fieldtype": "Link",
+   "label": "Deposit Journal Entry",
+   "no_copy": 1,
+   "options": "Journal Entry",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "no_copy": 1,
+   "options": "Forms Bank Deposit Sheet",
+   "print_hide": 1,
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-08-20 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Bank Deposit Sheet",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "print": 1,
+   "read": 1,
+   "role": "Ez Accounting Admin",
+   "submit": 1,
+   "write": 1
+  },
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

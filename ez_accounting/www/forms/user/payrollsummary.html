@@ -1,0 +1,134 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Payroll Summary") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("From submitted payroll for {0}.").format(company) }}</p>
+</div>
+
+<div class="card form-card mb-4">
+	<div class="card-body">
+		<div class="quick-range-row mb-3">
+			<a href="/forms/user/payrollsummary?from_date={{ last_month_from }}&to_date={{ last_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'last_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("Last Month") }}</a>
+			<a href="/forms/user/payrollsummary?from_date={{ this_month_from }}&to_date={{ this_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'this_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("This Month") }}</a>
+		</div>
+		<form method="GET" class="date-range-row">
+			<div class="form-group mb-0">
+				<label>{{ _("From") }}</label>
+				<input type="date" class="form-control" name="from_date" value="{{ from_date or '' }}">
+			</div>
+			<div class="form-group mb-0">
+				<label>{{ _("To") }}</label>
+				<input type="date" class="form-control" name="to_date" value="{{ to_date or '' }}">
+			</div>
+			<div class="form-group mb-0">
+				<label>{{ _("Reference") }}</label>
+				<select class="form-control" name="reference">
+					<option value="">{{ _("All") }}</option>
+					{% for ref in totals.references %}
+					<option value="{{ ref }}" {{ 'selected' if ref == reference else '' }}>{{ ref }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="form-group mb-0">
+				<label>{{ _("Print Reference From") }}</label>
+				<select class="form-control" name="ref_from">
+					<option value="">{{ _("Start") }}</option>
+					{% for ref in totals.references %}
+					<option value="{{ ref }}" {{ 'selected' if ref == ref_from else '' }}>{{ ref }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="form-group mb-0">
+				<label>{{ _("Print Reference To") }}</label>
+				<select class="form-control" name="ref_to">
+					<option value="">{{ _("End") }}</option>
+					{% for ref in totals.references %}
+					<option value="{{ ref }}" {{ 'selected' if ref == ref_to else '' }}>{{ ref }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+			{% if quick_active != 'last_month' %}
+			<a href="/forms/user/payrollsummary" class="btn btn-outline-light">{{ icons.btn_icon("x") }}{{ _("Clear") }}</a>
+			{% endif %}
+		</form>
+	</div>
+</div>
+
+<div class="card form-card mt-4" id="payroll-summary-print">
+	<div class="card-body">
+		<div class="text-center mb-3">
+			<div style="font-size: 1.25rem; font-weight: 700;">{{ company }}</div>
+			<div style="font-weight: 700;">{{ _("Payroll Summary") }}</div>
+			{% if from_date or to_date %}
+			<div>{{ _("For the Period {0}").format(long_date(from_date) ~ " – " ~ long_date(to_date)) }}</div>
+			{% endif %}
+		</div>
+		<div class="d-flex align-items-center justify-content-between mb-3">
+			<h5 class="mb-0">{{ _("Employee Summary") }}</h5>
+			<div class="d-flex gap-2 no-print">
+				<a class="btn btn-sm btn-outline-light" href="/api/method/ez_accounting.www.forms.user.payrollsummary.download_excel?from_date={{ from_date or '' }}&to_date={{ to_date or '' }}&reference={{ reference|urlencode }}&ref_from={{ ref_from|urlencode }}&ref_to={{ ref_to|urlencode }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<button type="button" class="btn btn-sm btn-outline-light" onclick="window.print()">{{ icons.btn_icon("printer") }}{{ _("Print") }}</button>
+			</div>
+		</div>
+		<p class="text-muted no-print" style="margin-top: -0.5rem;">{{ _("From submitted payroll (Salary Slips) — one row per Salary Slip whose pay period end date falls in range.") }}</p>
+		<div class="table-responsive">
+			<style>.table-responsive thead th{font-weight:700;}</style>
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Employee") }}</th>
+						<th>{{ _("Reference") }}</th>
+						<th>{{ _("Period") }}</th>
+						<th class="text-right">{{ _("Days Worked") }}</th>
+						<th>{{ _("Frequency") }}</th>
+						<th class="text-right">{{ _("Gross Pay") }}</th>
+						{% for c in totals.components %}<th class="text-right">{{ c }}</th>{% endfor %}
+						<th class="text-right">{{ _("Total Deductions") }}</th>
+						<th class="text-right">{{ _("Net Pay") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for slip in slips %}
+					<tr>
+						<td>{{ short_date(slip.posting_date) }}</td>
+						<td>{{ slip.employee_name or slip.employee }}</td>
+						<td>{{ slip.reference_no or "" }}</td>
+						<td>{{ long_date(slip.start_date) }} – {{ long_date(slip.end_date) }}</td>
+						<td class="text-right">{{ slip.payment_days }}</td>
+						<td>{{ slip.payroll_frequency }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(slip.gross_pay) }}</td>
+						{% for c in totals.components %}<td class="text-right">{{ frappe.utils.fmt_money(slip.deductions.get(c, 0)) }}</td>{% endfor %}
+						<td class="text-right">{{ frappe.utils.fmt_money(slip.total_deduction) }}</td>
+						<td class="text-right"><strong>{{ frappe.utils.fmt_money(slip.net_pay) }}</strong></td>
+					</tr>
+					{% else %}
+					<tr><td colspan="{{ 9 + totals.components|length }}">{{ _("No payroll data for this period.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if slips %}
+				<tfoot>
+					<tr>
+						<th colspan="6">{{ _("All Employees") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.gross_pay) }}</th>
+						{% for c in totals.components %}<th class="text-right">{{ frappe.utils.fmt_money(totals.deductions[c]) }}</th>{% endfor %}
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.total_deduction) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(totals.net_pay) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endblock %}

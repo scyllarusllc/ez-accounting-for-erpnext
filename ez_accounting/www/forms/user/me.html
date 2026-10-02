@@ -1,0 +1,135 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block page_content %}
+
+{% macro detail_item(label, value) %}
+	<div class="detail-item">
+		<span class="stat-label">{{ label }}</span>
+		<span class="detail-value">{{ value if value else "—" }}</span>
+	</div>
+{% endmacro %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("My Account") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Your account details on the Forms portal.") }}</p>
+</div>
+
+<div class="card form-card profile-card">
+	<div class="card-body">
+		<div class="profile-header">
+			<span class="profile-avatar">
+				{% if account.user_image %}
+					<img src="{{ account.user_image }}" alt="{{ account.full_name }}">
+				{% else %}
+					{{ initials }}
+				{% endif %}
+			</span>
+			<div>
+				<h4 class="mb-0">{{ account.full_name }}</h4>
+				<p class="profile-email mb-0">{{ account.email }}</p>
+			</div>
+		</div>
+
+		<div class="profile-detail-grid">
+			{{ detail_item(_("Mobile"), account.mobile_no) }}
+			{{ detail_item(_("Phone"), account.phone) }}
+			{{ detail_item(_("Location"), account.location) }}
+			{{ detail_item(_("Last Login"), frappe.utils.format_datetime(account.last_login, "medium") if account.last_login else None) }}
+		</div>
+
+		{% if companies %}
+		<div class="profile-company mb-3">
+			<span class="stat-label d-block mb-2">{{ _("Company") }}</span>
+			<select class="form-control" id="me-company-select" style="max-width: 340px;">
+				{% for c in companies %}
+				<option value="{{ c.name }}" {{ "selected" if c.name == selected_company else "" }}>{{ c.name }}</option>
+				{% endfor %}
+			</select>
+			<div class="form-text">{{ _("Used across Payroll, Purchase, Sales, and other Express pages — the same selection as the nav bar's company switcher.") }}</div>
+		</div>
+		{% endif %}
+
+		{% if forms_styles %}
+		<div class="profile-style mb-3">
+			<span class="stat-label d-block mb-2">{{ _("My Style") }}</span>
+			<select class="form-control" id="me-my-style-select" style="max-width: 340px;">
+				<option value="" {{ "selected" if not my_forms_style else "" }}>{{ _("— Portal Default —") }}</option>
+				{% for style_name in forms_styles %}
+				<option value="{{ style_name }}" {{ "selected" if style_name == my_forms_style else "" }}>{{ style_name }}</option>
+				{% endfor %}
+			</select>
+			<div class="form-text">{{ _("Overrides the System Default just for your own account — pick any style a System Manager has created on the Styles page, or leave as Portal Default to follow whatever's set site-wide.") }}</div>
+		</div>
+		{% endif %}
+
+		<div class="profile-roles">
+			<span class="stat-label">{{ _("Roles") }}</span>
+			<div class="role-chip-row">
+				{% for role in roles %}
+					<span class="role-chip">{{ role }}</span>
+				{% else %}
+					<span class="text-muted">{{ _("No roles assigned.") }}</span>
+				{% endfor %}
+				{% if hidden_roles %}
+					<details class="role-chip-more">
+						<summary class="role-chip">{{ _("+{0} more").format(hidden_roles | length) }}</summary>
+						{% for role in hidden_roles %}
+							<span class="role-chip">{{ role }}</span>
+						{% endfor %}
+					</details>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Shared by both selectors below — same "fetch() only rejects on a
+	// network error, not on a 4xx/5xx response" fix forms_nav.html's own
+	// company selector needed: without it, a save that failed server-side
+	// still reloaded the page as if it had worked, silently reverting the
+	// selector back to whatever was actually persisted.
+	function wire_preference_select(select, method, argName) {
+		if (!select) return;
+		var lastValue = select.value;
+
+		select.addEventListener("change", function () {
+			var chosen = select.value;
+			var args = {};
+			args[argName] = chosen;
+			select.disabled = true;
+			fetch("/api/method/" + method, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Frappe-CSRF-Token": frappe.csrf_token
+				},
+				body: JSON.stringify(args)
+			}).then(function (response) {
+				if (!response.ok) throw new Error("Request failed");
+				// The reload clears any toast we'd show now — stash a flag the
+				// app-wide forms_portal.js picks up on the next load.
+				try { sessionStorage.setItem("forms_portal_saved_toast", "1"); } catch (e) {}
+				window.location.reload();
+			}).catch(function () {
+				select.value = lastValue;
+				select.disabled = false;
+				alert(__("Could not save that. Please try again."));
+			});
+		});
+	}
+
+	wire_preference_select(document.getElementById("me-company-select"), "ez_accounting.api.set_selected_company", "company");
+	wire_preference_select(document.getElementById("me-my-style-select"), "ez_accounting.api.set_my_forms_style", "style_name");
+});
+</script>
+{% endblock %}

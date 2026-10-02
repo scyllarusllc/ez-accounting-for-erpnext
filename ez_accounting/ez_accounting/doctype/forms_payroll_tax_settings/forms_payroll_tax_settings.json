@@ -1,0 +1,105 @@
+{
+ "actions": [],
+ "autoname": "field:company",
+ "creation": "2026-08-20 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "section_fica",
+  "fica_ss_employee_component",
+  "fica_medicare_employee_component",
+  "column_break_fica",
+  "fica_ss_employer_component",
+  "fica_medicare_employer_component",
+  "section_treasurer",
+  "treasurer_withholding_component"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "section_fica",
+   "fieldtype": "Section Break",
+   "label": "FICA — SS/Medicare Payable"
+  },
+  {
+   "description": "Salary Component whose amount is the employee-side Social Security withholding, for this company's Express Payroll / FICA report.",
+   "fieldname": "fica_ss_employee_component",
+   "fieldtype": "Link",
+   "label": "SS (Employee) Component",
+   "options": "Salary Component"
+  },
+  {
+   "description": "Salary Component whose amount is the employee-side Medicare withholding.",
+   "fieldname": "fica_medicare_employee_component",
+   "fieldtype": "Link",
+   "label": "Medicare (Employee) Component",
+   "options": "Salary Component"
+  },
+  {
+   "fieldname": "column_break_fica",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Salary Component whose amount is the employer-side Social Security liability.",
+   "fieldname": "fica_ss_employer_component",
+   "fieldtype": "Link",
+   "label": "SS (Employer) Component",
+   "options": "Salary Component"
+  },
+  {
+   "description": "Salary Component whose amount is the employer-side Medicare liability.",
+   "fieldname": "fica_medicare_employer_component",
+   "fieldtype": "Link",
+   "label": "Medicare (Employer) Component",
+   "options": "Salary Component"
+  },
+  {
+   "fieldname": "section_treasurer",
+   "fieldtype": "Section Break",
+   "label": "Treasurer — Withholding Tax Payable"
+  },
+  {
+   "description": "Salary Component whose amount is this company's local/withholding tax liability, for the Treasurer report.",
+   "fieldname": "treasurer_withholding_component",
+   "fieldtype": "Link",
+   "label": "Withholding Tax Component",
+   "options": "Salary Component"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-08-20 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Payroll Tax Settings",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,237 @@
+<nav class="forms-nav">
+	<div class="container forms-nav-inner">
+		<a href="{{ forms_url_prefix }}/forms/user/dashboard" class="forms-nav-brand" aria-label="{{ _('Dashboard') }}">
+			<img src="/files/ezab-banner-h250.png" alt="EZAB">
+		</a>
+		<a href="{{ forms_url_prefix }}/forms/user/dashboard" class="forms-nav-link {{ 'is-active' if nav_active == 'dashboard' else '' }}">{{ _("Dashboard") }}</a>
+		{% set front_desk_active = nav_active in ["sales", "customer", "invoice_list", "payments", "deposit", "deposits", "salesreport"] %}
+		{% if show_sales_link or show_customer_link or show_invoice_list_link or show_payments_link or show_deposit_link or show_deposits_link or show_salesreport_link %}
+		<div class="forms-nav-more">
+			<button type="button" class="forms-nav-link forms-nav-more-btn {{ 'is-active' if front_desk_active else '' }}" id="forms-nav-front_desk-btn" aria-haspopup="true" aria-expanded="false" aria-controls="forms-nav-front_desk-menu">{{ _("Front Desk") }} <i class="fa fa-caret-down" aria-hidden="true"></i></button>
+			<div class="forms-nav-more-menu d-none" id="forms-nav-front_desk-menu">
+				{% if show_sales_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/sales" class="forms-nav-more-link {{ 'is-active' if nav_active == 'sales' else '' }}">{{ _("Sales") }}</a>
+				{% endif %}
+				{% if show_customer_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/customer" class="forms-nav-more-link {{ 'is-active' if nav_active == 'customer' else '' }}">{{ _("Customers") }}</a>
+				{% endif %}
+				{% if show_invoice_list_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/sales#sales-invoice-history" class="forms-nav-more-link {{ 'is-active' if nav_active == 'invoice_list' else '' }}">{{ _("Invoices") }}</a>
+				{% endif %}
+				{% if show_payments_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/payments" class="forms-nav-more-link {{ 'is-active' if nav_active == 'payments' else '' }}">{{ _("Receipts") }}</a>
+				{% endif %}
+				{% if show_deposit_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/deposit" class="forms-nav-more-link {{ 'is-active' if nav_active == 'deposit' else '' }}">{{ _("Deposit") }}</a>
+				{% endif %}
+				{% if show_deposits_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/deposits" class="forms-nav-more-link {{ 'is-active' if nav_active == 'deposits' else '' }}">{{ _("Deposits") }}</a>
+				{% endif %}
+				{% if show_salesreport_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/salesreport" class="forms-nav-more-link {{ 'is-active' if nav_active == 'salesreport' else '' }}">{{ _("Sales Report") }}</a>
+				{% endif %}
+			</div>
+		</div>
+		{% endif %}
+		{% set accounting_active = nav_active in ["chart_of_accounts", "payroll", "purchase", "vendor_1099", "ap", "ar", "reconciliation", "cash_disbursements", "cash_receipts", "check_register", "customer_ledgers", "binding", "clearing", "fica", "items", "payrollsettings", "payrollsummary", "purchase_journal", "sales_journal", "supplier", "treasurer", "vendor_ledgers", "vendor_list"] %}
+		{% if show_chart_of_accounts_link or show_payroll_link or show_purchase_link or show_vendor_1099_link or show_ap_link or show_ar_link or show_reconciliation_link or show_cash_disbursements_link or show_cash_receipts_link or show_check_register_link or show_customer_ledgers_link or show_binding_link or show_clearing_link or show_fica_link or show_items_link or show_payrollsettings_link or show_payrollsummary_link or show_purchase_journal_link or show_sales_journal_link or show_supplier_link or show_treasurer_link or show_vendor_ledgers_link or show_vendor_list_link %}
+		<div class="forms-nav-more">
+			<button type="button" class="forms-nav-link forms-nav-more-btn {{ 'is-active' if accounting_active else '' }}" id="forms-nav-accounting-btn" aria-haspopup="true" aria-expanded="false" aria-controls="forms-nav-accounting-menu">{{ _("Accounting") }} <i class="fa fa-caret-down" aria-hidden="true"></i></button>
+			<div class="forms-nav-more-menu d-none" id="forms-nav-accounting-menu">
+				{% if show_chart_of_accounts_link %}
+				<a href="/app/account/view/tree" class="forms-nav-more-link {{ 'is-active' if nav_active == 'chart_of_accounts' else '' }}">{{ _("Chart of Accounts") }}</a>
+				{% endif %}
+				{% if show_payroll_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/payroll" class="forms-nav-more-link {{ 'is-active' if nav_active == 'payroll' else '' }}">{{ _("Payroll") }}</a>
+				{% endif %}
+				{% if show_purchase_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/purchase" class="forms-nav-more-link {{ 'is-active' if nav_active == 'purchase' else '' }}">{{ _("Purchase") }}</a>
+				{% endif %}
+				{% if show_vendor_1099_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/vendor_1099" class="forms-nav-more-link {{ 'is-active' if nav_active == 'vendor_1099' else '' }}">{{ _("1099 Vendor Report") }}</a>
+				{% endif %}
+				{% if show_ap_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/ap" class="forms-nav-more-link {{ 'is-active' if nav_active == 'ap' else '' }}">{{ _("Aged Payables") }}</a>
+				{% endif %}
+				{% if show_ar_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/ar" class="forms-nav-more-link {{ 'is-active' if nav_active == 'ar' else '' }}">{{ _("Aged Receivables") }}</a>
+				{% endif %}
+				{% if show_reconciliation_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/reconciliation" class="forms-nav-more-link {{ 'is-active' if nav_active == 'reconciliation' else '' }}">{{ _("Bank Reconciliation") }}</a>
+				{% endif %}
+				{% if show_cash_disbursements_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/cash_disbursements" class="forms-nav-more-link {{ 'is-active' if nav_active == 'cash_disbursements' else '' }}">{{ _("Cash Disbursements Journal") }}</a>
+				{% endif %}
+				{% if show_cash_receipts_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/cash_receipts" class="forms-nav-more-link {{ 'is-active' if nav_active == 'cash_receipts' else '' }}">{{ _("Cash Receipts Journal") }}</a>
+				{% endif %}
+				{% if show_check_register_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/check_register" class="forms-nav-more-link {{ 'is-active' if nav_active == 'check_register' else '' }}">{{ _("Check Register") }}</a>
+				{% endif %}
+				{% if show_customer_ledgers_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/customer_ledgers" class="forms-nav-more-link {{ 'is-active' if nav_active == 'customer_ledgers' else '' }}">{{ _("Customer Ledgers") }}</a>
+				{% endif %}
+				{% if show_binding_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/binding" class="forms-nav-more-link {{ 'is-active' if nav_active == 'binding' else '' }}">{{ _("Default Bindings") }}</a>
+				{% endif %}
+				{% if show_clearing_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/clearing" class="forms-nav-more-link {{ 'is-active' if nav_active == 'clearing' else '' }}">{{ _("Discount Clearing") }}</a>
+				{% endif %}
+				{% if show_fica_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/fica" class="forms-nav-more-link {{ 'is-active' if nav_active == 'fica' else '' }}">{{ _("FICA (SS/Medicare)") }}</a>
+				{% endif %}
+				{% if show_items_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/items" class="forms-nav-more-link {{ 'is-active' if nav_active == 'items' else '' }}">{{ _("Items") }}</a>
+				{% endif %}
+				{% if show_payrollsettings_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/payrollsettings" class="forms-nav-more-link {{ 'is-active' if nav_active == 'payrollsettings' else '' }}">{{ _("Payroll Settings") }}</a>
+				{% endif %}
+				{% if show_payrollsummary_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/payrollsummary" class="forms-nav-more-link {{ 'is-active' if nav_active == 'payrollsummary' else '' }}">{{ _("Payroll Summary") }}</a>
+				{% endif %}
+				{% if show_purchase_journal_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/purchase_journal" class="forms-nav-more-link {{ 'is-active' if nav_active == 'purchase_journal' else '' }}">{{ _("Purchase Journal") }}</a>
+				{% endif %}
+				{% if show_sales_journal_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/sales_journal" class="forms-nav-more-link {{ 'is-active' if nav_active == 'sales_journal' else '' }}">{{ _("Sales Journal") }}</a>
+				{% endif %}
+				{% if show_supplier_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/supplier" class="forms-nav-more-link {{ 'is-active' if nav_active == 'supplier' else '' }}">{{ _("Suppliers") }}</a>
+				{% endif %}
+				{% if show_treasurer_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/treasurer" class="forms-nav-more-link {{ 'is-active' if nav_active == 'treasurer' else '' }}">{{ _("Treasurer (Withholding Tax)") }}</a>
+				{% endif %}
+				{% if show_vendor_ledgers_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/vendor_ledgers" class="forms-nav-more-link {{ 'is-active' if nav_active == 'vendor_ledgers' else '' }}">{{ _("Vendor Ledgers") }}</a>
+				{% endif %}
+				{% if show_vendor_list_link %}
+				<a href="{{ forms_url_prefix }}/forms/user/vendor_list" class="forms-nav-more-link {{ 'is-active' if nav_active == 'vendor_list' else '' }}">{{ _("Vendor List") }}</a>
+				{% endif %}
+			</div>
+		</div>
+		{% endif %}
+
+		{% set more_active = nav_active in ["styles", "employee", "finder", "finder_private", "manual", "settings", "permissions", "printersettings", "printer"] %}
+		{% if show_style_link or show_employee_link or show_files_link or show_finder_link or show_manual_link or show_settings_link or show_permissions_link or show_printersettings_link or show_printer_link %}
+		<div class="forms-nav-more">
+			<button type="button" class="forms-nav-link forms-nav-more-btn {{ 'is-active' if more_active else '' }}" id="forms-nav-more-btn" aria-haspopup="true" aria-expanded="false" aria-controls="forms-nav-more-menu">{{ _("More") }} <i class="fa fa-caret-down" aria-hidden="true"></i></button>
+			<div class="forms-nav-more-menu d-none" id="forms-nav-more-menu">
+				{% if show_finder_link %}<a href="{{ forms_url_prefix }}/forms/user/finder" class="forms-nav-more-link {{ 'is-active' if nav_active == 'finder' else '' }}">{{ _("Document Finder") }}</a>{% endif %}
+				{% if show_finder_link %}<a href="{{ forms_url_prefix }}/forms/user/finder_private" class="forms-nav-more-link {{ 'is-active' if nav_active == 'finder_private' else '' }}">{{ _("My Private Documents") }}</a>{% endif %}
+				{% if show_manual_link %}<a href="{{ forms_url_prefix }}/forms/user/manual" class="forms-nav-more-link {{ 'is-active' if nav_active == 'manual' else '' }}">{{ _("Procedures Manual") }}</a>{% endif %}
+				{% if show_employee_link %}<a href="{{ forms_url_prefix }}/forms/user/employee" class="forms-nav-more-link {{ 'is-active' if nav_active == 'employee' else '' }}">{{ _("Employees") }}</a>{% endif %}
+				{% if show_printer_link %}<a href="{{ forms_url_prefix }}/forms/user/printer" class="forms-nav-more-link {{ 'is-active' if nav_active == 'printer' else '' }}">{{ _("Printer") }}</a>{% endif %}
+				{% if show_printersettings_link %}<a href="{{ forms_url_prefix }}/forms/user/printersettings" class="forms-nav-more-link {{ 'is-active' if nav_active == 'printersettings' else '' }}">{{ _("Print Settings") }}</a>{% endif %}
+				{% if show_style_link %}<a href="{{ forms_url_prefix }}/forms/user/styles" class="forms-nav-more-link {{ 'is-active' if nav_active == 'styles' else '' }}">{{ _("Custom Styles") }}</a>{% endif %}
+				{% if show_permissions_link %}<a href="{{ forms_url_prefix }}/forms/admin/permissions" class="forms-nav-more-link {{ 'is-active' if nav_active == 'permissions' else '' }}">{{ _("Portal Access") }}</a>{% endif %}
+				{% if show_settings_link %}<a href="{{ forms_url_prefix }}/forms/admin/settings" class="forms-nav-more-link {{ 'is-active' if nav_active == 'settings' else '' }}">{{ _("App Settings") }}</a>{% endif %}
+			</div>
+		</div>
+		{% endif %}
+
+		{% if show_company_selector %}
+		<div class="forms-company-select">
+			<select class="select select-neutral select-sm" id="forms-company-select-input" aria-label="{{ _('Company') }}">
+				{% for c in companies %}
+				<option value="{{ c.name }}" data-abbr="{{ c.abbr }}" {{ "selected" if c.name == selected_company else "" }}>{{ c.name }}</option>
+				{% endfor %}
+			</select>
+		</div>
+		{% endif %}
+		<button type="button" class="forms-nav-link forms-nav-link-right forms-quick-jump-trigger" id="forms-quick-jump-trigger" title="{{ _('Quick Jump') }}">
+			<i class="fa fa-search" aria-hidden="true"></i> {{ _("Quick Jump") }}
+			<span class="forms-quick-jump-kbd">{{ _("Ctrl") }}+K</span>
+		</button>
+		<a href="{{ forms_url_prefix }}/forms/user/me" class="forms-nav-link forms-nav-link-right {{ 'is-active' if nav_active == 'me' else '' }}">{{ _("Me") }}</a>
+	</div>
+</nav>
+
+{# Permission-gated page list for the Quick Jump palette (forms_quick_jump.js)
+   — see forms.website_context._quick_jump_pages(). Computed server-side once
+   per page load (not fetched) so the palette's "Pages" section needs no
+   network round trip and can never show a page this user isn't shown in the
+   nav above. #}
+<script>window.FORMS_QUICK_JUMP_PAGES = {{ (quick_jump_pages | default([], true)) | tojson }};</script>
+{# Multi-company URL prefix — read by forms_portal.js (which loads in <head>,
+   before this runs) to prefix in-page links and tag API calls with the
+   current company. Set from the resolved default even on a bare /forms/ URL,
+   so clicking around from an un-prefixed entry point moves into /c/<abbr>/. #}
+<script>
+	window.FORMS_COMPANY_ABBR = {{ (forms_company_abbr or "") | tojson }};
+	window.FORMS_URL_PREFIX = {{ (forms_url_prefix or "") | tojson }};
+</script>
+
+{% if forms_custom_css %}
+{# Rendered here (in <body>, via forms_nav.html — included on every /forms/*
+   page) rather than in each page's own <head>-scoped {% block style %},
+   since this is the one include shared by all of them. Loads after every
+   page's own CSS, so equally-specific selectors here win over the shipped
+   defaults — see ez_accounting.api.get_forms_custom_css()/styles.py for how it's
+   written and picked as the System Default (System Manager only, at
+   /forms/user/styles). `| safe` is required — CSS is full of characters
+   (>, &) that autoescaping would otherwise mangle into HTML entities and
+   corrupt; the one real injection risk (a literal "</style" breaking out of
+   this tag) is blocked at save time instead, in styles.py's
+   _reject_style_close_tag(), not by escaping here. #}
+<style id="forms-custom-style">{{ forms_custom_css | safe }}</style>
+{% endif %}
+
+<script>
+frappe.ready(function () {
+	var dropdowns = ["front_desk", "accounting", "more"].map(function (name) {
+		return {btn: document.getElementById("forms-nav-" + name + "-btn"), menu: document.getElementById("forms-nav-" + name + "-menu")};
+	}).filter(function (item) { return item.btn && item.menu; });
+	function close_dropdowns(except) {
+		dropdowns.forEach(function (item) {
+			if (item !== except) { item.menu.classList.add("d-none"); item.btn.setAttribute("aria-expanded", "false"); }
+		});
+	}
+	dropdowns.forEach(function (item) {
+		item.btn.addEventListener("click", function (e) {
+			e.stopPropagation();
+			var opening = item.menu.classList.contains("d-none");
+			close_dropdowns();
+			if (opening) { item.menu.classList.remove("d-none"); item.btn.setAttribute("aria-expanded", "true"); }
+		});
+	});
+	document.addEventListener("click", function (e) {
+		if (!dropdowns.some(function (item) { return item.btn.contains(e.target) || item.menu.contains(e.target); })) close_dropdowns();
+	});
+	document.addEventListener("keydown", function (e) { if (e.key === "Escape") close_dropdowns(); });
+
+	{% if show_company_selector %}
+	var select = document.getElementById("forms-company-select-input");
+	if (select) {
+		var lastSelectedCompany = select.value;
+		select.addEventListener("change", function () {
+			var chosen = select.value;
+			var opt = select.options[select.selectedIndex];
+			var abbr = opt && opt.getAttribute("data-abbr");
+			select.disabled = true;
+
+			// Navigate to the same page under the chosen company's /c/<abbr>/
+			// prefix — this is what lets a second tab hold a different company.
+			// The current path may or may not already have a /c/<x>/ prefix.
+			var rest = window.location.pathname.replace(/^\/c\/[^/]+(?=\/forms\/)/, "");
+			if (/^\/c\/[^/]+\/?$/.test(rest)) rest = "/forms/user/dashboard";
+			var target = (abbr ? "/c/" + encodeURIComponent(abbr) : "") + rest +
+				window.location.search + window.location.hash;
+
+			// Also move the per-user default so a bare /forms/ URL follows the
+			// last explicit pick — fire-and-forget, then navigate regardless.
+			var go = function () { window.location.href = target; };
+			try {
+				fetch("/api/method/ez_accounting.api.set_selected_company", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"X-Frappe-CSRF-Token": frappe.csrf_token
+					},
+					body: JSON.stringify({ company: chosen })
+				}).then(go, go);
+			} catch (e) { go(); }
+		});
+	}
+	{% endif %}
+});
+</script>

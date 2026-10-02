@@ -1,0 +1,142 @@
+{#
+	Bare, self-contained "1099 Vendor Report" content -- no {% extends %}, no
+	site chrome. Rendered by /forms/user/printerhtml (kind=vendor_1099_report)
+	and iframed by /forms/user/printer at true 8.5in x 11in size. Doesn't rely
+	on forms_portal.css.
+
+	Context (money + dates pre-formatted strings -- see printerhtml.py's
+	_render_vendor_1099_report()):
+	  company, year, printed_at
+	  vendors: list of {vendor_id, vendor, kind, box, box_desc, limit_met,
+	    subtotal, rows: [{date, trans_no, amount}]}
+	  report_total
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.v1099-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.v1099-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.v1099-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.v1099-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+	table.v1099-table th, table.v1099-table td { text-align: left; padding: 0.04in 0.07in; vertical-align: top; }
+	table.v1099-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+	table.v1099-table th.num, table.v1099-table td.num { text-align: right; white-space: nowrap; }
+	table.v1099-table th:first-child, table.v1099-table td:first-child { padding-left: 0; }
+	table.v1099-table th:last-child, table.v1099-table td:last-child { padding-right: 0; }
+
+	tr.v1099-vendor-first td { border-top: 1px solid #bbb; }
+	tr.v1099-vendor-first:first-child td { border-top: none; }
+	td.v1099-vid, td.v1099-vname { font-weight: 700; }
+
+	tr.v1099-subtotal td {
+		border-top: 1px solid #000;
+		border-bottom: 1px solid #000;
+		font-weight: 700;
+		padding-top: 0.04in;
+		padding-bottom: 0.04in;
+	}
+	tr.v1099-gap td { height: 0.12in; border: none; }
+
+	tfoot tr.v1099-total td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 9.5pt;
+	}
+
+	.v1099-empty { color: #555; padding: 0.3in 0; }
+
+	.v1099-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print {
+		thead { display: table-header-group; }
+		tr.v1099-subtotal { page-break-inside: avoid; }
+	}
+</style>
+
+<div class="v1099-company">{{ company }}</div>
+<div class="v1099-title">{{ _("1099 Vendor Report") }}</div>
+<div class="v1099-subtitle">{{ _("For the Year {0}").format(year) }}</div>
+
+{% if not vendors %}
+<p class="v1099-empty">{{ _("No 1099 vendor payments for this year.") }}</p>
+{% else %}
+<table class="v1099-table">
+	<thead>
+		<tr>
+			<th>{{ _("Vendor ID") }}</th>
+			<th>{{ _("Vendor") }}</th>
+			<th>{{ _("1099 Type") }}</th>
+			<th>{{ _("1099 Box") }}</th>
+			<th>{{ _("Box Desc") }}</th>
+			<th>{{ _("Date") }}</th>
+			<th>{{ _("Trans No") }}</th>
+			<th class="num">{{ _("Trans Amount") }}</th>
+			<th>{{ _("Limit Met?") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for v in vendors %}
+		{% for row in v.rows %}
+		<tr class="{{ 'v1099-vendor-first' if loop.first else '' }}">
+			<td class="v1099-vid">{{ v.vendor_id if loop.first else "" }}</td>
+			<td class="v1099-vname">{{ v.vendor if loop.first else "" }}</td>
+			<td>{{ v.kind if loop.first else "" }}</td>
+			<td>{{ v.box if loop.first else "" }}</td>
+			<td>{{ v.box_desc if loop.first else "" }}</td>
+			<td>{{ row.date }}</td>
+			<td>{{ row.trans_no }}</td>
+			<td class="num">{{ row.amount }}</td>
+			<td></td>
+		</tr>
+		{% endfor %}
+		<tr class="v1099-subtotal">
+			<td colspan="6"></td>
+			<td class="num">{{ _("Subtotal") }}</td>
+			<td class="num">{{ v.subtotal }}</td>
+			<td>{{ _("Yes") if v.limit_met else _("No") }}</td>
+		</tr>
+		<tr class="v1099-gap"><td colspan="9"></td></tr>
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="v1099-total">
+			<td colspan="6"></td>
+			<td class="num">{{ _("Report Total") }}</td>
+			<td class="num">{{ report_total }}</td>
+			<td></td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="v1099-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

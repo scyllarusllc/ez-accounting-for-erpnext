@@ -1,0 +1,3158 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+/* Scoped to .sales-card only — mirrors the Express Payroll page's own
+   styling (bigger fields/buttons: single-admin data-entry form, not a dense
+   list view), without touching the shared forms_portal.css. */
+body.forms-portal-dark .sales-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .sales-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .sales-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .sales-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .sales-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+/* Customer combobox: a plain text input + a positioned dropdown of filtered
+   matches, since the native <select> this replaced was unusable with 600+
+   customers. Not a generic component — built for this one field, given the
+   forms-web bundle doesn't ship a real combobox control (see the comment on
+   the `call()` helper below for why: website pages don't load desk assets). */
+body.forms-portal-dark .sales-card .searchable-select,
+body.forms-portal-dark .sales-history-card .searchable-select {
+	position: relative;
+}
+
+body.forms-portal-dark .sales-card .searchable-select-options,
+body.forms-portal-dark .sales-history-card .searchable-select-options {
+	position: absolute;
+	top: calc(100% + 0.35rem);
+	left: 0;
+	right: 0;
+	z-index: 20;
+	max-height: 16rem;
+	overflow-y: auto;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+}
+
+body.forms-portal-dark .sales-card .searchable-select-option,
+body.forms-portal-dark .sales-history-card .searchable-select-option {
+	padding: 0.65rem 1rem;
+	font-size: 1.05rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .sales-card .searchable-select-option.is-active,
+body.forms-portal-dark .sales-history-card .searchable-select-option.is-active {
+	background-color: rgba(91, 140, 255, 0.14);
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .sales-card .searchable-select-option.is-empty,
+body.forms-portal-dark .sales-history-card .searchable-select-option.is-empty {
+	color: #8a8f9c;
+	cursor: default;
+}
+
+body.forms-portal-dark .sales-history-card .history-filter-row .searchable-select {
+	width: 15rem;
+}
+
+body.forms-portal-dark .sales-card .stat-tile {
+	min-height: 54px;
+	justify-content: center;
+}
+
+body.forms-portal-dark .sales-card .income-account-preview,
+body.forms-portal-dark .sales-card .pay-to-preview {
+	display: flex;
+	align-items: center;
+	min-height: 54px;
+	font-size: 1.1rem;
+	padding: 0.7rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+/* "Open student/customer profile" link under the Customer field — shown once
+   a customer is picked, routed to the student profile or the plain customer
+   profile depending on Customer Group. */
+body.forms-portal-dark .sales-card a.customer-profile-link {
+	display: inline-block;
+	margin-top: 0.35rem;
+	font-size: 0.85rem;
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .sales-card a.customer-profile-link:hover {
+	color: #a9c4ff;
+	text-decoration: underline;
+}
+
+/* Repeatable Item rows — each row is its own independent
+   create_searchable_select() instance (same combobox used for Customer),
+   plus Qty/Rate/line-Amount/Income-Account-preview/Remove. */
+body.forms-portal-dark .sales-card .item-row {
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 0.9rem;
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .sales-card .item-row.is-dragging {
+	opacity: 0.55;
+	border-color: #7ea6ff;
+}
+
+body.forms-portal-dark .sales-card .item-row.is-drag-over {
+	box-shadow: 0 -3px 0 #7ea6ff;
+}
+
+body.forms-portal-dark .sales-card .item-row-main {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .sales-card .item-row-item {
+	flex: 1 1 220px;
+	min-width: 220px;
+}
+
+body.forms-portal-dark .sales-card .item-row-qty {
+	width: 6.5rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .sales-card .item-row-rate {
+	width: 8rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .sales-card .item-row-deduction-wrap {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	min-height: 54px;
+	padding: 0 0.4rem;
+	font-size: 0.85rem;
+	color: #c7cbd6;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-card .item-row-deduction-wrap input[type="checkbox"] {
+	width: 1.1rem;
+	height: 1.1rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .sales-card .item-row-amount {
+	width: 8rem;
+	flex: 0 0 auto;
+	min-height: 54px;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	padding: 0.85rem 0.75rem;
+	font-size: 1.1rem;
+	font-weight: 600;
+	background-color: #171920;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .sales-card .item-row-amount.is-deduction {
+	color: #f0a8a8;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .sales-card .item-row-actions {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 0.35rem;
+}
+
+body.forms-portal-dark .sales-card .item-row-remove {
+	flex: 0 0 auto;
+	width: 2.8rem;
+	min-height: 54px;
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	color: #c7cbd6;
+	font-size: 1.1rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .sales-card .item-row-drag {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 auto;
+	width: 2.8rem;
+	min-height: 54px;
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	color: #c7cbd6;
+	font-size: 1.25rem;
+	cursor: grab;
+	user-select: none;
+	touch-action: none;
+}
+
+body.forms-portal-dark .sales-card .item-row-drag:hover {
+	background-color: #20242d;
+	border-color: #7ea6ff;
+}
+
+body.forms-portal-dark .sales-card .item-row-drag:active {
+	cursor: grabbing;
+}
+
+body.forms-portal-dark .sales-card .item-row-remove {
+	color: #f0a8a8;
+	font-size: 1.3rem;
+}
+
+body.forms-portal-dark .sales-card .item-row-remove:hover {
+	background-color: #2a1616;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .sales-card .item-row-remove:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+body.forms-portal-dark .sales-card .item-row-description {
+	margin-top: 0.6rem;
+	height: auto;
+	min-height: 40px;
+	padding: 0.5rem 0.75rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .sales-card .item-row-income-account {
+	margin-top: 0.6rem;
+	font-size: 0.9rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .sales-card .item-row-add {
+	display: block;
+	margin-top: 0.75rem;
+	min-height: 40px;
+}
+
+/* Payment mode — Full/Partial/Invoice Only choice. Plain radios (not real
+   <select>/button-group markup) so a native form.reset() restores the
+   default ("full") on its own, same reasoning that keeps this page away
+   from a JS-driven state machine for anything reset() already handles. */
+body.forms-portal-dark .sales-card .payment-mode-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.6rem;
+}
+
+body.forms-portal-dark .sales-card .payment-mode-option {
+	flex: 1 1 220px;
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	padding: 0.85rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	cursor: pointer;
+	font-size: 1.05rem;
+	font-weight: 500;
+}
+
+body.forms-portal-dark .sales-card .payment-mode-option input[type="radio"] {
+	width: 1.15rem;
+	height: 1.15rem;
+	flex-shrink: 0;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .sales-card .payment-mode-option.is-selected {
+	border-color: #5b8cff;
+	background-color: rgba(91, 140, 255, 0.12);
+}
+
+/* Split Payment — repeatable Mode of Payment + Amount rows, same visual
+   language as the Item rows above (own background/border, flex row,
+   fixed-width Remove button) so the two "add more rows" sections of this
+   form read as the same pattern. */
+body.forms-portal-dark .sales-card .payment-line-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 0.9rem;
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .sales-card .payment-line-mode {
+	flex: 1 1 220px;
+	min-width: 220px;
+}
+
+body.forms-portal-dark .sales-card .payment-line-amount {
+	width: 9rem;
+	flex: 0 0 auto;
+}
+
+body.forms-portal-dark .sales-card .payment-line-remove {
+	flex: 0 0 auto;
+	width: 3.2rem;
+	min-height: 54px;
+	background: none;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	color: #f0a8a8;
+	font-size: 1.3rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .sales-card .payment-line-remove:hover {
+	background-color: #2a1616;
+	border-color: #5a2323;
+}
+
+body.forms-portal-dark .sales-card .payment-line-remove:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
+body.forms-portal-dark .sales-card #add-payment-line-btn {
+	min-height: 48px;
+}
+
+body.forms-portal-dark .sales-card .payment-lines-hint {
+	margin-top: 0.5rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .sales-card .payment-lines-hint.is-balanced {
+	color: #7fd18a;
+}
+
+body.forms-portal-dark .sales-card .payment-lines-hint.is-unbalanced {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .sales-card .stat-value {
+	font-size: 1.4rem;
+}
+
+body.forms-portal-dark .sales-card #sales-submit {
+	font-size: 1.2rem;
+	font-weight: 600;
+	padding: 1.1rem;
+	min-height: 60px;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .sales-card #sales-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .sales-card .sales-result .alert {
+	font-size: 1.05rem;
+	padding: 1.1rem 1.25rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .sales-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+
+/* Sales Invoice History */
+body.forms-portal-dark .sales-history-card td,
+body.forms-portal-dark .sales-history-card th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .sales-history-card tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+/* The row for a sale just recorded through this page's own form — pulses a
+   few times then a lingering tinted background/left-border so it's still
+   easy to spot even after the pulse animation ends, scrolled into view by
+   load_sales_invoice_history()'s highlightName argument. */
+body.forms-portal-dark .sales-history-card tr.is-new-row td {
+	background-color: rgba(91, 140, 255, 0.16);
+	animation: sales-row-highlight-pulse 2.4s ease-in-out;
+}
+
+body.forms-portal-dark .sales-history-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #5b8cff;
+}
+
+@keyframes sales-row-highlight-pulse {
+	0%, 100% { background-color: rgba(91, 140, 255, 0.16); }
+	15%, 45%, 75% { background-color: rgba(91, 140, 255, 0.5); }
+	30%, 60%, 90% { background-color: rgba(91, 140, 255, 0.16); }
+}
+
+body.forms-portal-dark .sales-history-card a.history-row-link {
+	color: inherit;
+}
+
+body.forms-portal-dark .sales-history-card a.history-row-link:hover {
+	color: #7ea6ff;
+}
+
+/* Customer name in a Sales Invoice History row — itself the profile link now
+   (student or plain customer profile, routed by Customer Group), not a
+   separate pill next to a name that used to link to the invoice document. */
+body.forms-portal-dark .sales-history-card a.history-customer-link {
+	color: #7ea6ff;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card a.history-customer-link:hover {
+	color: #a9c4ff;
+	text-decoration: underline;
+}
+
+body.forms-portal-dark .sales-history-card .history-print-actions a.history-row-link {
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card .history-print-actions a.history-row-link + a.history-row-link {
+	margin-left: 0.85rem;
+}
+
+body.forms-portal-dark .sales-history-card .history-print-actions > * + * {
+	margin-left: 0.85rem;
+}
+
+body.forms-portal-dark .sales-history-card button.cancel-sale-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #f0a8a8;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card button.cancel-sale-btn:hover {
+	color: #f6c6c6;
+}
+
+body.forms-portal-dark .sales-history-card button.cancel-sale-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .sales-history-card button.pay-invoice-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #7fd18a;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card button.pay-invoice-btn:hover {
+	color: #a3e3ac;
+}
+
+body.forms-portal-dark .sales-history-card button.amend-sale-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: #e0b877;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card button.amend-sale-btn:hover {
+	color: #f0cf9c;
+}
+
+body.forms-portal-dark .sales-history-card button.amend-sale-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .pill-cancelled {
+	background-color: #3a1f1f;
+	color: #f0a8a8;
+}
+
+/* Lightweight custom overlay/modal, not frappe.ui.Dialog (unavailable on
+   website pages, which only load frappe-web.bundle.js) and not a Bootstrap
+   JS modal (this app avoids depending on Bootstrap's JS plugins, only its
+   CSS). Shared by every modal on this page — Record Payment (reused for both
+   the just-created invoice's "Pay Now" button in sales-result and every
+   outstanding row's own "Pay" button in Sales Invoice History) and Payment
+   History — each its own #<name>-overlay instance of this same markup/CSS. */
+body.forms-portal-dark .forms-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .forms-modal {
+	background-color: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: 100%;
+	max-width: 480px;
+	max-height: 90vh;
+	overflow-y: auto;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+body.forms-portal-dark .forms-modal.forms-modal-wide {
+	max-width: 720px;
+}
+
+body.forms-portal-dark .forms-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.25rem 1.5rem;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .forms-modal-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.6rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+
+body.forms-portal-dark .forms-modal-close:hover {
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .forms-modal-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .pay-invoice-summary {
+	display: flex;
+	justify-content: space-between;
+	padding: 0.85rem 1rem;
+	margin-bottom: 1.25rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .pay-invoice-summary .stat-label {
+	display: block;
+}
+
+body.forms-portal-dark .forms-modal-body .form-label {
+	font-weight: 600;
+}
+
+body.forms-portal-dark .forms-modal-body #pay-invoice-alert {
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .payment-history-invoice {
+	margin-bottom: 1rem;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .sales-history-card button.payment-history-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: inherit;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card button.payment-history-btn:hover {
+	color: #7ea6ff;
+}
+
+/* Plain icon-link, same neutral look as Invoice/Receipt/Edit/History — Send
+   Invoice isn't a destructive (Cancel) or affirmative (Pay) action, so it
+   doesn't get one of those colors, just the shared button reset every other
+   <button> here needs (raw <button> elements get no chrome-removal from
+   a.history-row-link's own rule, which only ever targeted <a> tags). */
+body.forms-portal-dark .sales-history-card button.send-invoice-btn {
+	background: none;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	color: inherit;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card button.send-invoice-btn:hover {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .sales-history-card button.send-invoice-btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+body.forms-portal-dark .sales-history-card .print-last-invoice-link {
+	display: block;
+	margin-top: 0.4rem;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .sales-history-card td.history-dates {
+	white-space: nowrap;
+	line-height: 1.45;
+}
+
+body.forms-portal-dark .sales-history-card td.history-dates .history-date-label,
+body.forms-portal-dark .sales-history-card .history-id-receipt .history-date-label {
+	display: inline-block;
+	min-width: 58px;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .sales-history-card .history-id-receipt {
+	white-space: nowrap;
+	margin-top: 0.15rem;
+	font-size: 0.85rem;
+}
+
+body.forms-portal-dark .sales-history-card .history-id-receipt-voided {
+	color: #8a8f9c;
+	text-decoration: line-through;
+}
+body.forms-portal-dark .sales-history-card .history-id-receipt-voided a.history-row-link {
+	color: inherit;
+}
+
+</style>
+{% include "templates/includes/forms_mid_autumn_style.html" %}
+<style>
+body.forms-portal-dark .mid-autumn-card {
+	border-color: rgba(202, 143, 65, 0.5);
+	box-shadow: 0 0.6rem 1.8rem rgba(18, 8, 24, 0.2);
+}
+
+body.forms-portal-dark .mid-autumn-card .card-body {
+	background: linear-gradient(180deg, rgba(66, 35, 53, 0.2), rgba(24, 26, 32, 0) 8rem);
+}
+
+body.forms-portal-dark .mid-autumn-card .form-label,
+body.forms-portal-dark .mid-autumn-card .form-card-header h4 {
+	color: #efd49b;
+}
+
+body.forms-portal-dark .mid-autumn-card .form-control:focus,
+body.forms-portal-dark .mid-autumn-card .form-select:focus,
+body.forms-portal-dark .mid-autumn-card .select:focus {
+	border-color: #d6a24e;
+	box-shadow: 0 0 0 0.25rem rgba(214, 162, 78, 0.22);
+}
+
+body.forms-portal-dark .mid-autumn-card .btn-primary {
+	color: #fff8e8;
+	background: linear-gradient(135deg, #9d2933, #c04a3b);
+	border-color: #d38a54;
+	box-shadow: 0 0.35rem 1rem rgba(128, 30, 42, 0.3);
+}
+
+body.forms-portal-dark .mid-autumn-card .btn-primary:hover {
+	background: linear-gradient(135deg, #b3333e, #d15843);
+	border-color: #e5b264;
+}
+
+body.forms-portal-dark .mid-autumn-card .payment-mode-option.is-selected {
+	border-color: #d6a24e;
+	background-color: rgba(214, 162, 78, 0.12);
+}
+
+body.forms-portal-dark .mid-autumn-card tr.is-new-row td {
+	background-color: rgba(214, 162, 78, 0.16);
+}
+
+body.forms-portal-dark .mid-autumn-card tr.is-new-row td:first-child {
+	box-shadow: inset 3px 0 0 #d6a24e;
+}
+
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero mid-autumn-hero">
+	{% include "templates/includes/forms_mid_autumn_decor.html" %}
+	<h1 class="mb-1"><a href="">{{ _("Express Sales") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Record one sale for {0}: Sales Invoice and full payment receipt in a single step.").format(company) }}
+	</p>
+</div>
+
+<div class="card form-card sales-card mid-autumn-card">
+	<div class="card-body">
+
+		<div id="amend-banner" class="alert alert-warning d-none" role="alert"></div>
+		<div id="sales-alert" class="alert d-none" role="alert"></div>
+
+		<form id="sales-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-md-6">
+					<label class="form-label" for="customer_search">{{ _("Customer") }}</label>
+					<div class="searchable-select">
+						<input type="text" class="form-control" id="customer_search" autocomplete="off"
+							placeholder="{{ _('Loading customers…') }}" required autofocus>
+						<input type="hidden" id="customer" name="customer">
+						<div class="searchable-select-options d-none" id="customer_options"></div>
+					</div>
+					<div class="form-text">{{ _('Please search — Individual names are always "Firstname Lastname".') }}</div>
+					<div class="form-text" id="customer_count_hint"></div>
+					<a id="customer-profile-link" class="customer-profile-link d-none" target="_blank" rel="noopener">
+						<i class="fa fa-user btn-icon" aria-hidden="true"></i><span id="customer-profile-link-label">{{ _("Open customer profile") }}</span>
+					</a>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="posting_date">{{ _("Posting Date") }}</label>
+					<input type="date" class="form-control" id="posting_date" name="posting_date" required>
+					<div class="form-text">{{ _("Also used as the Due Date and the payment's reference date.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="payment_terms_template">{{ _("Terms") }}</label>
+					<select class="form-select" id="payment_terms_template" name="payment_terms_template">
+						<option value="">{{ _("None (due on posting date)") }}</option>
+						{% for t in payment_terms_templates %}
+						<option value="{{ t }}">{{ t }}</option>
+						{% endfor %}
+					</select>
+					<div class="form-text">{{ _("Payment terms set the Due Date from the Posting Date.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="due_date">{{ _("Due Date") }}</label>
+					<input type="date" class="form-control" id="due_date" name="due_date">
+					<div class="form-text">{{ _("Optional. Enter a date manually to override Terms; leave blank to use Terms / Posting Date.") }}</div>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Items") }}</label>
+					<div id="sales-items-container"></div>
+				</div>
+
+				<div class="col-12">
+					<label class="form-label d-block">{{ _("Payment") }}</label>
+					<div class="payment-mode-group" role="radiogroup">
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="full" checked>
+							{{ _("Full Payment") }}
+						</label>
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="partial">
+							{{ _("Partial Payment") }}
+						</label>
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="split">
+							{{ _("Split Payment") }}
+						</label>
+						<label class="payment-mode-option">
+							<input type="radio" name="payment_mode" value="invoice_only">
+							{{ _("Invoice Only — No Payment") }}
+						</label>
+					</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label d-block">{{ _("Grand Total") }}</label>
+					<div id="amount-preview" class="stat-tile">
+						<span class="stat-value" id="amount-preview-value">&mdash;</span>
+					</div>
+				</div>
+
+				<div class="col-md-6 payment-partial-field d-none">
+					<label class="form-label" for="partial_amount">{{ _("Amount Paid Now") }}</label>
+					<input type="number" class="form-control" id="partial_amount" name="partial_amount" min="0.01" step="0.01">
+					<div class="form-text">{{ _("Less than the Grand Total leaves a balance outstanding for a later payment; more is kept as the customer's advance (Unallocated Amount).") }}</div>
+				</div>
+
+				<div class="col-md-6 payment-only-field payment-single-mode-field">
+					<label class="form-label" for="mode_of_payment">{{ _("Mode of Payment") }}</label>
+					<select class="form-control" id="mode_of_payment" name="mode_of_payment">
+						<option value="" selected>{{ _("— None —") }}</option>
+					</select>
+					<div class="form-text">{{ _("Optional — if it has its own default account, payment is received into that account. Otherwise the company's default account is used.") }}</div>
+				</div>
+
+				<div class="col-md-6 payment-only-field payment-single-mode-field">
+					<label class="form-label d-block">{{ _("Pay To") }}</label>
+					<div id="pay-to-preview" class="pay-to-preview text-muted">
+						{{ _("Checking…") }}
+					</div>
+				</div>
+
+				<div class="col-12 payment-split-field d-none">
+					<label class="form-label d-block">{{ _("Payment Methods") }}</label>
+					<div id="sales-payment-lines-container"></div>
+					<button type="button" class="btn btn-outline-secondary" id="add-payment-line-btn">
+						{{ icons.btn_icon("arrow-right") }}{{ _("Add Payment Method") }}
+					</button>
+					<div class="payment-lines-hint" id="payment-lines-hint"></div>
+				</div>
+
+				<div class="col-md-6 payment-only-field">
+					<label class="form-label" for="reference_no">{{ _("Cheque/Reference No") }}</label>
+					<input type="text" class="form-control" id="reference_no" name="reference_no">
+					<div class="form-text">{{ _("Optional — defaults to the Sales Invoice number if left blank.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="remarks">{{ _("Custom Remarks") }}</label>
+					<input type="text" class="form-control" id="remarks" name="remarks">
+					<div class="form-text">{{ _("Optional — defaults to the Payment Entry's own auto-generated summary if left blank.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="unique_id">{{ _("Unique ID") }}</label>
+					<input type="text" class="form-control" id="unique_id" name="unique_id">
+					<div class="form-text" id="unique-id-status">{{ _("Optional — must be different from every other Sales Invoice's Unique ID.") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="sale_attachment">{{ _("Attachment") }}</label>
+					<input type="file" class="file-input file-input-neutral w-100" id="sale_attachment">
+					<div class="form-text">{{ _("Optional — attached to the Sales Invoice once it's created (e.g. a receipt or signed form).") }}</div>
+				</div>
+
+			</div>
+
+			<div class="d-grid mt-4">
+				<button type="submit" class="btn btn-primary" id="sales-submit">
+					<span class="spinner-border spinner-border-sm d-none" id="sales-spinner" role="status" aria-hidden="true"></span>
+					{{ icons.btn_icon("zap") }}<span id="sales-submit-label">{{ _("Run Express Sale & Record Payment") }}</span>
+				</button>
+			</div>
+		</form>
+
+		<div id="sales-result" class="sales-result d-none"></div>
+
+	</div>
+</div>
+
+<div id="sales-invoice-history" class="card form-card mt-4 sales-history-card mid-autumn-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Sales Invoice History") }}</h4>
+		</div>
+		<div class="row g-2 align-items-end history-filter-row mb-3">
+			<div class="col-auto">
+				<label class="form-label" for="history_from_date">{{ _("Posting From") }}</label>
+				<input type="date" class="form-control" id="history_from_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_to_date">{{ _("Posting To") }}</label>
+				<input type="date" class="form-control" id="history_to_date">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_created_from">{{ _("Created From") }}</label>
+				<input type="date" class="form-control" id="history_created_from">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_created_to">{{ _("Created To") }}</label>
+				<input type="date" class="form-control" id="history_created_to">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_due_from">{{ _("Due From") }}</label>
+				<input type="date" class="form-control" id="history_due_from">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_due_to">{{ _("Due To") }}</label>
+				<input type="date" class="form-control" id="history_due_to">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_customer_search">{{ _("Customer") }}</label>
+				<div class="searchable-select">
+					<input type="text" class="form-control" id="history_customer_search" autocomplete="off" placeholder="{{ _('Search customer…') }}">
+					<input type="hidden" id="history_customer">
+					<div class="searchable-select-options d-none" id="history_customer_options"></div>
+				</div>
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_item_search">{{ _("Item") }}</label>
+				<div class="searchable-select">
+					<input type="text" class="form-control" id="history_item_search" autocomplete="off" placeholder="{{ _('Search item…') }}">
+					<input type="hidden" id="history_item">
+					<div class="searchable-select-options d-none" id="history_item_options"></div>
+				</div>
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_doc_no">{{ _("Doc No") }}</label>
+				<input type="text" class="form-control" id="history_doc_no" autocomplete="off" placeholder="{{ _('Search doc number…') }}">
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_terms">{{ _("Terms") }}</label>
+				<select class="select select-neutral" id="history_terms">
+					<option value="">{{ _("All") }}</option>
+					{% for t in payment_terms_templates %}
+					<option value="{{ t }}">{{ t }}</option>
+					{% endfor %}
+				</select>
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_sort_by">{{ _("Sort by") }}</label>
+				<select class="select select-neutral" id="history_sort_by">
+					<option value="posting_date_desc">{{ _("Date (newest first)") }}</option>
+					<option value="created_desc">{{ _("Created (newest first)") }}</option>
+					<option value="created_asc">{{ _("Created (oldest first)") }}</option>
+					<option value="due_asc">{{ _("Due date (earliest first)") }}</option>
+					<option value="due_desc">{{ _("Due date (latest first)") }}</option>
+				</select>
+			</div>
+			<div class="col-auto">
+				<label class="form-label" for="history_page_size">{{ _("Page size") }}</label>
+				<select class="select select-neutral" id="history_page_size">
+					<option value="20" selected>20</option>
+					<option value="100">100</option>
+					<option value="500">500</option>
+					<option value="5000">5000</option>
+				</select>
+			</div>
+			<div class="col-auto">
+				<div class="form-check mt-4 pt-1">
+					<input type="checkbox" class="form-check-input" id="history_show_cancelled">
+					<label class="form-check-label small text-muted" for="history_show_cancelled">{{ _("Show cancelled") }}</label>
+				</div>
+			</div>
+			<div class="col-auto">
+				<button type="button" class="btn btn-outline-secondary" id="history_clear_dates">{{ _("Clear") }}</button>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("ID") }}</th>
+						<th>{{ _("Customer") }}</th>
+						<th>{{ _("Dates") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th class="text-right">{{ _("Grand Total") }}</th>
+						<th class="text-right">{{ _("Outstanding") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Pay To") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Deposited") }}</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody id="sales-invoice-history-body">
+					<tr><td colspan="11" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+		<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+			<div class="text-muted" id="sales-history-page-summary"></div>
+			<div class="btn-group" role="group" aria-label="{{ _('Sales history pages') }}">
+				<button type="button" class="btn btn-outline-secondary" id="history_prev_page">{{ _("Previous") }}</button>
+				<button type="button" class="btn btn-outline-secondary" id="history_next_page">{{ _("Next") }}</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div id="pay-invoice-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal">
+		<div class="forms-modal-header">
+			<h4 class="mb-0">{{ _("Record Payment") }}</h4>
+			<button type="button" class="forms-modal-close" id="pay-invoice-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div id="pay-invoice-alert" class="alert alert-warning d-none" role="alert"></div>
+			<div class="pay-invoice-summary">
+				<div><span class="stat-label">{{ _("Invoice") }}</span> <span id="pay-invoice-name"></span></div>
+				<div><span class="stat-label">{{ _("Outstanding") }}</span> <span id="pay-invoice-outstanding"></span></div>
+			</div>
+			<form id="pay-invoice-form" novalidate>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_amount">{{ _("Amount") }}</label>
+					<input type="number" class="form-control" id="pay_invoice_amount" min="0.01" step="0.01" required>
+					<div class="form-text">{{ _("Defaults to the full outstanding balance. Lower it for a partial payment; a higher amount is kept as the customer's advance (Unallocated Amount).") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_posting_date">{{ _("Posting Date") }}</label>
+					<input type="date" class="form-control" id="pay_invoice_posting_date" required>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_mode_of_payment">{{ _("Mode of Payment") }}</label>
+					<select class="form-control" id="pay_invoice_mode_of_payment">
+						<option value="" selected>{{ _("— None —") }}</option>
+					</select>
+				</div>
+				<div class="mb-3">
+					<label class="form-label d-block">{{ _("Pay To") }}</label>
+					<div id="pay-invoice-pay-to-preview" class="pay-to-preview text-muted">{{ _("Checking…") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_reference_no">{{ _("Cheque/Reference No") }}</label>
+					<input type="text" class="form-control" id="pay_invoice_reference_no">
+					<div class="form-text">{{ _("Optional — defaults to the Sales Invoice number if left blank.") }}</div>
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="pay_invoice_remarks">{{ _("Custom Remarks") }}</label>
+					<input type="text" class="form-control" id="pay_invoice_remarks">
+				</div>
+				<div class="d-grid">
+					<button type="submit" class="btn btn-primary" id="pay-invoice-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="pay-invoice-spinner" role="status" aria-hidden="true"></span>
+						<span id="pay-invoice-submit-label">{{ _("Record Payment") }}</span>
+					</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div id="payment-history-overlay" class="forms-modal-overlay d-none">
+	<div class="forms-modal forms-modal-wide">
+		<div class="forms-modal-header">
+			<h4 class="mb-0">{{ _("Payment History") }}</h4>
+			<button type="button" class="forms-modal-close" id="payment-history-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<div class="payment-history-invoice">
+				<span class="stat-label">{{ _("Invoice") }}</span> <span id="payment-history-invoice-name"></span>
+			</div>
+			<div class="table-responsive">
+				<table class="table table-bordered mb-0">
+					<thead>
+						<tr>
+							<th>{{ _("Date") }}</th>
+							<th>{{ _("Payment Entry") }}</th>
+							<th class="text-right">{{ _("Allocated") }}</th>
+							<th class="text-right">{{ _("Unallocated") }}</th>
+							<th>{{ _("Mode of Payment") }}</th>
+							<th>{{ _("Reference No") }}</th>
+							<th>{{ _("Deposited") }}</th>
+							<th>{{ _("Status") }}</th>
+						</tr>
+					</thead>
+					<tbody id="payment-history-body">
+						<tr><td colspan="8" class="text-muted">{{ _("Loading…") }}</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var customerInput = document.getElementById("customer");
+	var customerSearch = document.getElementById("customer_search");
+	var customerOptions = document.getElementById("customer_options");
+	var customerProfileLink = document.getElementById("customer-profile-link");
+	var customerProfileLinkLabel = document.getElementById("customer-profile-link-label");
+	// name -> true for every Customer in the "Student" group (from get_customers).
+	var studentCustomers = {};
+
+	// Shows an "Open customer/student profile" link under the Customer field
+	// whenever a customer is picked -- students go to their own richer
+	// profile page (vacations/courses/documents/credit note/etc.), everyone
+	// else to the leaner /forms/user/customer_profile. Cheap enough to call
+	// on every customer change.
+	function refresh_customer_profile_link() {
+		var name = customerInput.value;
+		if (name) {
+			var isStudent = !!studentCustomers[name];
+			customerProfileLink.href = (isStudent ? "/forms/user/student_customer_profile" : "/forms/user/customer_profile") +
+				"?customer=" + encodeURIComponent(name);
+			customerProfileLinkLabel.textContent = isStudent ? __("Open student profile") : __("Open customer profile");
+			customerProfileLink.classList.remove("d-none");
+		} else {
+			customerProfileLink.classList.add("d-none");
+		}
+	}
+	var modeOfPaymentSelect = document.getElementById("mode_of_payment");
+	var postingDateInput = document.getElementById("posting_date");
+	var referenceNoInput = document.getElementById("reference_no");
+	var remarksInput = document.getElementById("remarks");
+	var termsSelect = document.getElementById("payment_terms_template");
+	var dueDateInput = document.getElementById("due_date");
+	var uniqueIdInput = document.getElementById("unique_id");
+	var uniqueIdStatus = document.getElementById("unique-id-status");
+	var saleAttachmentInput = document.getElementById("sale_attachment");
+	var paymentModeRadios = document.querySelectorAll('input[name="payment_mode"]');
+	var partialAmountField = document.querySelector(".payment-partial-field");
+	var partialAmountInput = document.getElementById("partial_amount");
+	var paymentOnlyFields = document.querySelectorAll(".payment-only-field");
+	var paymentSingleModeFields = document.querySelectorAll(".payment-single-mode-field");
+	var paymentSplitField = document.querySelector(".payment-split-field");
+	var paymentLinesContainer = document.getElementById("sales-payment-lines-container");
+	var addPaymentLineBtn = document.getElementById("add-payment-line-btn");
+	var paymentLinesHint = document.getElementById("payment-lines-hint");
+	var partialAmountTouched = false;
+	var form = document.getElementById("sales-form");
+	var submitBtn = document.getElementById("sales-submit");
+	var spinner = document.getElementById("sales-spinner");
+	var submitLabel = document.getElementById("sales-submit-label");
+	var alertBox = document.getElementById("sales-alert");
+	var resultBox = document.getElementById("sales-result");
+	var amendBanner = document.getElementById("amend-banner");
+
+	// Amend mode — set when this page was opened as ?amend=<cancelled invoice>
+	// (the Amend button on Sales Invoice History). The form loads pre-filled
+	// with that sale's details (get_amend_form_data) and, on submit, creates
+	// the corrected invoice as a real Frappe amendment ("<original>-1"), via
+	// process_express_sale(amended_from=…). Server-validated in get_context —
+	// AMEND_FROM is "" unless it's a real cancelled, not-yet-amended invoice.
+	var AMEND_FROM = {{ (amend_from or "") | tojson }};
+	var amendFrom = "";
+	var DEFAULT_SUBMIT_LABEL = submitLabel.textContent;
+
+	// This company's configured Print Format overrides (see
+	// /forms/user/printersettings) — {} until loaded, so every printer_link()
+	// call below falls back to its hardcoded default until this resolves.
+	// The initial history load is held behind printFormatSettingsLoaded so
+	// the very first render never races ahead of it; later reloads (after a
+	// submit, or a date-filter change) don't need to wait since by then this
+	// has already settled.
+	var printFormatSettings = {};
+	var printFormatSettingsLoaded = call("ez_accounting.api.get_print_format_settings", {}).then(function (r) {
+		printFormatSettings = r.message || {};
+	}).catch(function () {
+		printFormatSettings = {};
+	});
+
+	// Default Posting Date to today — the common case is recording today's
+	// sale, not backdating one.
+	if (!postingDateInput.value) {
+		postingDateInput.value = frappe.datetime.get_today();
+	}
+
+	function populate_select(select, rows, value_field, label_field, empty_label) {
+		select.innerHTML = "";
+		if (!rows || !rows.length) {
+			var opt = document.createElement("option");
+			opt.value = "";
+			opt.selected = true;
+			opt.disabled = true;
+			opt.textContent = empty_label;
+			select.appendChild(opt);
+			return false;
+		}
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = rows.length > 1;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+
+		rows.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row[value_field];
+			opt.textContent = row[label_field] ? (row[label_field] + " (" + row[value_field] + ")") : row[value_field];
+			select.appendChild(opt);
+		});
+
+		if (rows.length === 1) {
+			select.value = rows[0][value_field];
+			select.selectedIndex = 1;
+			return true;
+		}
+		return false;
+	}
+
+	// A minimal text-input + filtered-dropdown combobox, for fields with too
+	// many options for a native <select> to stay usable (Customer: 600+ rows).
+	// Keeps the same contract the rest of this page's submit logic already
+	// expects from a <select>: the hidden input's .value is the docname sent
+	// to the server.
+	function create_searchable_select(searchInput, hiddenInput, optionsBox, value_field, label_field, onSelect, hintEl) {
+		var MAX_RESULTS = 50;
+		var rows = [];
+		var filtered = [];
+		var activeIndex = -1;
+
+		function label_for(row) {
+			return row[label_field] || row[value_field];
+		}
+
+		function set_active(index) {
+			var options = optionsBox.querySelectorAll(".searchable-select-option:not(.is-empty)");
+			options.forEach(function (el) { el.classList.remove("is-active"); });
+			if (index >= 0 && options[index]) {
+				options[index].classList.add("is-active");
+				options[index].scrollIntoView({ block: "nearest" });
+			}
+			activeIndex = index;
+		}
+
+		function select_row(row) {
+			hiddenInput.value = row[value_field];
+			searchInput.value = label_for(row);
+			optionsBox.classList.add("d-none");
+			if (onSelect) onSelect(row);
+		}
+
+		function render(matches) {
+			filtered = matches;
+			activeIndex = -1;
+			optionsBox.innerHTML = "";
+			if (!matches.length) {
+				var empty = document.createElement("div");
+				empty.className = "searchable-select-option is-empty";
+				empty.textContent = __("No matches");
+				optionsBox.appendChild(empty);
+			} else {
+				matches.forEach(function (row) {
+					var opt = document.createElement("div");
+					opt.className = "searchable-select-option";
+					opt.textContent = label_for(row) + " (" + row[value_field] + ")";
+					// mousedown (not click) fires before the input's blur handler
+					// below closes the dropdown, so the click still registers.
+					opt.addEventListener("mousedown", function (e) {
+						e.preventDefault();
+						select_row(row);
+					});
+					optionsBox.appendChild(opt);
+				});
+			}
+			optionsBox.classList.remove("d-none");
+		}
+
+		// Strips everything but letters/digits before comparing, so spacing and
+		// punctuation differences between the typed query and the stored name
+		// don't prevent a match — e.g. "S&S" or "S&SCo.LTD" both find
+		// "S & S Co. LTD".
+		function normalize(text) {
+			return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+		}
+
+		function filter(query) {
+			query = normalize(query);
+			var matches = !query
+				? rows.slice(0, MAX_RESULTS)
+				: rows.filter(function (row) {
+					return normalize(label_for(row)).indexOf(query) !== -1
+						|| normalize(row[value_field]).indexOf(query) !== -1;
+				}).slice(0, MAX_RESULTS);
+			render(matches);
+		}
+
+		searchInput.addEventListener("input", function () {
+			hiddenInput.value = "";
+			filter(searchInput.value);
+		});
+
+		searchInput.addEventListener("focus", function () {
+			if (!searchInput.disabled) filter(searchInput.value);
+		});
+
+		searchInput.addEventListener("blur", function () {
+			// Delayed so a mousedown-selected option above still registers before
+			// this fires; also snaps the visible text back to blank if the admin
+			// left it half-typed without picking a real match.
+			setTimeout(function () {
+				optionsBox.classList.add("d-none");
+				if (!hiddenInput.value) searchInput.value = "";
+			}, 150);
+		});
+
+		searchInput.addEventListener("keydown", function (e) {
+			if (optionsBox.classList.contains("d-none")) return;
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				set_active(Math.min(activeIndex + 1, filtered.length - 1));
+			} else if (e.key === "ArrowUp") {
+				e.preventDefault();
+				set_active(Math.max(activeIndex - 1, 0));
+			} else if (e.key === "Enter") {
+				e.preventDefault();
+				if (activeIndex >= 0 && filtered[activeIndex]) select_row(filtered[activeIndex]);
+			} else if (e.key === "Escape") {
+				optionsBox.classList.add("d-none");
+			}
+		});
+
+		return {
+			set_rows: function (newRows) {
+				rows = newRows || [];
+				// The dropdown only ever shows the first MAX_RESULTS matches (a
+				// large unfiltered list is unusable) — without this, an empty
+				// search on a big list (e.g. 642 customers) looks like there are
+				// only 50 records total instead of just 50 shown at once.
+				if (hintEl) {
+					hintEl.textContent = rows.length > MAX_RESULTS
+						? __("{0} found — showing the first {1}. Keep typing to narrow down.", [rows.length, MAX_RESULTS])
+						: "";
+				}
+			},
+			clear: function () {
+				hiddenInput.value = "";
+				searchInput.value = "";
+				optionsBox.classList.add("d-none");
+			},
+			// Programmatic selection (e.g. prefilling from a remembered default),
+			// as opposed to the user clicking/keying an option above — same
+			// select_row() path either way, including firing onSelect, so
+			// callers don't need to duplicate what happens after a real pick.
+			// Silently does nothing if the row isn't loaded (e.g. the
+			// remembered item is a disabled item that has since dropped out
+			// of this combo's list) rather than leaving stale UI state.
+			// `silent` skips onSelect entirely — used when restoring a saved
+			// draft, where the draft is already the authoritative state and
+			// onSelect's own side effects (Item's standard_rate prefill,
+			// Customer's "apply last defaults" fetch) would overwrite exactly
+			// what's being restored.
+			select_value: function (value, silent) {
+				var row = rows.filter(function (r) { return String(r[value_field]) === String(value); })[0];
+				if (!row) return;
+				if (silent) {
+					hiddenInput.value = row[value_field];
+					searchInput.value = label_for(row);
+					optionsBox.classList.add("d-none");
+				} else {
+					select_row(row);
+				}
+			}
+		};
+	}
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// A real multipart POST straight to Frappe's own /api/method/upload_file
+	// (not JSON, unlike call() above) — same technique
+	// student_customer_profile.html's own document uploads already use, just
+	// generalized to any doctype/docname instead of hardcoding "Customer".
+	// is_private=1 since this is a financial document (a receipt, a signed
+	// form) attached to a Sales Invoice — never a guessable public URL.
+	function upload_file(file, doctype, docname) {
+		var formData = new FormData();
+		formData.append("file", file);
+		formData.append("is_private", "1");
+		formData.append("doctype", doctype);
+		formData.append("docname", docname);
+		return fetch("/api/method/upload_file", {
+			method: "POST",
+			headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: formData
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Upload failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong while running this. Check the Error Log for details.");
+	}
+
+	// Per-browser fallback for when a customer has no binding yet (a brand
+	// new customer, or one nobody's bought from through this page before) —
+	// whatever this admin's browser last successfully submitted, so the form
+	// still starts from something familiar instead of blank. Scoped to this
+	// company (companies share a browser but not a customer base) and,
+	// unlike Forms Party Default, never synced to the server — purely a
+	// per-device convenience. Same field set as the per-customer binding
+	// (no Rate — see apply_default_row below).
+	var LAST_DEFAULTS_KEY = "forms.sales.last_defaults." + "{{ company }}";
+
+	function save_last_defaults(values) {
+		try {
+			localStorage.setItem(LAST_DEFAULTS_KEY, JSON.stringify(values));
+		} catch (e) { /* storage unavailable/full — not worth failing the sale over */ }
+	}
+
+	function load_last_defaults() {
+		try {
+			var raw = localStorage.getItem(LAST_DEFAULTS_KEY);
+			var values = raw ? JSON.parse(raw) : null;
+			// Remarks are almost always specific to the one sale they were
+			// typed for ("Tuition for October", "Refund - damaged item") —
+			// carrying one over as a browser-wide default (as opposed to the
+			// server-side per-customer binding, which is a deliberate memory)
+			// means it silently bleeds into the next, unrelated sale. Stripped
+			// here too (not just where it's saved below) so an already-stored
+			// value from before this fix stops applying immediately, without
+			// waiting for a fresh save to overwrite it.
+			if (values) delete values.remarks;
+			return values;
+		} catch (e) {
+			return null;
+		}
+	}
+
+	// Shared by the per-customer binding and the last-submitted-in-this-
+	// browser fallback — same shape, same fields, so applying either looks
+	// identical to the rest of the form. Rate is deliberately left out — the
+	// selected Item's own onSelect (fired by select_value below) already
+	// prefills Rate from its standard_rate, and that should win rather than
+	// a possibly-stale remembered value either source might carry.
+	function apply_default_row(row) {
+		if (!row) return;
+		if (row.item && itemRows[0]) itemRows[0].combo.select_value(row.item);
+		if (row.mode_of_payment) {
+			var hasOption = Array.prototype.some.call(modeOfPaymentSelect.options, function (o) {
+				return o.value === row.mode_of_payment;
+			});
+			if (hasOption) {
+				modeOfPaymentSelect.value = row.mode_of_payment;
+				// Setting .value directly doesn't fire the select's own
+				// "change" listener, which is what normally drives this —
+				// without calling it explicitly, Pay To stays stuck showing
+				// whatever it resolved before a default was applied.
+				refresh_pay_to_preview();
+			}
+		}
+		referenceNoInput.value = row.reference_no || "";
+		remarksInput.value = row.remarks || "";
+	}
+
+	// Prefills from whatever this customer's last Express Sale used
+	// (ez_accounting.api.upsert_party_default writes these after every successful
+	// sale) — editable directly on /forms/user/binding too. Falls back to
+	// this browser's own last-submitted values (see above) the first time a
+	// given customer is ever picked, rather than leaving the form blank.
+	function apply_customer_default(customer) {
+		call("ez_accounting.api.get_party_default", {party_type: "Customer", party: customer, company: "{{ company }}"})
+			.then(function (r) {
+				apply_default_row(r.message || load_last_defaults());
+			});
+	}
+
+	var customerCombo = create_searchable_select(customerSearch, customerInput, customerOptions, "name", "customer_name", function (row) {
+		itemRows.forEach(refresh_row_income_account_preview);
+		apply_customer_default(row.name);
+		refresh_customer_profile_link();
+	}, document.getElementById("customer_count_hint"));
+
+	var customersLoaded = call("ez_accounting.www.forms.user.sales.get_customers").then(function (r) {
+		var rows = r.message || [];
+		customerCombo.set_rows(rows);
+		rows.forEach(function (row) { if (row.is_student) studentCustomers[row.name] = true; });
+		customerSearch.disabled = !rows.length;
+		customerSearch.placeholder = rows.length ? __("Search customers…") : __("No active customers found");
+		refresh_customer_profile_link();
+	}).catch(function () {
+		customerSearch.disabled = true;
+		customerSearch.placeholder = __("Could not load customers");
+	});
+	customerSearch.addEventListener("input", function () {
+		itemRows.forEach(refresh_row_income_account_preview);
+		refresh_customer_profile_link();
+	});
+
+	// ---- Repeatable Item rows ----
+	// Each row is its own independent create_searchable_select() instance
+	// (same combobox factory Customer uses above), plus Qty/Rate/line-Amount/
+	// Income-Account-preview/Remove — built via insertAdjacentHTML (not
+	// createElement+later innerHTML on the same node — see customer.html's
+	// history for why mixing those silently drops event listeners).
+	var itemsContainer = document.getElementById("sales-items-container");
+	var itemRows = [];
+	var paymentLines = [];
+	var modesOfPaymentData = [];
+	var salesItemsData = [];
+	var amountPreviewValue = document.getElementById("amount-preview-value");
+
+	function fmt_currency(value) {
+		return frappe.format(value, {fieldtype: "Currency"}, {only_value: true});
+	}
+
+	// A "Deduction" row (e.g. a scholarship/discount Item) subtracts instead
+	// of adding — Rate itself always stays the positive magnitude the admin
+	// typed (avoids the fat-finger risk of typing a negative number by hand);
+	// the checkbox is what flips the sign, both here for the live preview and
+	// server-side in _parse_line_items() for the real submit.
+	function row_amount(r) {
+		var qty = parseFloat(r.qtyInput.value) || 0;
+		var rate = parseFloat(r.rateInput.value) || 0;
+		return qty * rate * (r.deductionInput.checked ? -1 : 1);
+	}
+
+	function current_grand_total() {
+		var total = 0;
+		itemRows.forEach(function (r) { total += row_amount(r); });
+		return total;
+	}
+
+	// Whether at least one row has real qty+rate entered — distinguishes "an
+	// empty form" (show the "—" placeholder) from "deductions currently
+	// outweigh charges" (a real, possibly negative or zero total that should
+	// still be shown as a number, not hidden behind the empty-form placeholder).
+	function has_any_row_amount() {
+		return itemRows.some(function (r) {
+			return (parseFloat(r.qtyInput.value) || 0) > 0 && (parseFloat(r.rateInput.value) || 0) > 0;
+		});
+	}
+
+	function update_grand_total() {
+		var total = current_grand_total();
+		var hasAmount = has_any_row_amount();
+		amountPreviewValue.textContent = hasAmount ? fmt_currency(total) : "—";
+		// Keeps "Amount Paid Now" tracking the Grand Total by default as items
+		// change, same as Rate prefilling from an Item's standard_rate — but
+		// only until the admin actually types their own partial amount
+		// (partialAmountTouched), since at that point it's a deliberate
+		// choice this shouldn't silently overwrite.
+		if (!partialAmountTouched) {
+			partialAmountInput.value = hasAmount ? total.toFixed(2) : "";
+		}
+		// Split Payment's rows are compared against the Grand Total too — an
+		// edited item row can move that total after the split rows were
+		// already filled in, so the balanced/unbalanced hint needs to track it.
+		if (current_payment_mode() === "split") {
+			update_payment_lines_hint();
+		}
+	}
+
+	function update_row_amount(r) {
+		var qty = parseFloat(r.qtyInput.value) || 0;
+		var rate = parseFloat(r.rateInput.value) || 0;
+		var amount = row_amount(r);
+		r.amountEl.textContent = (qty && rate) ? fmt_currency(amount) : "—";
+		r.amountEl.classList.toggle("is-deduction", r.deductionInput.checked && !!(qty && rate));
+		update_grand_total();
+	}
+
+	// ---- Payment mode: Full / Partial / Invoice Only ----
+	function current_payment_mode() {
+		var checked = document.querySelector('input[name="payment_mode"]:checked');
+		return checked ? checked.value : "full";
+	}
+
+	function update_payment_mode_ui() {
+		var mode = current_payment_mode();
+		paymentModeRadios.forEach(function (r) {
+			r.closest(".payment-mode-option").classList.toggle("is-selected", r.checked);
+		});
+		partialAmountField.classList.toggle("d-none", mode !== "partial");
+		// Mode of Payment/Pay To/Reference No are all meaningless without an
+		// actual payment being recorded — hidden (not just left blank) for
+		// Invoice Only so it's visually obvious this run won't touch a bank
+		// account at all, mirroring how server-side process_express_sale()
+		// ignores them in that mode regardless of what's left in them.
+		paymentOnlyFields.forEach(function (el) {
+			el.classList.toggle("d-none", mode === "invoice_only");
+		});
+		// Mode of Payment/Pay To are additionally meaningless for Split
+		// Payment — that mode has its own per-row Mode of Payment instead of
+		// one for the whole sale, and no single "Pay To" account to preview.
+		paymentSingleModeFields.forEach(function (el) {
+			el.classList.toggle("d-none", mode === "invoice_only" || mode === "split");
+		});
+		paymentSplitField.classList.toggle("d-none", mode !== "split");
+		if (mode === "partial" && !partialAmountInput.value) {
+			var total = current_grand_total();
+			partialAmountInput.value = total > 0 ? total.toFixed(2) : "";
+		}
+		if (mode === "split") {
+			// Starts with two empty rows the first time Split Payment is
+			// selected — matches the common case (two payment methods) and
+			// gives the admin something to fill in immediately rather than
+			// an empty section with just an "Add" button.
+			if (!paymentLines.length) {
+				create_payment_line_row();
+				create_payment_line_row();
+			}
+			update_payment_lines_hint();
+		}
+	}
+	paymentModeRadios.forEach(function (r) {
+		r.addEventListener("change", update_payment_mode_ui);
+	});
+	partialAmountInput.addEventListener("input", function () {
+		partialAmountTouched = true;
+	});
+	update_payment_mode_ui();
+
+	// Selling-side counterpart of Express Purchase's Expense Account preview,
+	// now resolved per row instead of once for the page — each row can be a
+	// different item, so each needs its own Income Account resolved
+	// separately (Item Default -> Item Group Default -> Company default,
+	// same resolution a real submit uses).
+	function refresh_row_income_account_preview(r) {
+		var customer = customerInput.value;
+		var item = r.itemInput.value;
+
+		if (!customer || !item) {
+			r.incomeAccountEl.className = "item-row-income-account text-muted";
+			r.incomeAccountEl.textContent = __("Select a customer and item to see the income account.");
+			return;
+		}
+
+		r.incomeAccountEl.className = "item-row-income-account text-muted";
+		r.incomeAccountEl.textContent = __("Checking…");
+
+		call("ez_accounting.www.forms.user.sales.get_income_account_preview", {customer: customer, item: item})
+			.then(function (resp) {
+				if (!resp.message) return;
+				r.incomeAccountEl.className = "item-row-income-account";
+				r.incomeAccountEl.textContent = __("Income Account") + ": " + resp.message.income_account;
+			})
+			.catch(function (err) {
+				r.incomeAccountEl.className = "item-row-income-account text-danger";
+				r.incomeAccountEl.innerHTML = extract_error_message(err);
+			});
+	}
+
+	function apply_sales_items_to_row(r) {
+		r.combo.set_rows(salesItemsData);
+		r.itemSearch.disabled = !salesItemsData.length;
+		r.itemSearch.placeholder = salesItemsData.length ? __("Search items…") : __("No active sales items found");
+	}
+
+	function update_item_row_buttons() {
+		itemRows.forEach(function (r) {
+			r.removeBtn.disabled = itemRows.length <= 1;
+		});
+	}
+
+	var draggedItemRow = null;
+	var dragPointerId = null;
+
+	function finish_item_row_drag() {
+		itemRows.forEach(function (row) {
+			row.row.classList.remove("is-dragging", "is-drag-over");
+		});
+		draggedItemRow = null;
+		dragPointerId = null;
+	}
+
+	function move_dragged_item_row(clientY) {
+		if (!draggedItemRow) return;
+		var siblings = itemRows.filter(function (row) { return row !== draggedItemRow; });
+		var nextRow = siblings.find(function (row) {
+			var rect = row.row.getBoundingClientRect();
+			return clientY < rect.top + rect.height / 2;
+		});
+		itemsContainer.insertBefore(draggedItemRow.row, nextRow ? nextRow.row : null);
+		itemRows.forEach(function (row) { row.row.classList.remove("is-drag-over"); });
+		if (nextRow) nextRow.row.classList.add("is-drag-over");
+		if (clientY < 80) window.scrollBy(0, -18);
+		else if (clientY > window.innerHeight - 80) window.scrollBy(0, 18);
+	}
+
+	function finish_pointer_item_drag(event) {
+		if (!draggedItemRow || (event && event.pointerId !== dragPointerId)) return;
+		reorder_item_rows_from_dom();
+		finish_item_row_drag();
+		document.removeEventListener("pointermove", handle_pointer_item_drag);
+		document.removeEventListener("pointerup", finish_pointer_item_drag);
+		document.removeEventListener("pointercancel", finish_pointer_item_drag);
+	}
+
+	function handle_pointer_item_drag(event) {
+		if (!draggedItemRow || event.pointerId !== dragPointerId) return;
+		event.preventDefault();
+		move_dragged_item_row(event.clientY);
+	}
+
+	function reorder_item_rows_from_dom() {
+		itemRows.sort(function (a, b) {
+			return Array.prototype.indexOf.call(itemsContainer.children, a.row) -
+				Array.prototype.indexOf.call(itemsContainer.children, b.row);
+		});
+		update_item_row_buttons();
+		save_draft();
+	}
+
+	function create_item_row(afterRow) {
+		var rowMarkup =
+			'<div class="item-row" data-item-row>' +
+				'<div class="item-row-main">' +
+					'<span class="item-row-drag" title="' + __("Drag to move") + '" aria-label="' + __("Drag to move") + '">&#x2630;</span>' +
+					'<div class="searchable-select item-row-item">' +
+						'<input type="text" class="form-control item-row-search" autocomplete="off" placeholder="' + __("Loading items…") + '">' +
+						'<input type="hidden" class="item-row-hidden">' +
+						'<div class="searchable-select-options d-none"></div>' +
+					'</div>' +
+					'<input type="number" class="form-control item-row-qty" min="0" step="0.01" value="1" placeholder="' + __("Qty") + '">' +
+					'<input type="number" class="form-control item-row-rate" min="0" step="0.01" placeholder="' + __("Rate") + '">' +
+					'<label class="item-row-deduction-wrap">' +
+						'<input type="checkbox" class="item-row-deduction">' + __("Deduction") +
+					'</label>' +
+					'<div class="item-row-amount">&mdash;</div>' +
+					'<div class="item-row-actions">' +
+						'<button type="button" class="item-row-remove" title="' + __("Remove") + '" aria-label="' + __("Remove") + '">&times;</button>' +
+					'</div>' +
+				'</div>' +
+				'<input type="text" class="form-control item-row-description" maxlength="140" placeholder="' + __("Description (optional — defaults to the item's own description)") + '">' +
+				'<div class="item-row-income-account text-muted">' + __("Select a customer and item to see the income account.") + '</div>' +
+				'<button type="button" class="btn btn-outline-secondary item-row-add">' +
+					'<i class="fa fa-plus btn-icon" aria-hidden="true"></i>' + __("Add Item") +
+				'</button>' +
+			'</div>';
+
+		if (afterRow && afterRow.row) afterRow.row.insertAdjacentHTML("afterend", rowMarkup);
+		else itemsContainer.insertAdjacentHTML("beforeend", rowMarkup);
+
+		var rowEl = afterRow && afterRow.row ? afterRow.row.nextElementSibling : itemsContainer.lastElementChild;
+		var r = {
+			row: rowEl,
+			dragHandle: rowEl.querySelector(".item-row-drag"),
+			itemSearch: rowEl.querySelector(".item-row-search"),
+			itemInput: rowEl.querySelector(".item-row-hidden"),
+			itemOptions: rowEl.querySelector(".searchable-select-options"),
+			qtyInput: rowEl.querySelector(".item-row-qty"),
+			rateInput: rowEl.querySelector(".item-row-rate"),
+			deductionInput: rowEl.querySelector(".item-row-deduction"),
+			amountEl: rowEl.querySelector(".item-row-amount"),
+			descriptionInput: rowEl.querySelector(".item-row-description"),
+			incomeAccountEl: rowEl.querySelector(".item-row-income-account"),
+			addBtn: rowEl.querySelector(".item-row-add"),
+			removeBtn: rowEl.querySelector(".item-row-remove")
+		};
+
+		// Items carry a standard_rate; selecting one prefills the Rate field
+		// via this onSelect callback, without a second round trip.
+		r.combo = create_searchable_select(r.itemSearch, r.itemInput, r.itemOptions, "name", "item_name", function (selected) {
+			if (selected.standard_rate) {
+				r.rateInput.value = selected.standard_rate;
+				update_row_amount(r);
+			}
+			refresh_row_income_account_preview(r);
+		});
+		apply_sales_items_to_row(r);
+
+		r.qtyInput.addEventListener("input", function () { update_row_amount(r); });
+		r.rateInput.addEventListener("input", function () { update_row_amount(r); });
+		r.deductionInput.addEventListener("change", function () { update_row_amount(r); });
+		r.itemSearch.addEventListener("input", function () { refresh_row_income_account_preview(r); });
+		r.dragHandle.addEventListener("pointerdown", function (event) {
+			if (event.button !== undefined && event.button !== 0) return;
+			event.preventDefault();
+			draggedItemRow = r;
+			dragPointerId = event.pointerId;
+			rowEl.classList.add("is-dragging");
+			document.addEventListener("pointermove", handle_pointer_item_drag, { passive: false });
+			document.addEventListener("pointerup", finish_pointer_item_drag);
+			document.addEventListener("pointercancel", finish_pointer_item_drag);
+		});
+		r.addBtn.addEventListener("click", function () {
+			create_item_row(r);
+		});
+
+		r.removeBtn.addEventListener("click", function () {
+			if (itemRows.length <= 1) return;
+			var idx = itemRows.indexOf(r);
+			if (idx !== -1) itemRows.splice(idx, 1);
+			rowEl.remove();
+			update_grand_total();
+			update_item_row_buttons();
+		});
+
+		var insertAt = afterRow ? itemRows.indexOf(afterRow) + 1 : itemRows.length;
+		itemRows.splice(insertAt, 0, r);
+		update_item_row_buttons();
+		return r;
+	}
+
+	// Starts with one row — matches the original single-item form for the
+	// common case, "Add Item" is opt-in for anything more.
+	create_item_row();
+
+	// ---- Split Payment rows: Mode of Payment + Amount, same repeatable-row
+	// pattern as Items above, just simpler (no combobox, no description). ----
+	function apply_modes_of_payment_to_row(r) {
+		var current = r.modeSelect.value;
+		r.modeSelect.innerHTML = '<option value="" selected>' + __("— None —") + "</option>";
+		modesOfPaymentData.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			r.modeSelect.appendChild(opt);
+		});
+		if (current) r.modeSelect.value = current;
+	}
+
+	function update_remove_payment_line_buttons() {
+		paymentLines.forEach(function (r) {
+			r.removeBtn.disabled = paymentLines.length <= 1;
+		});
+	}
+
+	// Sums every row's Amount and compares it to the invoice's Grand
+	// Total — a split payment isn't allowed to leave anything outstanding
+	// (see process_express_sale()'s own server-side check), so this is
+	// purely a "you're not there yet"/"you're all set" indicator, not a
+	// blocking validation by itself; the submit handler below still checks
+	// again before actually sending the request.
+	function payment_lines_total() {
+		var total = 0;
+		paymentLines.forEach(function (r) { total += parseFloat(r.amountInput.value) || 0; });
+		return total;
+	}
+
+	function update_payment_lines_hint() {
+		var total = payment_lines_total();
+		var grandTotal = current_grand_total();
+		var isBalanced = Math.abs(total - grandTotal) < 0.005;
+		paymentLinesHint.className = "payment-lines-hint " + (isBalanced ? "is-balanced" : "is-unbalanced");
+		paymentLinesHint.textContent = __("Total entered: {0} of {1}", [fmt_currency(total), fmt_currency(grandTotal)]) +
+			(isBalanced ? " ✓" : "");
+	}
+
+	function create_payment_line_row() {
+		paymentLinesContainer.insertAdjacentHTML("beforeend",
+			'<div class="payment-line-row">' +
+				'<select class="form-control payment-line-mode">' +
+					'<option value="" selected>' + __("— None —") + "</option>" +
+				"</select>" +
+				'<input type="number" class="form-control payment-line-amount" min="0.01" step="0.01" placeholder="' + __("Amount") + '">' +
+				'<button type="button" class="payment-line-remove" aria-label="' + __("Remove") + '">&times;</button>' +
+			"</div>"
+		);
+
+		var rowEl = paymentLinesContainer.lastElementChild;
+		var r = {
+			row: rowEl,
+			modeSelect: rowEl.querySelector(".payment-line-mode"),
+			amountInput: rowEl.querySelector(".payment-line-amount"),
+			removeBtn: rowEl.querySelector(".payment-line-remove")
+		};
+		apply_modes_of_payment_to_row(r);
+
+		r.amountInput.addEventListener("input", update_payment_lines_hint);
+
+		r.removeBtn.addEventListener("click", function () {
+			if (paymentLines.length <= 1) return;
+			var idx = paymentLines.indexOf(r);
+			if (idx !== -1) paymentLines.splice(idx, 1);
+			rowEl.remove();
+			update_remove_payment_line_buttons();
+			update_payment_lines_hint();
+		});
+
+		paymentLines.push(r);
+		update_remove_payment_line_buttons();
+		return r;
+	}
+
+	addPaymentLineBtn.addEventListener("click", function () {
+		create_payment_line_row();
+	});
+
+	var itemsLoaded = call("ez_accounting.www.forms.user.sales.get_sales_items").then(function (r) {
+		salesItemsData = r.message || [];
+		itemRows.forEach(apply_sales_items_to_row);
+	}).catch(function () {
+		itemRows.forEach(function (r) {
+			r.itemSearch.disabled = true;
+			r.itemSearch.placeholder = __("Could not load items");
+		});
+	});
+
+	// Optional field — the "— None —" option already in the markup stays as
+	// the default, so this just appends real choices after it rather than
+	// using populate_select()'s disabled-placeholder pattern (built for
+	// required fields). Also stored in modesOfPaymentData so each Split
+	// Payment row's own <select> (created after this resolves, or before —
+	// see apply_modes_of_payment_to_row()) can be populated the same way.
+	var modesLoaded = call("ez_accounting.www.forms.user.sales.get_modes_of_payment").then(function (r) {
+		modesOfPaymentData = r.message || [];
+		modesOfPaymentData.forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			modeOfPaymentSelect.appendChild(opt);
+		});
+		paymentLines.forEach(apply_modes_of_payment_to_row);
+	});
+
+	// "Pay To" preview — resolved server-side (Mode of Payment's own account
+	// if configured, else the company's default bank account), so the admin
+	// can see exactly where the money is about to go before submitting. There
+	// is no separate Bank Account field on this form; this is the only
+	// account-selection surface, and it's read-only by design — the real fix
+	// for a wrong default is fixing the Mode of Payment/Company configuration
+	// in Desk, not overriding it per-run.
+	var payToPreview = document.getElementById("pay-to-preview");
+	function refresh_pay_to_preview() {
+		payToPreview.className = "pay-to-preview text-muted";
+		payToPreview.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.sales.get_pay_to_preview", {mode_of_payment: modeOfPaymentSelect.value})
+			.then(function (r) {
+				if (!r.message) return;
+				if (r.message.account) {
+					payToPreview.className = "pay-to-preview";
+					payToPreview.textContent = r.message.account;
+				} else {
+					payToPreview.className = "pay-to-preview text-danger";
+					payToPreview.textContent = __("No account could be resolved — set a default bank account for this company.");
+				}
+			})
+			.catch(function (err) {
+				payToPreview.className = "pay-to-preview text-danger";
+				payToPreview.innerHTML = extract_error_message(err);
+			});
+	}
+	modeOfPaymentSelect.addEventListener("change", refresh_pay_to_preview);
+	refresh_pay_to_preview();
+
+	// ---- Unique ID live availability check ----
+	// Entirely optional field — blank is always fine, any number of invoices
+	// can be blank — but a non-blank value must not collide with another
+	// Sales Invoice's. Checked live (debounced, same 350ms shape as the
+	// history search below) so the admin sees a conflict — with a direct
+	// link to the existing invoice — before ever trying to submit;
+	// process_express_sale() re-checks the same way server-side as the real
+	// safety net (see check_unique_id() in sales.py).
+	var uniqueIdStatusDefaultHtml = uniqueIdStatus.innerHTML;
+	var uniqueIdCheckDebounce = null;
+	var uniqueIdConflict = null;
+
+	function render_unique_id_status() {
+		var value = uniqueIdInput.value.trim();
+		if (!value) {
+			uniqueIdConflict = null;
+			uniqueIdStatus.className = "form-text";
+			uniqueIdStatus.innerHTML = uniqueIdStatusDefaultHtml;
+			return;
+		}
+		uniqueIdStatus.className = "form-text";
+		uniqueIdStatus.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.sales.check_unique_id", {unique_id: value}).then(function (r) {
+			// The input may have changed while this round trip was in flight —
+			// a stale response for an old value shouldn't overwrite whatever
+			// the admin has typed (or already gotten a fresher check for) since.
+			if (uniqueIdInput.value.trim() !== value) return;
+			if (r.message && r.message.exists) {
+				uniqueIdConflict = r.message.sales_invoice;
+				uniqueIdStatus.className = "form-text text-danger";
+				uniqueIdStatus.innerHTML = __("Already used by") + ' <a target="_blank" href="' +
+					doc_link("sales-invoice", r.message.sales_invoice) + '">' +
+					frappe.utils.escape_html(r.message.sales_invoice) + "</a>.";
+			} else {
+				uniqueIdConflict = null;
+				uniqueIdStatus.className = "form-text text-success";
+				uniqueIdStatus.textContent = __("Available.");
+			}
+		}).catch(function () {
+			uniqueIdConflict = null;
+			uniqueIdStatus.className = "form-text";
+			uniqueIdStatus.innerHTML = uniqueIdStatusDefaultHtml;
+		});
+	}
+	uniqueIdInput.addEventListener("input", function () {
+		clearTimeout(uniqueIdCheckDebounce);
+		uniqueIdCheckDebounce = setTimeout(render_unique_id_status, 350);
+	});
+
+	// ---- Draft autosave (localStorage) ----
+	// Scoped per-company (this bench is multi-company, see [[forms-multi-company]])
+	// so switching companies never shows/overwrites another company's in-progress
+	// draft. Only the main sales-form is covered — the separate Pay Invoice modal
+	// further down is its own short-lived workflow against an *existing* invoice,
+	// not a draft worth persisting across page loads.
+	var DRAFT_KEY = "forms-sales-draft::{{ company }}";
+
+	function serialize_draft() {
+		return {
+			customer: customerInput.value,
+			posting_date: postingDateInput.value,
+			payment_mode: current_payment_mode(),
+			partial_amount: partialAmountInput.value,
+			mode_of_payment: modeOfPaymentSelect.value,
+			reference_no: referenceNoInput.value,
+			remarks: remarksInput.value,
+			payment_terms_template: termsSelect.value,
+			due_date: dueDateInput.value,
+			unique_id: uniqueIdInput.value,
+			items: itemRows.map(function (r) {
+				return {
+					item: r.itemInput.value,
+					qty: r.qtyInput.value,
+					rate: r.rateInput.value,
+					description: r.descriptionInput.value,
+					is_deduction: r.deductionInput.checked
+				};
+			}),
+			payment_lines: paymentLines.map(function (r) {
+				return {
+					mode_of_payment: r.modeSelect.value,
+					amount: r.amountInput.value
+				};
+			})
+		};
+	}
+
+	function save_draft() {
+		// In amend mode the form is a correction of a specific cancelled
+		// invoice — persisting it to the shared per-company draft key would
+		// resurface it (without the amendment link) on the next ordinary visit.
+		if (amendFrom) return;
+		try {
+			localStorage.setItem(DRAFT_KEY, JSON.stringify(serialize_draft()));
+		} catch (e) { /* localStorage unavailable (private browsing, quota, etc.) — skip silently */ }
+	}
+
+	function clear_draft() {
+		try { localStorage.removeItem(DRAFT_KEY); } catch (e) { /* ignore */ }
+	}
+
+	// A single delegated listener on the form (rather than wiring every field,
+	// including every dynamically-added item row individually) catches every
+	// change automatically via event bubbling — "input" for text/number
+	// fields as they're typed, "change" for the payment-mode radios and the
+	// Mode of Payment <select>.
+	form.addEventListener("input", save_draft);
+	form.addEventListener("change", save_draft);
+
+	function restore_draft() {
+		var raw;
+		try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return; }
+		if (!raw) return;
+
+		var draft;
+		try { draft = JSON.parse(raw); } catch (e) { return; }
+		if (!draft) return;
+
+		populate_form(draft);
+		show_alert(__("Restored your unsaved draft from this browser."), false);
+	}
+
+	// Fills every form field from a plain {customer, posting_date, items[],
+	// payment_mode, …} object — the shape serialize_draft() produces and both
+	// the localStorage draft restore and the Amend flow (get_amend_form_data)
+	// feed in.
+	function populate_form(draft) {
+		// Customer first — refresh_row_income_account_preview (called per item
+		// row below) reads customerInput.value, so it needs to already be set
+		// by the time each row is restored.
+		if (draft.customer) customerCombo.select_value(draft.customer, true);
+
+		var draftItems = draft.items || [];
+		while (itemRows.length < draftItems.length) create_item_row();
+
+		itemRows.forEach(function (r, idx) {
+			var item = draftItems[idx];
+			if (!item) return;
+			if (item.item) r.combo.select_value(item.item, true);
+			if (item.qty) r.qtyInput.value = item.qty;
+			if (item.rate) r.rateInput.value = item.rate;
+			if (item.description) r.descriptionInput.value = item.description;
+			r.deductionInput.checked = !!item.is_deduction;
+			update_row_amount(r);
+			refresh_row_income_account_preview(r);
+		});
+
+		if (draft.posting_date) postingDateInput.value = draft.posting_date;
+
+		if (draft.payment_mode) {
+			var radio = document.querySelector('input[name="payment_mode"][value="' + draft.payment_mode + '"]');
+			if (radio) radio.checked = true;
+			update_payment_mode_ui();
+		}
+		// Restored after the item rows above — update_row_amount()/
+		// update_grand_total() would otherwise auto-fill Amount Paid Now from
+		// the recalculated total and clobber the restored value, exactly the
+		// same "untouched" guard that protects a manually-typed partial amount.
+		if (draft.partial_amount) {
+			partialAmountInput.value = draft.partial_amount;
+			partialAmountTouched = true;
+		}
+
+		if (draft.mode_of_payment) {
+			var hasOption = Array.prototype.some.call(modeOfPaymentSelect.options, function (o) {
+				return o.value === draft.mode_of_payment;
+			});
+			if (hasOption) {
+				modeOfPaymentSelect.value = draft.mode_of_payment;
+				refresh_pay_to_preview();
+			}
+		}
+
+		// Restored after update_payment_mode_ui() above (which, for a "split"
+		// draft, already auto-created 2 blank rows) — only tops up any rows
+		// still missing rather than assuming none exist yet, same shape as
+		// the item-row restore above.
+		var draftPaymentLines = draft.payment_lines || [];
+		while (paymentLines.length < draftPaymentLines.length) create_payment_line_row();
+		paymentLines.forEach(function (r, idx) {
+			var line = draftPaymentLines[idx];
+			if (!line) return;
+			if (line.mode_of_payment) r.modeSelect.value = line.mode_of_payment;
+			if (line.amount) r.amountInput.value = line.amount;
+		});
+		if (draftPaymentLines.length) update_payment_lines_hint();
+
+		referenceNoInput.value = draft.reference_no || "";
+		remarksInput.value = draft.remarks || "";
+		termsSelect.value = draft.payment_terms_template || "";
+		dueDateInput.value = draft.due_date || "";
+		if (draft.unique_id) {
+			uniqueIdInput.value = draft.unique_id;
+			render_unique_id_status();
+		}
+		update_grand_total();
+		refresh_customer_profile_link();
+	}
+
+	function enter_amend_mode() {
+		amendBanner.textContent = __("Loading the cancelled sale…");
+		amendBanner.classList.remove("d-none");
+		call("ez_accounting.www.forms.user.sales.get_amend_form_data", {sales_invoice: AMEND_FROM})
+			.then(function (r) {
+				var data = r.message;
+				if (!data) { throw new Error("no data"); }
+				populate_form(data);
+				amendFrom = data.amended_from;
+				submitLabel.textContent = __("Submit Amended Invoice");
+				amendBanner.innerHTML = __(
+					"Amending {0} — it has been cancelled. Edit anything below and submit to create the corrected invoice ({0}-1).",
+					['<strong>' + frappe.utils.escape_html(amendFrom) + '</strong>']
+				);
+			})
+			.catch(function () {
+				amendFrom = "";
+				amendBanner.className = "alert alert-danger";
+				amendBanner.textContent = __("Could not load {0} to amend. It may not be a cancelled invoice, or it may already be amended.", [AMEND_FROM]);
+			});
+	}
+
+	// Waits for Customer/Item/Mode of Payment data to finish loading before
+	// restoring — select_value(..., true) silently no-ops on a combo whose
+	// rows aren't loaded yet, and the Mode of Payment <select> has no matching
+	// <option> to set until its own call() resolves.
+	Promise.all([customersLoaded, itemsLoaded, modesLoaded]).then(function () {
+		if (AMEND_FROM) enter_amend_mode();
+		else restore_draft();
+	});
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function set_loading(is_loading) {
+		submitBtn.disabled = is_loading;
+		spinner.classList.toggle("d-none", !is_loading);
+		submitLabel.textContent = is_loading
+			? __("Running…")
+			: (amendFrom ? __("Submit Amended Invoice") : DEFAULT_SUBMIT_LABEL);
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	// The deposit sheet behind a receipt — opens the forms-portal read-only
+	// view (/forms/user/deposit_detail), not /desk, so a portal user never
+	// lands in Desk from here.
+	function deposit_detail_link(name) {
+		return "/forms/user/deposit_detail?id=" + encodeURIComponent(name);
+	}
+
+	// Sends the admin to /forms/user/printer with the document ID (and
+	// desired format) pre-filled — its own true-Letter-size preview + native
+	// browser print() replaces every direct /desk/print link on this page
+	// (Invoice, Receipt): it sidesteps the wkhtmltopdf margin-extraction bug
+	// already hit on Purchase's "FHB Check" format (see [[forms-printer-app]]),
+	// and lets the admin actually see the document at real size before it
+	// prints. doctype isn't part of the link — /forms/user/printer detects it
+	// from the ID itself (or, once a format is also given, resolves it
+	// straight from that format's own doc_type).
+	function printer_link(id, format) {
+		var url = "/forms/user/printer?id=" + encodeURIComponent(id);
+		if (format) url += "&format=" + encodeURIComponent(format);
+		return url;
+	}
+
+	// Sales Invoice History — loaded once on page load, then reloaded after
+	// every successful run so the new invoice shows up without a manual page
+	// refresh, and again whenever the From/To date filter changes.
+	var historyBody = document.getElementById("sales-invoice-history-body");
+	var historyFromDate = document.getElementById("history_from_date");
+	var historyToDate = document.getElementById("history_to_date");
+	var historyCreatedFrom = document.getElementById("history_created_from");
+	var historyCreatedTo = document.getElementById("history_created_to");
+	var historyDueFrom = document.getElementById("history_due_from");
+	var historyDueTo = document.getElementById("history_due_to");
+	var historyTerms = document.getElementById("history_terms");
+	var historyCustomerSearch = document.getElementById("history_customer_search");
+	var historyItemSearch = document.getElementById("history_item_search");
+	var historyDocNo = document.getElementById("history_doc_no");
+	var historySortBy = document.getElementById("history_sort_by");
+	var historyPageSize = document.getElementById("history_page_size");
+	var historyPrevPage = document.getElementById("history_prev_page");
+	var historyNextPage = document.getElementById("history_next_page");
+	var historyPageSummary = document.getElementById("sales-history-page-summary");
+	var historyPage = 1;
+	var historyTotalPages = 0;
+	var historyCustomerHidden = document.getElementById("history_customer");
+	var historyItemHidden = document.getElementById("history_item");
+	var historyCustomerOptions = document.getElementById("history_customer_options");
+	var historyItemOptions = document.getElementById("history_item_options");
+	var historyClearDates = document.getElementById("history_clear_dates");
+	var historyShowCancelled = document.getElementById("history_show_cancelled");
+	var STATUS_PILL_CLASS = { Paid: "pill-final", Cancelled: "pill-cancelled", Overdue: "pill-overdue" };
+
+	// ---- Record Payment modal (Pay button — history rows + sales-result) ----
+	// One shared overlay instance for both entry points: a row's own "Pay"
+	// button in Sales Invoice History (any outstanding balance, not just a
+	// sale just made through this form), and the "Pay" button that appears
+	// in sales-result right after creating a Partial/Invoice Only sale, for
+	// paying (the rest of) it without hunting for its row below.
+	var payInvoiceOverlay = document.getElementById("pay-invoice-overlay");
+	var payInvoiceForm = document.getElementById("pay-invoice-form");
+	var payInvoiceClose = document.getElementById("pay-invoice-close");
+	var payInvoiceAlert = document.getElementById("pay-invoice-alert");
+	var payInvoiceNameEl = document.getElementById("pay-invoice-name");
+	var payInvoiceOutstandingEl = document.getElementById("pay-invoice-outstanding");
+	var payInvoiceAmountInput = document.getElementById("pay_invoice_amount");
+	var payInvoicePostingDateInput = document.getElementById("pay_invoice_posting_date");
+	var payInvoiceModeSelect = document.getElementById("pay_invoice_mode_of_payment");
+	var payInvoicePayToPreview = document.getElementById("pay-invoice-pay-to-preview");
+	var payInvoiceReferenceNoInput = document.getElementById("pay_invoice_reference_no");
+	var payInvoiceRemarksInput = document.getElementById("pay_invoice_remarks");
+	var payInvoiceSubmitBtn = document.getElementById("pay-invoice-submit");
+	var payInvoiceSpinner = document.getElementById("pay-invoice-spinner");
+	var payInvoiceSubmitLabel = document.getElementById("pay-invoice-submit-label");
+	var payInvoiceCurrentInvoice = null;
+	var payInvoiceCurrentOutstanding = 0;
+
+	call("ez_accounting.www.forms.user.sales.get_modes_of_payment").then(function (r) {
+		(r.message || []).forEach(function (row) {
+			var opt = document.createElement("option");
+			opt.value = row.name;
+			opt.textContent = row.name;
+			payInvoiceModeSelect.appendChild(opt);
+		});
+	});
+
+	function refresh_pay_invoice_pay_to_preview() {
+		payInvoicePayToPreview.className = "pay-to-preview text-muted";
+		payInvoicePayToPreview.textContent = __("Checking…");
+		call("ez_accounting.www.forms.user.sales.get_pay_to_preview", {mode_of_payment: payInvoiceModeSelect.value})
+			.then(function (r) {
+				if (!r.message) return;
+				if (r.message.account) {
+					payInvoicePayToPreview.className = "pay-to-preview";
+					payInvoicePayToPreview.textContent = r.message.account;
+				} else {
+					payInvoicePayToPreview.className = "pay-to-preview text-danger";
+					payInvoicePayToPreview.textContent = __("No account could be resolved — set a default bank account for this company.");
+				}
+			})
+			.catch(function (err) {
+				payInvoicePayToPreview.className = "pay-to-preview text-danger";
+				payInvoicePayToPreview.innerHTML = extract_error_message(err);
+			});
+	}
+	payInvoiceModeSelect.addEventListener("change", refresh_pay_invoice_pay_to_preview);
+
+	function show_pay_invoice_alert(message) {
+		payInvoiceAlert.innerHTML = message;
+		payInvoiceAlert.classList.remove("d-none");
+	}
+
+	function open_pay_invoice_modal(salesInvoice, outstanding) {
+		payInvoiceCurrentInvoice = salesInvoice;
+		payInvoiceCurrentOutstanding = outstanding;
+		payInvoiceAlert.classList.add("d-none");
+		payInvoiceNameEl.textContent = salesInvoice;
+		payInvoiceOutstandingEl.textContent = fmt_currency(outstanding);
+		payInvoiceAmountInput.value = outstanding.toFixed(2);
+		// No max — an overpayment is allowed; the excess over the outstanding
+		// balance is booked as the customer's Unallocated Amount (advance).
+		payInvoiceAmountInput.removeAttribute("max");
+		payInvoicePostingDateInput.value = frappe.datetime.get_today();
+		payInvoiceModeSelect.value = "";
+		payInvoiceReferenceNoInput.value = "";
+		payInvoiceRemarksInput.value = "";
+		refresh_pay_invoice_pay_to_preview();
+		payInvoiceOverlay.classList.remove("d-none");
+	}
+
+	function close_pay_invoice_modal() {
+		payInvoiceOverlay.classList.add("d-none");
+		payInvoiceCurrentInvoice = null;
+	}
+
+	payInvoiceClose.addEventListener("click", close_pay_invoice_modal);
+	// Deliberately no backdrop-click-to-close — this modal holds a form the
+	// admin is filling in, so an accidental click outside it must not discard
+	// it. Close via the × button or Escape only.
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape" && !payInvoiceOverlay.classList.contains("d-none")) close_pay_invoice_modal();
+	});
+
+	payInvoiceForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		payInvoiceAlert.classList.add("d-none");
+
+		var amount = parseFloat(payInvoiceAmountInput.value) || 0;
+		if (amount <= 0) {
+			show_pay_invoice_alert(__("Enter an amount greater than zero."));
+			return;
+		}
+		// An amount above the outstanding balance is allowed — the excess is
+		// booked as the customer's Unallocated Amount (an on-account advance).
+		if (!payInvoicePostingDateInput.value) {
+			show_pay_invoice_alert(__("Posting Date is required."));
+			return;
+		}
+
+		var payingInvoice = payInvoiceCurrentInvoice;
+		payInvoiceSubmitBtn.disabled = true;
+		payInvoiceSpinner.classList.remove("d-none");
+		payInvoiceSubmitLabel.textContent = __("Recording…");
+
+		call("ez_accounting.www.forms.user.sales.pay_sales_invoice", {
+			sales_invoice: payingInvoice,
+			amount: amount,
+			mode_of_payment: payInvoiceModeSelect.value,
+			reference_no: payInvoiceReferenceNoInput.value,
+			remarks: payInvoiceRemarksInput.value,
+			posting_date: payInvoicePostingDateInput.value
+		}).then(function () {
+			payInvoiceSubmitBtn.disabled = false;
+			payInvoiceSpinner.classList.add("d-none");
+			payInvoiceSubmitLabel.textContent = __("Record Payment");
+			close_pay_invoice_modal();
+			load_sales_invoice_history(payingInvoice);
+		}).catch(function (err) {
+			payInvoiceSubmitBtn.disabled = false;
+			payInvoiceSpinner.classList.add("d-none");
+			payInvoiceSubmitLabel.textContent = __("Record Payment");
+			show_pay_invoice_alert(extract_error_message(err));
+		});
+	});
+
+	// Delegated on the tbody (bound once) rather than per-button — the whole
+	// tbody is rebuilt from an HTML string on every load/reload, which would
+	// silently drop any listeners attached directly to the row's own buttons.
+	historyBody.addEventListener("click", function (e) {
+		var sendInvoiceBtn = e.target.closest(".send-invoice-btn");
+		if (sendInvoiceBtn) {
+			var sendInvoice = sendInvoiceBtn.dataset.salesInvoice;
+			if (!window.confirm(__("Email invoice {0} (as a PDF) to the customer on file?", [sendInvoice]))) {
+				return;
+			}
+			sendInvoiceBtn.disabled = true;
+			var sendInvoiceOriginalHtml = sendInvoiceBtn.innerHTML;
+			sendInvoiceBtn.textContent = __("Sending…");
+			call("ez_accounting.www.forms.user.sales.send_invoice_email", { sales_invoice: sendInvoice })
+				.then(function (r) {
+					alert(__("Invoice {0} emailed to {1}.", [sendInvoice, (r && r.email) || ""]));
+					sendInvoiceBtn.disabled = false;
+					sendInvoiceBtn.innerHTML = sendInvoiceOriginalHtml;
+				})
+				.catch(function (err) {
+					alert(extract_error_message(err).replace(/<br>/g, "\n"));
+					sendInvoiceBtn.disabled = false;
+					sendInvoiceBtn.innerHTML = sendInvoiceOriginalHtml;
+				});
+			return;
+		}
+
+		var payBtn = e.target.closest(".pay-invoice-btn");
+		if (payBtn) {
+			open_pay_invoice_modal(payBtn.dataset.salesInvoice, parseFloat(payBtn.dataset.outstanding) || 0);
+			return;
+		}
+
+		var historyBtn = e.target.closest(".payment-history-btn");
+		if (historyBtn) {
+			open_payment_history_modal(historyBtn.dataset.salesInvoice);
+			return;
+		}
+
+		var amendBtn = e.target.closest(".amend-sale-btn");
+		if (amendBtn) {
+			var amendInvoice = amendBtn.dataset.salesInvoice;
+			if (!window.confirm(__("Amend {0}? This cancels {0} and its Payment Entry, then reopens the sale form with its details for you to correct and re-submit.", [amendInvoice]))) {
+				return;
+			}
+			amendBtn.disabled = true;
+			amendBtn.textContent = __("Amending…");
+			call("ez_accounting.www.forms.user.sales.amend_express_sale", {sales_invoice: amendInvoice})
+				.then(function (r) {
+					var cancelled = (r && r.cancelled) || amendInvoice;
+					// Reopen this same page in amend mode — the form loads
+					// pre-filled with the cancelled sale for editing.
+					window.location.href = (window.FORMS_URL_PREFIX || "") + "/forms/user/sales?amend=" + encodeURIComponent(cancelled);
+				})
+				.catch(function (err) {
+					alert(extract_error_message(err).replace(/<br>/g, "\n"));
+					amendBtn.disabled = false;
+					amendBtn.innerHTML = '<i class="fa fa-refresh btn-icon" aria-hidden="true"></i>' + __("Amend");
+				});
+			return;
+		}
+
+		var btn = e.target.closest(".cancel-sale-btn");
+		if (!btn) return;
+
+		var salesInvoice = btn.dataset.salesInvoice;
+		if (!window.confirm(__("Cancel {0}? This cancels its Payment Entry and the Sales Invoice together — this can't be undone from here.", [salesInvoice]))) {
+			return;
+		}
+
+		btn.disabled = true;
+		btn.textContent = __("Cancelling…");
+		call("ez_accounting.www.forms.user.sales.cancel_express_sale", {sales_invoice: salesInvoice})
+			.then(function () {
+				load_sales_invoice_history();
+			})
+			.catch(function (err) {
+				alert(extract_error_message(err).replace(/<br>/g, "\n"));
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel");
+			});
+	});
+
+	// Same modal, opened from the "Pay Now" button in sales-result instead of
+	// a history row — bound once here (not inside the submit handler that
+	// rebuilds resultBox's innerHTML each time) so it's never re-attached or
+	// left stacked across repeated sales.
+	resultBox.addEventListener("click", function (e) {
+		var payBtn = e.target.closest(".result-pay-invoice-btn");
+		if (!payBtn) return;
+		open_pay_invoice_modal(payBtn.dataset.salesInvoice, parseFloat(payBtn.dataset.outstanding) || 0);
+	});
+
+	// ---- Payment History modal ----
+	// Every Payment Entry ever recorded against one invoice, not just the
+	// single one Sales Invoice History's own row shows (get_sales_invoice_
+	// history() only ever surfaces the first submitted Payment Entry it
+	// finds — fine for a normal one-payment sale, but a Partial Payment
+	// followed by one or more later "Pay" payments needs the whole trail,
+	// including anything that was later cancelled).
+	var paymentHistoryOverlay = document.getElementById("payment-history-overlay");
+	var paymentHistoryClose = document.getElementById("payment-history-close");
+	var paymentHistoryInvoiceNameEl = document.getElementById("payment-history-invoice-name");
+	var paymentHistoryBody = document.getElementById("payment-history-body");
+	var PAYMENT_STATUS_PILL_CLASS = { Submitted: "pill-final", Cancelled: "pill-cancelled" };
+
+	function close_payment_history_modal() {
+		paymentHistoryOverlay.classList.add("d-none");
+	}
+	paymentHistoryClose.addEventListener("click", close_payment_history_modal);
+	// Close via the × button or Escape only — no backdrop-click-to-close,
+	// consistent with the Pay modal above.
+	document.addEventListener("keydown", function (e) {
+		if (e.key === "Escape" && !paymentHistoryOverlay.classList.contains("d-none")) close_payment_history_modal();
+	});
+
+	function open_payment_history_modal(salesInvoice) {
+		paymentHistoryInvoiceNameEl.textContent = salesInvoice;
+		paymentHistoryBody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("Loading…") + "</td></tr>";
+		paymentHistoryOverlay.classList.remove("d-none");
+
+		call("ez_accounting.www.forms.user.sales.get_sales_invoice_payment_history", {sales_invoice: salesInvoice})
+			.then(function (r) {
+				var rows = r.message || [];
+				if (!rows.length) {
+					paymentHistoryBody.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("No payments recorded yet.") + "</td></tr>";
+					return;
+				}
+				paymentHistoryBody.innerHTML = rows.map(function (row) {
+					var pillClass = PAYMENT_STATUS_PILL_CLASS[row.status] || "pill-draft";
+					var unalloc = parseFloat(row.unallocated_amount) || 0;
+					return (
+						"<tr>" +
+						"<td>" + (row.posting_date || "") + "</td>" +
+						'<td><a class="history-row-link" target="_blank" href="' + doc_link("payment-entry", row.name) + '">' + frappe.utils.escape_html(row.name) + "</a></td>" +
+						'<td class="text-right">' + frappe.format(row.allocated_amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+						'<td class="text-right">' + (unalloc > 0
+							? '<span title="' + __("Overpayment kept as the customer’s on-account advance") + '">' + frappe.format(unalloc, {fieldtype: "Currency"}, {only_value: true}) + "</span>"
+							: '<span class="text-muted">&mdash;</span>') + "</td>" +
+						"<td>" + (row.mode_of_payment ? frappe.utils.escape_html(row.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+						"<td>" + (row.reference_no ? frappe.utils.escape_html(row.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+						"<td>" + (row.deposit_sheet
+							? '<a class="history-row-link" target="_blank" href="' + deposit_detail_link(row.deposit_sheet) + '">' + frappe.utils.escape_html(row.deposit_sheet) + "</a>"
+							: '<span class="text-muted">&mdash;</span>') + "</td>" +
+						'<td><span class="status-pill ' + pillClass + '">' + frappe.utils.escape_html(row.status) + "</span></td>" +
+						"</tr>"
+					);
+				}).join("");
+			})
+			.catch(function () {
+				paymentHistoryBody.innerHTML = '<tr><td colspan="8" class="text-danger">' + __("Could not load payment history.") + "</td></tr>";
+			});
+	}
+
+	// row.creation is a full datetime (unlike posting_date, a business date
+	// the admin can backdate) — str_to_user formats it per the site's date/
+	// time display settings; falls back to the raw value if that ever throws
+	// (e.g. an unexpected format), so a formatting hiccup never blanks the cell.
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	// highlightInvoice: the just-created Sales Invoice's name, if this reload
+	// follows a successful submit (see the submit handler below) — that row
+	// gets a pulsing highlight (is-new-row, styled above) and is scrolled
+	// into view, so a fresh sale is easy to spot in a list that can otherwise
+	// run to dozens of rows. Omitted for every other reload (page load,
+	// date-filter changes, cancel) since there's no "just did this" row to
+	// point at.
+	function load_sales_invoice_history(highlightInvoice, customerSearchOverride, itemSearchOverride) {
+		// customerSearchOverride/itemSearchOverride: used only by the debounced
+		// search-box reload below, which snapshots the typed text *at keystroke
+		// time* rather than reading it fresh here — the searchable-select combo
+		// these boxes now use clears its own text ~150ms after blur if nothing
+		// was picked from the dropdown, which could otherwise race ahead of a
+		// slower debounce and search for "" instead of what was actually typed.
+		call("ez_accounting.www.forms.user.sales.get_sales_invoice_history", {
+			from_date: historyFromDate.value,
+			to_date: historyToDate.value,
+			created_from: historyCreatedFrom.value,
+			created_to: historyCreatedTo.value,
+			due_from: historyDueFrom.value,
+			due_to: historyDueTo.value,
+			payment_terms_template: historyTerms.value,
+			customer_search: (customerSearchOverride !== undefined ? customerSearchOverride : historyCustomerSearch.value).trim(),
+			item_search: (itemSearchOverride !== undefined ? itemSearchOverride : historyItemSearch.value).trim(),
+			doc_no_search: historyDocNo.value.trim(),
+			sort_by: historySortBy.value,
+			page: historyPage,
+			page_size: historyPageSize.value,
+			show_cancelled: historyShowCancelled.checked ? 1 : 0
+		}).then(function (r) {
+			var result = r.message || {};
+			var rows = result.rows || [];
+			var total = result.total || 0;
+			historyPage = result.page || 1;
+			historyTotalPages = result.total_pages || 0;
+			historyPrevPage.disabled = historyPage <= 1;
+			historyNextPage.disabled = !historyTotalPages || historyPage >= historyTotalPages;
+			if (total) {
+				var firstRow = (historyPage - 1) * result.page_size + 1;
+				var lastRow = Math.min(firstRow + rows.length - 1, total);
+				historyPageSummary.textContent = __("Showing {0}–{1} of {2} · Page {3} of {4}", [firstRow, lastRow, total, historyPage, historyTotalPages]);
+			} else {
+				historyPageSummary.textContent = __("0 results");
+			}
+			if (!rows.length) {
+				historyBody.innerHTML = '<tr><td colspan="11" class="text-muted">' + __("No sales invoices found for this filter.") + "</td></tr>";
+				return;
+			}
+			historyBody.innerHTML = rows.map(function (row) {
+				var link = doc_link("sales-invoice", row.name);
+				var pillClass = STATUS_PILL_CLASS[row.status] || "pill-draft";
+				var rowClass = row.name === highlightInvoice ? ' class="is-new-row"' : "";
+				// The receipt (Payment Entry) behind this invoice, shown right
+				// under its own ID — a Split Payment sale (more than one
+				// Payment Entry) has no single ID to show, so that case just
+				// says how many instead of picking one arbitrarily. Falls back
+				// to a *voided* Payment Entry (receipt_payment_entry_voided)
+				// for a Cancelled sale — its receipt was cancelled right along
+				// with it (see cancel_express_sale()), so without this every
+				// cancelled row's ID column showed a bare dash even though a
+				// real receipt did exist, just not anymore.
+				var receiptValue;
+				if (row.receipt_payment_entry_count > 1) {
+					receiptValue = __("Split ({0})", [row.receipt_payment_entry_count]);
+					if (row.receipt_payment_entry_voided) receiptValue += " " + __("(Void)");
+				} else if (row.receipt_payment_entry) {
+					receiptValue = '<a class="history-row-link" target="_blank" href="' +
+						doc_link("payment-entry", row.receipt_payment_entry) + '">' +
+						frappe.utils.escape_html(row.receipt_payment_entry) + "</a>";
+					if (row.receipt_payment_entry_voided) receiptValue += " " + __("(Void)");
+				} else {
+					receiptValue = "&mdash;";
+				}
+				var receiptClass = row.receipt_payment_entry_voided ? " history-id-receipt-voided" : "";
+				return (
+					"<tr" + rowClass + ">" +
+					'<td><a class="history-row-link" target="_blank" href="' + link + '">' +
+						frappe.utils.escape_html(row.name) + "</a>" +
+						'<div class="history-id-receipt"><span class="history-date-label">' + __("Sequence ID") + "</span> " +
+							(row.sequence_id ? frappe.utils.escape_html(row.sequence_id) : "&mdash;") + "</div>" +
+						'<div class="history-id-receipt' + receiptClass + '"><span class="history-date-label">' + __("Receipt") + "</span> " +
+							receiptValue + "</div></td>" +
+					// The customer name itself is now the profile link (icon +
+					// name, one link) instead of linking to the invoice
+					// document — the invoice's own ID (first column) already
+					// covers that. Students go to their own richer profile
+					// (vacations/courses/documents/credit note/etc., none of
+					// which apply to a plain Customer); everyone else goes to
+					// the leaner /forms/user/customer_profile.
+					'<td><a class="history-customer-link" target="_blank" href="' +
+						(row.is_student ? "/forms/user/student_customer_profile" : "/forms/user/customer_profile") +
+						"?customer=" + encodeURIComponent(row.customer) + '">' +
+						'<i class="fa fa-user btn-icon" aria-hidden="true"></i>' +
+						frappe.utils.escape_html(row.customer_name) + "</a></td>" +
+					'<td class="history-dates">' +
+						'<div><span class="history-date-label">' + __("Posted") + "</span> " + (row.posting_date || "&mdash;") + "</div>" +
+						'<div><span class="history-date-label">' + __("Due") + "</span> " + (row.due_date || "&mdash;") +
+							(row.payment_terms_template ? ' <span class="text-muted">(' + frappe.utils.escape_html(row.payment_terms_template) + ")</span>" : "") + "</div>" +
+						'<div><span class="history-date-label">' + __("Created") + "</span> " + format_timestamp(row.creation) + "</div>" +
+						'<div><span class="history-date-label">' + __("Payment") + "</span> " +
+							(row.payment_date ? row.payment_date : '<span class="text-muted">&mdash;</span>') + "</div>" +
+					"</td>" +
+					"<td>" + (row.created_by ? frappe.utils.escape_html(row.created_by) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					'<td class="text-right">' + frappe.format(row.grand_total, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td class="text-right">' + frappe.format(row.outstanding_amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					'<td><span class="status-pill ' + pillClass + '">' + frappe.utils.escape_html(row.status) + "</span>" +
+						(row.status !== "Cancelled" && Math.abs(Number(row.outstanding_amount || 0)) >= 0.005
+							? '<a class="history-row-link print-last-invoice-link" target="_blank" href="' +
+								printer_link(row.name, printFormatSettings.sales_invoice_format || "Sales Invoice with Remarks") + '">' +
+								'<i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Print Invoice") + "</a>"
+							: "") +
+						(row.is_last_invoice && Math.abs(Number(row.customer_net_balance || 0)) >= 0.005
+							? '<a class="history-row-link print-last-invoice-link" target="_blank" href="' +
+								printer_link(row.last_invoice, printFormatSettings.sales_invoice_format || "Sales Invoice with Remarks") +
+								'" title="' + frappe.utils.escape_html(__("Customer net balance: {0}", [frappe.format(row.customer_net_balance, {fieldtype: "Currency", options: row.currency}, {only_value: true})])) + '">' +
+								'<i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Print Last Invoice") + "</a>"
+							: "") + "</td>" +
+					'<td>' + (row.pay_to ? frappe.utils.escape_html(row.pay_to) : '<span class="text-muted">&mdash;</span>') + '</td>' +
+					'<td>' + (row.mode_of_payment ? frappe.utils.escape_html(row.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + '</td>' +
+					'<td>' + (row.deposit_sheet
+						? '<a class="history-row-link" target="_blank" href="' + deposit_detail_link(row.deposit_sheet) + '"><span class="status-pill pill-final">' +
+							__("Deposited") + " " + frappe.format(row.deposited_amount, {fieldtype: "Currency", options: row.currency}, {only_value: true}) + "</span></a>"
+						: (row.awaiting_deposit ? '<span class="status-pill pill-draft">' + __("Not deposited") + "</span>" : '<span class="text-muted">&mdash;</span>')) + '</td>' +
+					'<td class="history-print-actions">' +
+						'<a class="history-row-link" target="_blank" href="' + printer_link(row.name, printFormatSettings.sales_invoice_format || "Sales Invoice with Remarks") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Invoice") + "</a>" +
+						(row.status !== "Cancelled"
+							? '<button type="button" class="history-row-link send-invoice-btn" data-sales-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+								'<i class="fa fa-envelope btn-icon" aria-hidden="true"></i>' + __("Send Invoice") + "</button>"
+							: "") +
+						(row.payment_entry_count > 1
+							// Split Payment sale — more than one submitted Payment
+							// Entry, so no single one holds the full amount paid.
+							// Points at the Sales Invoice itself instead, via a
+							// print format that sums all of them (see
+							// process_express_sale()'s "split" payment_mode).
+							? '<a class="history-row-link" target="_blank" href="' + printer_link(row.name, printFormatSettings.sales_split_receipt_format || "Official Receipt with Split Payments") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Receipt") + "</a>"
+							: row.payment_entry
+							? '<a class="history-row-link" target="_blank" href="' + printer_link(row.payment_entry, printFormatSettings.sales_receipt_format || "Official Receipt with line descriptions") + '"><i class="fa fa-print btn-icon" aria-hidden="true"></i>' + __("Receipt") + "</a>"
+							: '<span class="text-muted">' + __("No payment") + "</span>") +
+						'<button type="button" class="history-row-link payment-history-btn" data-sales-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+							'<i class="fa fa-list btn-icon" aria-hidden="true"></i>' + __("History") + "</button>" +
+						'<a class="history-row-link" target="_blank" href="/forms/user/sales_edit?id=' + encodeURIComponent(row.name) + '"><i class="fa fa-pencil btn-icon" aria-hidden="true"></i>' + __("Edit") + "</a>" +
+						(row.status !== "Cancelled" && row.outstanding_amount > 0
+							? '<button type="button" class="history-row-link pay-invoice-btn" data-sales-invoice="' + frappe.utils.escape_html(row.name) + '" data-outstanding="' + row.outstanding_amount + '">' +
+								'<i class="fa fa-money btn-icon" aria-hidden="true"></i>' + __("Pay") + "</button>"
+							: "") +
+						(row.status !== "Cancelled"
+							// Cancelling reverses the Payment Entry too — once its
+							// money has actually been swept into a bank deposit
+							// (see the "Deposited" badge two columns over), that's
+							// no longer safe (cancel_express_sale() enforces this
+							// server-side regardless; this just saves the extra
+							// click-and-error round trip).
+							? '<button type="button" class="history-row-link cancel-sale-btn"' +
+								(row.deposit_sheet ? " disabled" : "") +
+								' title="' + (row.deposit_sheet ? frappe.utils.escape_html(__("Already deposited — cancel the deposit sheet first.")) : "") + '"' +
+								' data-sales-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+								'<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel") + "</button>"
+							: "") +
+						(row.status !== "Cancelled"
+							? '<button type="button" class="history-row-link amend-sale-btn"' +
+								(row.deposit_sheet ? " disabled" : "") +
+								' title="' + (row.deposit_sheet ? frappe.utils.escape_html(__("Already deposited — cancel the deposit sheet first.")) : "") + '"' +
+								' data-sales-invoice="' + frappe.utils.escape_html(row.name) + '">' +
+								'<i class="fa fa-refresh btn-icon" aria-hidden="true"></i>' + __("Amend") + "</button>"
+							: (row.amendable
+								// Already cancelled but not yet amended — resume the
+								// amendment (no cancel step needed this time).
+								? '<a class="history-row-link" href="/forms/user/sales?amend=' + encodeURIComponent(row.name) + '"><i class="fa fa-refresh btn-icon" aria-hidden="true"></i>' + __("Amend") + "</a>"
+								: "")) + '</td>' +
+					"</tr>"
+				);
+			}).join("");
+
+			if (highlightInvoice) {
+				var newRow = historyBody.querySelector("tr.is-new-row");
+				// rAF, not immediate — scrollIntoView on a row whose layout
+				// hasn't settled yet (innerHTML was just replaced above) can
+				// measure the wrong position and land short.
+				if (newRow) {
+					window.requestAnimationFrame(function () {
+						newRow.scrollIntoView({ behavior: "smooth", block: "center" });
+					});
+				}
+			}
+		}).catch(function () {
+			historyBody.innerHTML = '<tr><td colspan="11" class="text-danger">' + __("Could not load sales invoice history.") + "</td></tr>";
+			historyPageSummary.textContent = "";
+			historyPrevPage.disabled = true;
+			historyNextPage.disabled = true;
+		});
+	}
+	function load_first_history_page(customerSearchOverride, itemSearchOverride) {
+		historyPage = 1;
+		load_sales_invoice_history(undefined, customerSearchOverride, itemSearchOverride);
+	}
+	// Sort order is a remembered preference (not a filter — the Clear button
+	// leaves it alone). Global key, not per-company: it's a display habit, not
+	// data. Restore before the first load so the initial fetch is already
+	// ordered the way the admin left it.
+	var HISTORY_SORT_KEY = "forms.sales.history_sort_by";
+	try {
+		var savedSort = localStorage.getItem(HISTORY_SORT_KEY);
+		if (savedSort && historySortBy.querySelector('option[value="' + savedSort + '"]')) {
+			historySortBy.value = savedSort;
+		}
+	} catch (e) { /* localStorage unavailable — fall back to the default option */ }
+	var HISTORY_PAGE_SIZE_KEY = "forms.sales.history_page_size";
+	try {
+		var savedPageSize = localStorage.getItem(HISTORY_PAGE_SIZE_KEY);
+		if (savedPageSize && historyPageSize.querySelector('option[value="' + savedPageSize + '"]')) {
+			historyPageSize.value = savedPageSize;
+		}
+	} catch (e) { /* localStorage unavailable — use 20 */ }
+
+	historySortBy.addEventListener("change", function () {
+		try { localStorage.setItem(HISTORY_SORT_KEY, historySortBy.value); } catch (e) { /* ignore */ }
+		load_first_history_page();
+	});
+	historyPageSize.addEventListener("change", function () {
+		try { localStorage.setItem(HISTORY_PAGE_SIZE_KEY, historyPageSize.value); } catch (e) { /* ignore */ }
+		load_first_history_page();
+	});
+	historyPrevPage.addEventListener("click", function () {
+		if (historyPage <= 1) return;
+		historyPage -= 1;
+		load_sales_invoice_history();
+	});
+	historyNextPage.addEventListener("click", function () {
+		if (!historyTotalPages || historyPage >= historyTotalPages) return;
+		historyPage += 1;
+		load_sales_invoice_history();
+	});
+
+	printFormatSettingsLoaded.then(load_sales_invoice_history);
+
+	[historyFromDate, historyToDate, historyCreatedFrom, historyCreatedTo, historyDueFrom, historyDueTo, historyTerms].forEach(function (input) {
+		input.addEventListener("change", function () { load_first_history_page(); });
+	});
+	historyShowCancelled.addEventListener("change", function () { load_first_history_page(); });
+
+	// Debounced (not on every keystroke) — this is a real server round trip,
+	// unlike the plain client-side filtering the searchable-select combo
+	// below already does against its own loaded dropdown. Snapshots each
+	// box's typed text *now* (not read fresh once the timer fires) — see
+	// load_sales_invoice_history()'s own comment on why.
+	var historySearchDebounce = null;
+	function debounced_reload_history() {
+		var customerTerm = historyCustomerSearch.value;
+		var itemTerm = historyItemSearch.value;
+		clearTimeout(historySearchDebounce);
+		historySearchDebounce = setTimeout(function () {
+			load_first_history_page(customerTerm, itemTerm);
+		}, 350);
+	}
+	historyCustomerSearch.addEventListener("input", debounced_reload_history);
+	historyItemSearch.addEventListener("input", debounced_reload_history);
+	// Plain text box (no self-clearing combo) — load_sales_invoice_history()
+	// reads historyDocNo fresh, so the shared debounce is enough.
+	historyDocNo.addEventListener("input", debounced_reload_history);
+
+	// Same combobox factory the Customer/Item fields in the form above use —
+	// consistent dropdown-of-suggestions UX everywhere on this page, instead
+	// of a blind free-text box. Picking a suggestion reloads immediately
+	// (no need to wait for the debounce above); typing without picking one
+	// still free-text-searches server-side via the debounce, same as before.
+	// Loads its own copy of the customer/item lists rather than trying to
+	// share the form's own combos' internal state, which isn't exposed.
+	var historyCustomerCombo = create_searchable_select(
+		historyCustomerSearch, historyCustomerHidden, historyCustomerOptions,
+		"name", "customer_name",
+		function () { load_first_history_page(); }
+	);
+	call("ez_accounting.www.forms.user.sales.get_customers").then(function (r) {
+		historyCustomerCombo.set_rows(r.message || []);
+	});
+
+	var historyItemCombo = create_searchable_select(
+		historyItemSearch, historyItemHidden, historyItemOptions,
+		"name", "item_name",
+		function () { load_first_history_page(); }
+	);
+	call("ez_accounting.www.forms.user.sales.get_sales_items").then(function (r) {
+		historyItemCombo.set_rows(r.message || []);
+	});
+
+	historyClearDates.addEventListener("click", function () {
+		historyFromDate.value = "";
+		historyToDate.value = "";
+		historyCreatedFrom.value = "";
+		historyCreatedTo.value = "";
+		historyDueFrom.value = "";
+		historyDueTo.value = "";
+		historyTerms.value = "";
+		historyDocNo.value = "";
+		historyCustomerCombo.clear();
+		historyItemCombo.clear();
+		historyShowCancelled.checked = false;
+		load_first_history_page();
+	});
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+		resultBox.classList.add("d-none");
+
+		// Rows with no item picked are silently dropped (the admin clicked
+		// "Add Item" then changed their mind) rather than blocking submit;
+		// any row that DOES have an item picked must have valid qty/rate.
+		var lineItems = [];
+		var lineItemError = null;
+		itemRows.forEach(function (r) {
+			if (!r.itemInput.value) return;
+			var qty = parseFloat(r.qtyInput.value) || 0;
+			var rate = parseFloat(r.rateInput.value) || 0;
+			if (qty <= 0 || rate <= 0) {
+				lineItemError = __("Quantity and Rate must both be greater than zero for every item row.");
+			}
+			lineItems.push({item: r.itemInput.value, qty: qty, rate: rate, description: r.descriptionInput.value.trim(), is_deduction: r.deductionInput.checked});
+		});
+
+		var paymentMode = current_payment_mode();
+		var partialAmount = parseFloat(partialAmountInput.value) || 0;
+		var grandTotal = current_grand_total();
+
+		// Rows with no amount entered are silently dropped (same "changed
+		// their mind after clicking Add" reasoning as the empty item rows
+		// above) — a row's Mode of Payment being blank is fine (falls back
+		// to the company default account), but an amount of 0 isn't a real
+		// payment method.
+		var splitPaymentLines = [];
+		if (paymentMode === "split") {
+			paymentLines.forEach(function (r) {
+				var amount = parseFloat(r.amountInput.value) || 0;
+				if (amount <= 0) return;
+				splitPaymentLines.push({mode_of_payment: r.modeSelect.value, amount: amount});
+			});
+		}
+
+		var args = {
+			customer: customerInput.value,
+			items: JSON.stringify(lineItems),
+			posting_date: postingDateInput.value,
+			payment_mode: paymentMode,
+			partial_amount: paymentMode === "partial" ? partialAmount : 0,
+			// Meaningless without an actual payment — blanked here (not just
+			// hidden) so a value left over from before switching to Invoice
+			// Only doesn't get sent along looking like it was actually used.
+			mode_of_payment: (paymentMode === "invoice_only" || paymentMode === "split") ? "" : modeOfPaymentSelect.value,
+			payment_lines: paymentMode === "split" ? JSON.stringify(splitPaymentLines) : "[]",
+			reference_no: paymentMode === "invoice_only" ? "" : referenceNoInput.value,
+			remarks: remarksInput.value,
+			payment_terms_template: termsSelect.value,
+			due_date: dueDateInput.value,
+			unique_id: uniqueIdInput.value.trim(),
+			// In amend mode the corrected invoice is a real Frappe amendment
+			// of the cancelled original.
+			amended_from: amendFrom || ""
+		};
+
+		if (!args.customer || !lineItems.length) {
+			show_alert(__("Please fill in all required fields."), true);
+			return;
+		}
+		if (lineItemError) {
+			show_alert(lineItemError, true);
+			return;
+		}
+		if (paymentMode === "partial") {
+			if (partialAmount <= 0) {
+				show_alert(__("Enter an amount greater than zero for the partial payment."), true);
+				return;
+			}
+			// An amount above the Grand Total is allowed — the excess is kept
+			// as the customer's advance (Unallocated Amount).
+		}
+		if (paymentMode === "split") {
+			if (!splitPaymentLines.length) {
+				show_alert(__("Enter at least one payment method with an amount greater than zero."), true);
+				return;
+			}
+			var splitTotal = splitPaymentLines.reduce(function (sum, line) { return sum + line.amount; }, 0);
+			if (Math.abs(splitTotal - grandTotal) >= 0.005) {
+				show_alert(__("The payment methods must add up to exactly the Grand Total ({0}). They currently total {1}.", [fmt_currency(grandTotal), fmt_currency(splitTotal)]), true);
+				return;
+			}
+		}
+
+		// Re-checked here (not just trusting the live debounced check above)
+		// so a fast typer hitting submit within the 350ms debounce window —
+		// or a value restored from a draft that was never re-typed — can't
+		// slip past it; process_express_sale() itself still enforces this
+		// server-side as the real safety net either way.
+		if (args.unique_id) {
+			call("ez_accounting.www.forms.user.sales.check_unique_id", {unique_id: args.unique_id}).then(function (r) {
+				if (r.message && r.message.exists) {
+					uniqueIdConflict = r.message.sales_invoice;
+					uniqueIdStatus.className = "form-text text-danger";
+					uniqueIdStatus.innerHTML = __("Already used by") + ' <a target="_blank" href="' +
+						doc_link("sales-invoice", r.message.sales_invoice) + '">' +
+						frappe.utils.escape_html(r.message.sales_invoice) + "</a>.";
+					show_alert(__("Unique ID \"{0}\" is already used by {1}.", [
+						frappe.utils.escape_html(args.unique_id),
+						'<a target="_blank" href="' + doc_link("sales-invoice", r.message.sales_invoice) + '">' +
+							frappe.utils.escape_html(r.message.sales_invoice) + "</a>"
+					]), true);
+					return;
+				}
+				submit_sale();
+			}).catch(function () {
+				// If the check itself fails, fall through to a normal submit —
+				// process_express_sale() still enforces uniqueness server-side.
+				submit_sale();
+			});
+		} else {
+			submit_sale();
+		}
+
+		function submit_sale() {
+			set_loading(true);
+
+			call("ez_accounting.www.forms.user.sales.process_express_sale", args).then(function (r) {
+
+			set_loading(false);
+			if (!r.message) return;
+			var d = r.message;
+
+			// Amend done — the corrected invoice exists. Drop ?amend= from the
+			// URL and reset the form to an ordinary new-sale form so a reload
+			// or the next sale isn't still in amend mode.
+			if (amendFrom) {
+				amendFrom = "";
+				amendBanner.classList.add("d-none");
+				submitLabel.textContent = DEFAULT_SUBMIT_LABEL;
+				try { history.replaceState({}, "", window.location.pathname); } catch (e) { /* ignore */ }
+			}
+
+			// Captured before form.reset() below clears the file input --
+			// uploading is a separate, best-effort step after the sale
+			// itself has already succeeded, not part of the same
+			// transaction (a failed attachment shouldn't look like the sale
+			// failed, and there's nothing to roll back either way).
+			var attachedFile = saleAttachmentInput.files && saleAttachmentInput.files[0];
+
+			save_last_defaults({
+				item: lineItems[0].item,
+				mode_of_payment: args.mode_of_payment,
+				reference_no: args.reference_no
+			});
+
+			resultBox.innerHTML =
+				'<div class="alert alert-info">' +
+					'<strong>' + __("Sale recorded for {0}", [frappe.utils.escape_html(d.customer_name)]) + '</strong>' +
+					'<div class="mt-2">' +
+						'<a target="_blank" href="' + doc_link("sales-invoice", d.sales_invoice) + '">' + __("Sales Invoice") + '</a>' +
+						(d.payment_entry
+							? ' &middot; <a target="_blank" href="' + doc_link("payment-entry", d.payment_entry) + '">' + __("Payment Entry") + '</a>'
+							: '') +
+						(d.payment_entries && d.payment_entries.length
+							? ' &middot; <a target="_blank" href="' + printer_link(d.sales_invoice, printFormatSettings.sales_split_receipt_format || "Official Receipt with Split Payments") + '">' + __("Receipt") + '</a>'
+							: '') +
+					'</div>' +
+					(d.amended_from
+						? '<div class="mt-2 text-muted">' + __("Amended from {0}", [frappe.utils.escape_html(d.amended_from)]) + '</div>'
+						: '') +
+					'<div class="mt-2 text-muted">' + __("Grand Total") + ': ' + frappe.format(d.grand_total, {fieldtype: "Currency"}, {only_value: true}) + '</div>' +
+					(d.outstanding_amount > 0
+						? '<div class="mt-2 text-muted">' + __("Outstanding") + ': ' + frappe.format(d.outstanding_amount, {fieldtype: "Currency"}, {only_value: true}) + '</div>'
+						: '') +
+					(d.payment_entry
+						? '<div class="mt-2 text-muted">' + __("Received into") + ': ' + frappe.utils.escape_html(d.paid_into_account) + '</div>'
+						: '') +
+					(d.payment_entries && d.payment_entries.length
+						? '<div class="mt-2 text-muted">' + __("Received") + ': ' +
+							d.payment_entries.map(function (p) {
+								return frappe.format(p.amount, {fieldtype: "Currency"}, {only_value: true}) + ' ' + __("via") + ' ' +
+									frappe.utils.escape_html(p.mode_of_payment || __("(no mode set)")) + ' → ' + frappe.utils.escape_html(p.paid_into_account);
+							}).join("; ") +
+						'</div>'
+						: '') +
+					(d.outstanding_amount > 0
+						? '<div class="mt-2">' +
+							'<button type="button" class="btn btn-outline-secondary btn-sm result-pay-invoice-btn" data-sales-invoice="' + frappe.utils.escape_html(d.sales_invoice) + '" data-outstanding="' + d.outstanding_amount + '">' +
+								__("Pay Now") +
+							'</button>' +
+						'</div>'
+						: '') +
+					(attachedFile ? '<div class="mt-2 text-muted" id="sales-attachment-status">' + __("Uploading attachment…") + '</div>' : '') +
+				'</div>';
+			resultBox.classList.remove("d-none");
+			clear_draft();
+
+			// Best-effort — the sale itself is already recorded either way by
+			// this point; a failed upload (wrong file type, too large, a
+			// network hiccup) only needs its own status line, not a retry of
+			// the whole sale.
+			if (attachedFile) {
+				upload_file(attachedFile, "Sales Invoice", d.sales_invoice).then(function () {
+					var statusEl = document.getElementById("sales-attachment-status");
+					if (statusEl) statusEl.textContent = __("Attachment uploaded.");
+				}).catch(function (err) {
+					var statusEl = document.getElementById("sales-attachment-status");
+					if (statusEl) {
+						statusEl.className = "mt-2 text-danger";
+						statusEl.innerHTML = __("Attachment failed to upload") + ": " + extract_error_message(err);
+					}
+				});
+			}
+
+			// Posting Date is kept as-is (not reset to today) — entering a batch
+			// of sales for the same (possibly backdated) date is the common case.
+			var lastPostingDate = postingDateInput.value;
+			form.reset();
+			postingDateInput.value = lastPostingDate;
+			customerCombo.clear();
+			refresh_customer_profile_link();
+			uniqueIdConflict = null;
+			uniqueIdStatus.className = "form-text";
+			uniqueIdStatus.innerHTML = uniqueIdStatusDefaultHtml;
+
+			// Rebuilt from scratch (rather than relying on native form.reset()
+			// for these dynamically-created rows) so it unambiguously ends up
+			// back at exactly one empty row, regardless of how many there
+			// were or what native reset() would have done to elements it
+			// didn't create.
+			itemsContainer.innerHTML = "";
+			itemRows = [];
+			create_item_row();
+			update_grand_total();
+
+			// Same reasoning as the item rows above — cleared out entirely
+			// rather than left over from a Split Payment run. Since
+			// form.reset() already put payment_mode back on "full",
+			// update_payment_mode_ui() below won't auto-recreate any (that
+			// only happens while "split" is the active mode).
+			paymentLinesContainer.innerHTML = "";
+			paymentLines = [];
+
+			// form.reset() above already put payment_mode back on "full" (its
+			// checked-by-default radio) and cleared partial_amount — just
+			// re-sync the derived UI (is-selected classes, hidden fields,
+			// the "untouched" tracking flag) to match.
+			partialAmountTouched = false;
+			update_payment_mode_ui();
+
+			refresh_pay_to_preview();
+			// Passing the new invoice's name highlights + scrolls to its row
+			// (see load_sales_invoice_history's highlightInvoice param above)
+			// — the whole point being to make the sale just recorded easy to
+			// find in a history table that can run to dozens of rows.
+			historyPage = 1;
+			load_sales_invoice_history(d.sales_invoice);
+			customerSearch.focus();
+		}).catch(function (err) {
+			set_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+		}
+	});
+});
+</script>
+
+{% endblock %}

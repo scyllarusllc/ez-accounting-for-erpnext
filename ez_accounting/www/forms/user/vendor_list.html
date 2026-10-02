@@ -1,0 +1,95 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .vlist-table td { vertical-align: top; }
+body.forms-portal-dark .vlist-muted { color: #8a8f9c; }
+body.forms-portal-dark .vlist-profile-btn { align-items:center; display:inline-flex; gap:.4rem; white-space:nowrap; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Vendor List") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Every active supplier, with its primary contact and tax ID.") }}
+	</p>
+</div>
+
+<div class="card form-card mb-4 no-print">
+	<div class="card-body">
+		<div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+			<input type="text" class="form-control" id="vlist-search" autocomplete="off" placeholder="{{ _('Search vendor…') }}" style="max-width:24rem;">
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" href="/api/method/ez_accounting.www.forms.user.vendor_list.download_excel">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" href="/forms/user/printer?kind=vendor_list">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="mb-3"><span class="stat-label">{{ _("Vendors") }}</span> <strong id="vlist-count">{{ vendors|length }}</strong></div>
+		<div class="table-responsive">
+			<table class="table table-bordered vlist-table">
+				<thead>
+					<tr>
+						<th>{{ _("Vendor ID") }}</th>
+						<th>{{ _("Vendor") }}</th>
+						<th>{{ _("Group") }}</th>
+						<th>{{ _("Contact") }}</th>
+						<th>{{ _("Telephone 1") }}</th>
+						<th>{{ _("Tax Id No") }}</th>
+						<th class="text-end">{{ _("Actions") }}</th>
+					</tr>
+				</thead>
+				<tbody id="vlist-body">
+					{% for v in vendors %}
+					<tr>
+						<td>{{ v.vendor_id }}</td>
+						<td><a href="/forms/user/supplier">{{ v.vendor }}</a></td>
+						<td>{{ v.group }}</td>
+						<td>{{ v.contact }}</td>
+						<td>{{ v.phone }}</td>
+						<td>{{ v.tax_id }}</td>
+						<td class="text-end"><a class="btn btn-sm btn-outline-light vlist-profile-btn" href="/app/supplier/{{ v.vendor_id | urlencode }}" target="_blank" rel="noopener"><i class="fa fa-user btn-icon" aria-hidden="true"></i>{{ _("Profile") }}</a></td>
+					</tr>
+					{% else %}
+					<tr><td colspan="7" class="vlist-muted">{{ _("No vendors.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var search = document.getElementById("vlist-search");
+	var rows = Array.prototype.slice.call(document.querySelectorAll("#vlist-body tr"));
+	var countEl = document.getElementById("vlist-count");
+	if (!search) return;
+	search.addEventListener("input", function () {
+		var q = (search.value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+		var shown = 0;
+		rows.forEach(function (tr) {
+			var hit = !q || tr.textContent.toLowerCase().replace(/[^a-z0-9]/g, "").indexOf(q) !== -1;
+			tr.hidden = !hit;
+			if (hit) shown++;
+		});
+		countEl.textContent = shown;
+	});
+});
+</script>
+{% endblock %}

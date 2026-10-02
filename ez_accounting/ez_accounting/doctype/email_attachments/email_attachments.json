@@ -1,0 +1,30 @@
+{
+ "actions": [],
+ "autoname": "EA-.#####",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["source_communication", "source_file", "email_date", "sender", "recipients", "subject", "file_name", "attachment", "email_account"],
+ "fields": [
+  {"fieldname": "source_communication", "fieldtype": "Link", "in_list_view": 1, "label": "Email", "options": "Communication", "reqd": 1},
+  {"fieldname": "source_file", "fieldtype": "Link", "label": "Source File", "options": "File", "reqd": 1, "unique": 1},
+  {"fieldname": "email_date", "fieldtype": "Datetime", "in_list_view": 1, "label": "Received On"},
+  {"fieldname": "sender", "fieldtype": "Data", "in_list_view": 1, "label": "Sender"},
+  {"fieldname": "recipients", "fieldtype": "Small Text", "label": "Recipients"},
+  {"fieldname": "subject", "fieldtype": "Small Text", "in_list_view": 1, "label": "Subject"},
+  {"fieldname": "file_name", "fieldtype": "Data", "in_list_view": 1, "label": "File Name"},
+  {"fieldname": "attachment", "fieldtype": "Attach", "label": "Attachment"},
+  {"fieldname": "email_account", "fieldtype": "Link", "label": "Email Account", "options": "Email Account"}
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "module": "Ez Accounting",
+ "name": "Email Attachments",
+ "permissions": [
+  {"create": 1, "delete": 1, "read": 1, "role": "Ez Accounting Admin", "write": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1}
+ ],
+ "sort_field": "email_date",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

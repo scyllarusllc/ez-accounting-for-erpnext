@@ -1,0 +1,131 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .settings-field { margin-bottom: 1.1rem; max-width: 420px; }
+body.forms-portal-dark .settings-field label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+body.forms-portal-dark .settings-hint { font-size: 0.82rem; color: #8a8f9c; margin-top: 0.4rem; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("App Settings") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Site-wide settings for the Forms portal.") }}</p>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="form-card-header">
+			<h4 class="mb-0">{{ _("Appearance") }}</h4>
+		</div>
+		<p class="form-card-description">
+			{{ _("The look every forms user gets by default, unless they've picked their own style on /forms/user/me.") }}
+		</p>
+
+		<div class="settings-field">
+			<label for="settings-default-style">{{ _("System Default Style") }}</label>
+			<select class="form-select" id="settings-default-style">
+				<option value="">{{ _("(Portal default — no override)") }}</option>
+			</select>
+			<div class="settings-hint">
+				{{ _("Author or edit a style's own CSS on") }} <a href="/forms/user/styles">{{ _("Custom Styles") }}</a>.
+			</div>
+		</div>
+
+		<button type="button" class="btn btn-primary" id="settings-save-btn">{{ icons.btn_icon("save") }}{{ _("Save") }}</button>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, danger) {
+		frappe.show_alert
+			? frappe.show_alert({ message: message, indicator: danger ? "red" : "green" })
+			: alert(message);
+	}
+
+	var styleSelect = document.getElementById("settings-default-style");
+	var saveBtn = document.getElementById("settings-save-btn");
+
+	function load() {
+		call("ez_accounting.www.forms.admin.settings.get_settings", {}).then(function (r) {
+			var result = r.message || {};
+			var styles = result.styles || [];
+			styleSelect.innerHTML =
+				'<option value="">' + __("(Portal default — no override)") + "</option>" +
+				styles.map(function (s) {
+					return '<option value="' + frappe.utils.escape_html(s.name) + '">' +
+						frappe.utils.escape_html(s.style_name) + "</option>";
+				}).join("");
+			styleSelect.value = result.default_style || "";
+		}).catch(function (err) {
+			show_alert(extract_error_message(err), true);
+		});
+	}
+
+	saveBtn.addEventListener("click", function () {
+		saveBtn.disabled = true;
+		// Saving goes through the same endpoint /forms/user/styles' own
+		// default-style control calls -- this page is a second front door
+		// onto that one write, not a separate copy of it.
+		call("ez_accounting.www.forms.user.styles.set_default_style", { style_name: styleSelect.value })
+			.then(function () {
+				saveBtn.disabled = false;
+				show_alert(__("Saved."));
+			})
+			.catch(function (err) {
+				saveBtn.disabled = false;
+				show_alert(extract_error_message(err), true);
+			});
+	});
+
+	load();
+});
+</script>
+{% endblock %}

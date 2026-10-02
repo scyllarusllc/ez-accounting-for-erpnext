@@ -1,0 +1,104 @@
+{#
+	Bare, self-contained "Payments" content -- no {% extends %}, no site
+	chrome. Rendered by /forms/user/printerhtml (kind=payments) and iframed
+	by /forms/user/printer at true 8.5in x 11in size.
+
+	Context (see printerhtml.py's _render_payments()):
+	  company, period, printed_at
+	  payments: list of {sequence_number, posting_date, created, type, party,
+	    amount, unallocated, mode_of_payment, reference_no, status, cancelled}
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9pt;
+		line-height: 1.3;
+	}
+
+	.pmt-company { font-size: 15pt; font-weight: 700; margin: 0; text-align: center; }
+	.pmt-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0; text-align: center; }
+	.pmt-period { font-size: 9pt; color: #444; margin: 0 0 0.25in; text-align: center; }
+
+	table.pmt-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+	table.pmt-table th, table.pmt-table td { text-align: left; padding: 0.04in 0.08in; vertical-align: top; }
+	table.pmt-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+	table.pmt-table td { border-bottom: 0.5px solid #ddd; }
+	table.pmt-table th:first-child, table.pmt-table td:first-child { padding-left: 0; }
+	table.pmt-table th:last-child, table.pmt-table td:last-child { padding-right: 0; }
+	table.pmt-table td.text-end, table.pmt-table th.text-end { text-align: right; }
+	table.pmt-table tr.is-cancelled td { color: #888; text-decoration: line-through; }
+	table.pmt-table tr.is-cancelled td.pmt-status { text-decoration: none; font-weight: 700; }
+
+	.pmt-empty { color: #555; padding: 0.3in 0; }
+
+	.pmt-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print { thead { display: table-header-group; } }
+</style>
+
+<div class="pmt-company">{{ company }}</div>
+<div class="pmt-title">{{ _("Payments") }}</div>
+<div class="pmt-period">{{ period }}</div>
+
+{% if not payments %}
+<p class="pmt-empty">{{ _("No payments found for this filter.") }}</p>
+{% else %}
+<table class="pmt-table">
+	<thead>
+		<tr>
+			<th>{{ _("Sequence No") }}</th>
+			<th>{{ _("Posting Date") }}</th>
+			<th>{{ _("Created") }}</th>
+			<th>{{ _("Type") }}</th>
+			<th>{{ _("Party") }}</th>
+			<th class="text-end">{{ _("Amount") }}</th>
+			<th class="text-end">{{ _("Unallocated") }}</th>
+			<th>{{ _("Mode of Payment") }}</th>
+			<th>{{ _("Reference No") }}</th>
+			<th>{{ _("Status") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for p in payments %}
+		<tr class="{{ 'is-cancelled' if p.cancelled else '' }}">
+			<td>{{ p.sequence_number }}</td>
+			<td>{{ p.posting_date }}</td>
+			<td>{{ p.created }}</td>
+			<td>{{ p.type }}</td>
+			<td>{{ p.party }}</td>
+			<td class="text-end">{{ p.amount }}</td>
+			<td class="text-end">{{ p.unallocated or "—" }}</td>
+			<td>{{ p.mode_of_payment or "—" }}</td>
+			<td>{{ p.reference_no or "—" }}</td>
+			<td class="pmt-status">{{ p.status }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endif %}
+
+<div class="pmt-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

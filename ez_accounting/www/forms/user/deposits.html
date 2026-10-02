@@ -1,0 +1,249 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .dep-table td, body.forms-portal-dark .dep-table th { vertical-align: middle; }
+body.forms-portal-dark .dep-table td.text-end, body.forms-portal-dark .dep-table th.text-end { text-align: right; }
+body.forms-portal-dark .dep-seq { font-weight: 600; white-space: nowrap; }
+body.forms-portal-dark .dep-muted { color: #8a8f9c; }
+body.forms-portal-dark .dep-variance-bad { color: #f0a8a8; font-weight: 600; }
+body.forms-portal-dark .dep-cancel-btn { white-space: nowrap; }
+body.forms-portal-dark .dep-amend-btn { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Deposits") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Every Forms Bank Deposit Sheet for {0}, each with its own permanent sequence number.").format(company) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>
+
+{% if company %}
+<div class="card form-card mb-4">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-3">
+				<label class="form-label">{{ _("From") }}</label>
+				<input type="date" class="form-control" id="dep-from-date">
+			</div>
+			<div class="col-md-3">
+				<label class="form-label">{{ _("To") }}</label>
+				<input type="date" class="form-control" id="dep-to-date">
+			</div>
+			<div class="col-md-4">
+				<label class="form-label">{{ _("Search") }}</label>
+				<input type="text" class="form-control" id="dep-search" autocomplete="off"
+					placeholder="{{ _('Sequence No, doc no…') }}">
+			</div>
+			<div class="col-md-2 d-flex align-items-end">
+				<button type="button" class="btn btn-outline-light w-100" id="dep-clear-btn">{{ icons.btn_icon("x") }}{{ _("Clear") }}</button>
+			</div>
+		</div>
+		<div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+			<div class="form-text mb-0" id="dep-count-hint"></div>
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" id="dep-download-link" href="/api/method/ez_accounting.www.forms.user.deposits.download_excel">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" id="dep-print-link" target="_blank" href="/forms/user/printer?kind=deposits">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0 dep-table">
+				<thead>
+					<tr>
+						<th>{{ _("Sequence No") }}</th>
+						<th>{{ _("Deposit Date") }}</th>
+						<th>{{ _("Created") }}</th>
+						<th>{{ _("Created By") }}</th>
+						<th class="text-end">{{ _("Total Deposit") }}</th>
+						<th class="text-end">{{ _("Variance") }}</th>
+						<th class="text-end">{{ _("Check Variance") }}</th>
+						<th>{{ _("Status") }}</th>
+						<th>{{ _("Actions") }}</th>
+					</tr>
+				</thead>
+				<tbody id="dep-body">
+					<tr><td colspan="9" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function format_date(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	var body = document.getElementById("dep-body");
+	if (!body) return; // no company selected -- nothing to load
+
+	var fromDate = document.getElementById("dep-from-date");
+	var toDate = document.getElementById("dep-to-date");
+	var search = document.getElementById("dep-search");
+	var clearBtn = document.getElementById("dep-clear-btn");
+	var countHint = document.getElementById("dep-count-hint");
+	var downloadLink = document.getElementById("dep-download-link");
+	var printLink = document.getElementById("dep-print-link");
+
+	// Download/Print always reflect the real From/To date filter (server-side)
+	// but not the free-text search box -- same convention every other report
+	// page in this app follows (see e.g. vendor_list.html's own Download link).
+	function update_action_links() {
+		var params = [];
+		if (fromDate.value) params.push("from_date=" + encodeURIComponent(fromDate.value));
+		if (toDate.value) params.push("to_date=" + encodeURIComponent(toDate.value));
+		var qs = params.length ? "&" + params.join("&") : "";
+		downloadLink.href = "/api/method/ez_accounting.www.forms.user.deposits.download_excel" + (params.length ? "?" + params.join("&") : "");
+		printLink.href = "/forms/user/printer?kind=deposits" + qs;
+	}
+
+	function render(rows) {
+		body.innerHTML = "";
+		if (!rows.length) {
+			body.innerHTML = '<tr><td colspan="9" class="text-muted">' + __("No deposits found for this filter.") + "</td></tr>";
+			countHint.textContent = "";
+			return;
+		}
+		countHint.textContent = __("{0} found.", [rows.length]);
+		body.innerHTML = rows.map(function (row) {
+			var currency = row.currency;
+			var variance = parseFloat(row.variance) || 0;
+			var checkVariance = parseFloat(row.check_variance) || 0;
+			return (
+				"<tr" + (row.status === "Cancelled" ? ' class="dep-muted"' : "") + ">" +
+				'<td class="dep-seq"><a class="history-row-link" target="_blank" href="/forms/user/deposit_detail?id=' +
+					encodeURIComponent(row.name) + '">' + frappe.utils.escape_html(row.custom_sequence_number || "—") + "</a></td>" +
+				"<td>" + format_date(row.deposit_date) + "</td>" +
+				"<td>" + format_date(row.creation) + "</td>" +
+				"<td>" + frappe.utils.escape_html(row.created_by || "—") + "</td>" +
+				'<td class="text-end">' + frappe.format(row.total_deposit, {fieldtype: "Currency", options: currency}, {only_value: true}) + "</td>" +
+				'<td class="text-end' + (variance ? " dep-variance-bad" : "") + '">' + (variance
+					? frappe.format(variance, {fieldtype: "Currency", options: currency}, {only_value: true})
+					: '<span class="dep-muted">&mdash;</span>') + "</td>" +
+				'<td class="text-end' + (checkVariance ? " dep-variance-bad" : "") + '">' + (checkVariance
+					? frappe.format(checkVariance, {fieldtype: "Currency", options: currency}, {only_value: true})
+					: '<span class="dep-muted">&mdash;</span>') + "</td>" +
+				"<td>" + (row.status === "Cancelled"
+					? '<span class="status-pill pill-cancelled">' + __("Cancelled") + "</span>"
+					: '<span class="status-pill pill-final">' + __("Submitted") + "</span>") + "</td>" +
+				"<td>" + (row.status === "Submitted"
+					? '<button type="button" class="btn btn-outline-danger btn-sm dep-cancel-btn" data-name="' +
+						frappe.utils.escape_html(row.name) + '"><i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel") + "</button>"
+					: '<a class="btn btn-outline-warning btn-sm dep-amend-btn" href="/forms/user/deposit?amend=' + encodeURIComponent(row.name) + '"><i class="fa fa-refresh btn-icon" aria-hidden="true"></i>' + __("Amend") + "</a>") + "</td>" +
+				"</tr>"
+			);
+		}).join("");
+	}
+
+	body.addEventListener("click", function (e) {
+		var btn = e.target.closest(".dep-cancel-btn");
+		if (!btn || btn.disabled) return;
+		var name = btn.dataset.name;
+		if (!window.confirm(__("Cancel {0}? Its linked Journal Entry will also be cancelled. This cannot be undone here.", [name]))) return;
+		btn.disabled = true;
+		btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> ' + __("Cancelling…");
+		call("ez_accounting.www.forms.user.deposit.cancel_express_deposit", {name: name})
+			.then(function () { load(); })
+			.catch(function (err) {
+				btn.disabled = false;
+				btn.innerHTML = '<i class="fa fa-times btn-icon" aria-hidden="true"></i>' + __("Cancel");
+				window.alert(extract_error_message(err).replace(/<br>/g, "\n"));
+			});
+	});
+
+	function load() {
+		update_action_links();
+		body.innerHTML = '<tr><td colspan="9" class="text-muted">' + __("Loading…") + "</td></tr>";
+		call("ez_accounting.www.forms.user.deposits.get_deposits", {
+			from_date: fromDate.value,
+			to_date: toDate.value,
+			search: search.value
+		}).then(function (r) {
+			render(r.message || []);
+		}).catch(function (err) {
+			body.innerHTML = '<tr><td colspan="9" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+
+	var searchDebounce = null;
+	search.addEventListener("input", function () {
+		clearTimeout(searchDebounce);
+		searchDebounce = setTimeout(load, 300);
+	});
+	fromDate.addEventListener("change", load);
+	toDate.addEventListener("change", load);
+	clearBtn.addEventListener("click", function () {
+		fromDate.value = "";
+		toDate.value = "";
+		search.value = "";
+		load();
+	});
+
+	load();
+});
+</script>
+{% endblock %}

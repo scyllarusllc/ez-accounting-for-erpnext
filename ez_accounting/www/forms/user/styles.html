@@ -1,0 +1,335 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .styles-create-card .card-body {
+	padding: 1.75rem 2rem;
+}
+
+body.forms-portal-dark .styles-create-form {
+	display: flex;
+	gap: 0.75rem;
+	align-items: flex-end;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .styles-create-form .styles-create-field {
+	flex: 1 1 260px;
+}
+
+body.forms-portal-dark .style-item-card .card-body {
+	padding: 1.5rem 1.75rem;
+}
+
+body.forms-portal-dark .style-item-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .style-item-title {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	font-size: 1.15rem;
+	font-weight: 600;
+}
+
+body.forms-portal-dark .style-item-actions {
+	display: flex;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .style-item-card.is-default {
+	border-color: #5b8cff;
+}
+
+body.forms-portal-dark .style-css-input {
+	width: 100%;
+	min-height: 260px;
+	font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+	font-size: 0.92rem;
+	line-height: 1.5;
+	background-color: #12141a;
+	color: #e6e8eb;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 0.9rem;
+	tab-size: 2;
+	resize: vertical;
+	margin-bottom: 0.85rem;
+}
+
+body.forms-portal-dark .style-css-input:focus {
+	outline: none;
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+	border-color: #5b8cff;
+}
+
+body.forms-portal-dark .style-none-card .card-body {
+	padding: 1.25rem 1.75rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+}
+
+body.forms-portal-dark .style-none-label {
+	font-size: 1.05rem;
+	font-weight: 500;
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark #styles-alert {
+	margin-bottom: 1.25rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Custom Styles") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Write and save named CSS overrides, then pick one as the System Default — applied to the Forms portal for every user. Restricted to System Managers.") }}
+	</p>
+</div>
+
+<div id="styles-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card styles-create-card mb-4">
+	<div class="card-body">
+		<form id="styles-create-form" class="styles-create-form" novalidate>
+			<div class="styles-create-field">
+				<label class="form-label" for="new_style_name">{{ _("New Style Name") }}</label>
+				<input type="text" class="form-control" id="new_style_name" placeholder="{{ _('e.g. Holiday Theme') }}" required>
+			</div>
+			<button type="submit" class="btn btn-primary" id="styles-create-submit">
+				{{ icons.btn_icon("arrow-right") }}{{ _("Create Style") }}
+			</button>
+		</form>
+	</div>
+</div>
+
+<div class="card form-card style-none-card mb-3">
+	<div class="card-body">
+		<span class="style-none-label" id="style-none-label">{{ _("Portal Default") }} <span class="text-muted">— {{ _("no custom style") }}</span></span>
+		<button type="button" class="btn btn-outline-secondary btn-sm" id="style-none-set-default-btn">{{ _("Set as Default") }}</button>
+	</div>
+</div>
+
+<div id="styles-list"></div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var alertBox = document.getElementById("styles-alert");
+	var createForm = document.getElementById("styles-create-form");
+	var newStyleNameInput = document.getElementById("new_style_name");
+	var stylesList = document.getElementById("styles-list");
+	var noneCard = document.querySelector(".style-none-card");
+	var noneSetDefaultBtn = document.getElementById("style-none-set-default-btn");
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — same reasoning as every
+	// other Express page in this app.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function create_style_card(style) {
+		var card = document.createElement("div");
+		card.className = "card form-card style-item-card mb-3" + (style.is_default ? " is-default" : "");
+		card.dataset.styleName = style.name;
+
+		card.innerHTML =
+			'<div class="card-body">' +
+				'<div class="style-item-header">' +
+					'<div class="style-item-title">' +
+						frappe.utils.escape_html(style.style_name) +
+						(style.is_default
+							? ' <span class="status-pill pill-final">' + __("System Default") + '</span>'
+							: '') +
+					'</div>' +
+					'<div class="style-item-actions">' +
+						'<button type="button" class="btn btn-outline-secondary btn-sm set-default-btn"' + (style.is_default ? " disabled" : "") + '>' +
+							(style.is_default ? __("Currently Default") : __("Set as Default")) +
+						'</button>' +
+						'<button type="button" class="btn btn-outline-secondary btn-sm save-style-btn">' + __("Save CSS") + '</button>' +
+						'<button type="button" class="btn btn-outline-secondary btn-sm delete-style-btn"' + (style.is_default ? " disabled" : "") + '>' + __("Delete") + '</button>' +
+					'</div>' +
+				'</div>' +
+				'<textarea class="style-css-input" spellcheck="false" placeholder="' + __("/* CSS for this style */") + '"></textarea>' +
+			'</div>';
+
+		// Set as a real value (not baked into the innerHTML string above) so
+		// there's no risk of the CSS content itself containing something
+		// that could be misread as markup while building that string.
+		card.querySelector(".style-css-input").value = style.custom_css || "";
+
+		card.querySelector(".save-style-btn").addEventListener("click", function () {
+			var btn = this;
+			var css = card.querySelector(".style-css-input").value;
+			btn.disabled = true;
+			btn.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.styles.update_style_css", {style_name: style.name, custom_css: css})
+				.then(function () {
+					btn.disabled = false;
+					btn.textContent = __("Save CSS");
+					show_alert(__("Saved {0}.", [frappe.utils.escape_html(style.style_name)]));
+				})
+				.catch(function (err) {
+					btn.disabled = false;
+					btn.textContent = __("Save CSS");
+					show_alert(extract_error_message(err), true);
+				});
+		});
+
+		card.querySelector(".set-default-btn").addEventListener("click", function () {
+			if (style.is_default) return;
+			var btn = this;
+			btn.disabled = true;
+			call("ez_accounting.www.forms.user.styles.set_default_style", {style_name: style.name})
+				.then(function () {
+					show_alert(__("{0} is now the System Default.", [frappe.utils.escape_html(style.style_name)]));
+					load_styles();
+				})
+				.catch(function (err) {
+					btn.disabled = false;
+					show_alert(extract_error_message(err), true);
+				});
+		});
+
+		card.querySelector(".delete-style-btn").addEventListener("click", function () {
+			if (style.is_default) return;
+			if (!window.confirm(__("Delete the style {0}? This can't be undone.", [style.style_name]))) return;
+			var btn = this;
+			btn.disabled = true;
+			call("ez_accounting.www.forms.user.styles.delete_style", {style_name: style.name})
+				.then(function () {
+					load_styles();
+				})
+				.catch(function (err) {
+					btn.disabled = false;
+					show_alert(extract_error_message(err), true);
+				});
+		});
+
+		return card;
+	}
+
+	function load_styles() {
+		stylesList.innerHTML = '<p class="text-muted">' + __("Loading…") + '</p>';
+		call("ez_accounting.www.forms.user.styles.get_styles").then(function (r) {
+			var data = r.message || {};
+			var styles = data.styles || [];
+			var hasDefault = !!data.default_style;
+
+			noneCard.classList.toggle("is-default", !hasDefault);
+			noneSetDefaultBtn.disabled = !hasDefault;
+			noneSetDefaultBtn.textContent = hasDefault ? __("Set as Default") : __("Currently Default");
+
+			if (!styles.length) {
+				stylesList.innerHTML = '<p class="text-muted">' + __("No styles yet — create one above.") + '</p>';
+				return;
+			}
+
+			stylesList.innerHTML = "";
+			styles.forEach(function (style) {
+				stylesList.appendChild(create_style_card(style));
+			});
+		}).catch(function (err) {
+			stylesList.innerHTML = '<p class="text-danger">' + extract_error_message(err) + '</p>';
+		});
+	}
+	load_styles();
+
+	noneSetDefaultBtn.addEventListener("click", function () {
+		if (noneSetDefaultBtn.disabled) return;
+		noneSetDefaultBtn.disabled = true;
+		call("ez_accounting.www.forms.user.styles.set_default_style", {style_name: ""})
+			.then(function () {
+				show_alert(__("Portal Default restored — no custom style is applied."));
+				load_styles();
+			})
+			.catch(function (err) {
+				noneSetDefaultBtn.disabled = false;
+				show_alert(extract_error_message(err), true);
+			});
+	});
+
+	createForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+
+		var name = newStyleNameInput.value.trim();
+		if (!name) {
+			show_alert(__("Enter a name for the style."), true);
+			return;
+		}
+
+		call("ez_accounting.www.forms.user.styles.create_style", {style_name: name})
+			.then(function () {
+				newStyleNameInput.value = "";
+				load_styles();
+			})
+			.catch(function (err) {
+				show_alert(extract_error_message(err), true);
+			});
+	});
+});
+</script>
+{% endblock %}

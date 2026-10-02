@@ -1,0 +1,26 @@
+{#
+	Shared footer for /forms/admin/* pages -- its own file rather than
+	reusing forms_footer.html (the /forms/user/* footer), even though the
+	content is the same shape, so the admin section's own chrome is fully
+	self-contained and doesn't depend on an include that in principle
+	belongs to the other section. show_gl_links/current_year are both
+	already set globally for every /forms/* page (see
+	website_context.update_website_context()), same source forms_footer.html
+	itself reads.
+#}
+<footer class="forms-admin-footer">
+	<div class="container forms-admin-footer-inner">
+		{% if show_gl_links %}
+		<div class="forms-admin-footer-links">
+			{{ _("Quick Links") }}:
+			<a href="/desk" target="_blank" rel="noreferrer">{{ _("ERPNext") }}</a>
+			|
+			<a href="/desk/query-report/Balance Sheet" target="_blank" rel="noreferrer">{{ _("Financial Statement") }}</a>
+		</div>
+		{% endif %}
+		<div class="forms-admin-footer-links">
+			<a href="/logout">{{ _("Log out") }}</a>
+		</div>
+		<div class="forms-admin-footer-copyright">&copy; {{ current_year }}</div>
+	</div>
+</footer>

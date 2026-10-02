@@ -1,0 +1,27 @@
+{
+ "doctype": "DocType",
+ "name": "Forms File Record",
+ "module": "Ez Accounting",
+ "autoname": "hash",
+ "track_changes": 1,
+ "index_web_pages_for_search": 0,
+ "field_order": ["company", "title", "category", "document_date", "expiry_date", "tags", "description", "extracted_content", "attachment"],
+ "fields": [
+  {"fieldname": "company", "fieldtype": "Link", "options": "Company", "label": "Company", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1, "in_global_search": 1, "search_index": 1},
+  {"fieldname": "category", "fieldtype": "Data", "label": "Category", "in_list_view": 1, "in_standard_filter": 1, "search_index": 1},
+  {"fieldname": "document_date", "fieldtype": "Date", "label": "Document Date", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "expiry_date", "fieldtype": "Date", "label": "Expiry Date", "in_list_view": 1, "in_standard_filter": 1},
+  {"fieldname": "tags", "fieldtype": "Small Text", "label": "Tags", "in_global_search": 1},
+  {"fieldname": "description", "fieldtype": "Small Text", "label": "Description", "in_global_search": 1},
+  {"fieldname": "extracted_content", "fieldtype": "Long Text", "label": "Extracted Content"},
+  {"fieldname": "attachment", "fieldtype": "Attach", "label": "File"}
+ ],
+ "permissions": [
+  {"role": "All", "read": 1},
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1, "export": 1},
+  {"role": "Ez Accounting Admin", "read": 1, "write": 1, "create": 1}
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

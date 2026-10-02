@@ -1,0 +1,677 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% if not embedded %}{% include "templates/includes/forms_nav.html" %}{% endif %}{% endblock %}
+{% block footer %}{% if not embedded %}{% include "templates/includes/forms_footer.html" %}{% endif %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .file-chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+body.forms-portal-dark .file-chip {
+	border: 1px solid #2a2e37;
+	background-color: #181a20;
+	color: #c7cbd3;
+	border-radius: 999px;
+	padding: 0.3rem 0.85rem;
+	font-size: 0.85rem;
+	cursor: pointer;
+	white-space: nowrap;
+}
+body.forms-portal-dark .file-chip:hover { border-color: #3d4250; }
+body.forms-portal-dark .file-chip.is-active {
+	background-color: #2a5adf;
+	border-color: #2a5adf;
+	color: #fff;
+}
+body.forms-portal-dark .files-table td, body.forms-portal-dark .files-table th { vertical-align: middle; }
+body.forms-portal-dark .file-title-link { font-weight: 600; }
+body.forms-portal-dark .file-icon { width: 1.1rem; text-align: center; margin-right: 0.4rem; color: #8a8f9c; }
+body.forms-portal-dark .file-meta { font-size: 0.78rem; color: #8a8f9c; }
+body.forms-portal-dark .file-tags { font-size: 0.78rem; color: #8a8f9c; }
+body.forms-portal-dark .file-row-actions { white-space: nowrap; }
+body.forms-portal-dark .file-row-actions .btn { padding: 0.2rem 0.55rem; font-size: 0.8rem; }
+body.forms-portal-dark .files-md5 { font-family: monospace; font-size: 0.75rem; color: #8a8f9c; word-break: break-all; }
+body.forms-portal-dark .status-pill.pill-expired { background-color: #5c1f24; color: #f2b8bd; }
+body.forms-portal-dark .status-pill.pill-soon { background-color: #5c451f; color: #f2d3a8; }
+body.forms-portal-dark .status-pill.pill-valid { background-color: #1f4d33; color: #a8e0c0; }
+
+body.forms-portal-dark .forms-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 1000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+body.forms-portal-dark .forms-modal {
+	background-color: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: 100%;
+	max-width: 560px;
+	max-height: 90vh;
+	overflow-y: auto;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+body.forms-portal-dark .forms-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 1.25rem 1.5rem;
+	border-bottom: 1px solid #2a2e37;
+}
+body.forms-portal-dark .forms-modal-header h4 { margin: 0; }
+body.forms-portal-dark .forms-modal-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.6rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0;
+}
+body.forms-portal-dark .forms-modal-close:hover { color: #e6e8eb; }
+body.forms-portal-dark .forms-modal-body { padding: 1.5rem; }
+body.forms-portal-dark .file-field { margin-bottom: 1.1rem; }
+body.forms-portal-dark .file-field label { display: block; font-weight: 600; margin-bottom: 0.3rem; }
+body.forms-portal-dark .file-field .file-hint { font-size: 0.8rem; color: #8a8f9c; margin-top: 0.25rem; }
+
+body.forms-portal-dark .file-ai-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	font-size: 0.72rem;
+	color: #9fb8f0;
+	background-color: #1b2740;
+	border-radius: 999px;
+	padding: 0.05rem 0.5rem;
+}
+body.forms-portal-dark .file-ai-row-btn { color: #9fb8f0; border-color: #2e3f63; }
+body.forms-portal-dark .file-ai-row-btn:hover { border-color: #4a6bb0; }
+body.forms-portal-dark .file-ai-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	background-color: #14213d;
+	border: 1px solid #263a63;
+	border-radius: 0.5rem;
+	padding: 0.6rem 0.9rem;
+	margin-bottom: 1.1rem;
+}
+body.forms-portal-dark .file-ai-bar-text { font-size: 0.82rem; color: #9fb8f0; }
+body.forms-portal-dark .file-ai-status { font-size: 0.78rem; color: #8a8f9c; margin-top: 0.4rem; }
+body.forms-portal-dark #file-form-content { font-family: monospace; font-size: 0.8rem; }
+body.forms-portal-dark .ai-progress-modal { max-width: 460px; text-align: center; }
+body.forms-portal-dark .ai-progress-icon { align-items:center; background:#14213d; border:1px solid #2f4777; border-radius:999px; color:#9fb8f0; display:flex; font-size:2rem; height:5rem; justify-content:center; margin:0 auto 1.1rem; width:5rem; }
+body.forms-portal-dark .ai-progress-icon.is-success { background:#173b29; border-color:#2d704a; color:#9be0b8; }
+body.forms-portal-dark .ai-progress-icon.is-error { background:#492126; border-color:#873a43; color:#f0a8af; }
+body.forms-portal-dark .ai-progress-icon img { height:2.65rem; width:2.65rem; }
+body.forms-portal-dark .ai-progress-icon.is-reading img { animation:ai-reading-spin 1.8s linear infinite; }
+@keyframes ai-reading-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+body.forms-portal-dark .ai-progress-title { font-size:1.2rem; font-weight:700; margin-bottom:.5rem; }
+body.forms-portal-dark .ai-progress-message { color:#aeb4bf; line-height:1.5; }
+body.files-embedded .page-header, body.files-embedded .dashboard-hero { display:none !important; }
+body.files-embedded .page-content-wrapper, body.files-embedded .container { max-width:none !important; width:100% !important; padding:0 !important; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+{% if not embedded %}<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Files") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Compliance papers, tax forms, licenses and anything else worth keeping on hand for {0}.").format(company) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>{% endif %}
+
+{% if company %}
+<div class="card form-card mb-4">
+	<div class="card-body">
+		<div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+			<div class="file-chip-row" id="file-chips"></div>
+			<button type="button" class="btn btn-primary text-nowrap" id="file-upload-btn">{{ icons.btn_icon("save") }}{{ _("Upload Document") }}</button>
+			<input type="file" class="d-none" id="file-quick-upload" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.tiff,.bmp,.doc,.docx,.odt,.xls,.xlsx,.ods,.csv,.txt">
+		</div>
+		<div class="row g-3">
+			<div class="col-md-6">
+				<label class="form-label">{{ _("Search") }}</label>
+				<input type="text" class="form-control" id="file-search" autocomplete="off"
+					placeholder="{{ _('Title, tags, description, file name…') }}">
+			</div>
+			<div class="col-md-3 d-flex align-items-end">
+				<div class="form-check">
+					<input type="checkbox" class="form-check-input" id="file-expiring-only">
+					<label class="form-check-label" for="file-expiring-only">{{ _("Expiring soon / expired only") }}</label>
+				</div>
+			</div>
+			<div class="col-md-3 d-flex align-items-end">
+				<button type="button" class="btn btn-outline-light w-100" id="file-clear-btn">{{ icons.btn_icon("x") }}{{ _("Clear") }}</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card form-card">
+	<div class="card-body">
+		<div class="form-text mb-2" id="file-count-hint"></div>
+		<div class="table-responsive">
+			<table class="table table-bordered mb-0 files-table">
+				<thead>
+					<tr>
+						<th>{{ _("Title") }}</th>
+						<th>{{ _("Category") }}</th>
+						<th>{{ _("Document Date") }}</th>
+						<th>{{ _("Expiry") }}</th>
+						<th>{{ _("Size") }}</th>
+						<th>{{ _("MD5") }}</th>
+						<th>{{ _("Uploaded") }}</th>
+						<th class="text-end">{{ _("Actions") }}</th>
+					</tr>
+				</thead>
+				<tbody id="file-body">
+					<tr><td colspan="8" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div class="forms-modal-overlay d-none" id="file-modal-overlay">
+	<div class="forms-modal">
+		<div class="forms-modal-header">
+			<h4 id="file-modal-title">{{ _("Upload Document") }}</h4>
+			<button type="button" class="forms-modal-close" id="file-modal-close" aria-label="{{ _('Close') }}">&times;</button>
+		</div>
+		<div class="forms-modal-body">
+			<form id="file-form">
+				<input type="hidden" id="file-form-name" value="">
+				<div class="file-field">
+					<label for="file-form-title">{{ _("Title") }}</label>
+					<input type="text" class="form-control" id="file-form-title" required>
+				</div>
+				<div class="file-field">
+					<label for="file-form-category">{{ _("Category") }}</label>
+					<select class="form-select" id="file-form-category" required>
+						{% for c in categories %}
+						<option value="{{ c }}">{{ c }}</option>
+						{% endfor %}
+					</select>
+				</div>
+				<div class="row">
+					<div class="col-md-6 file-field">
+						<label for="file-form-document-date">{{ _("Document Date") }}</label>
+						<input type="date" class="form-control" id="file-form-document-date">
+					</div>
+					<div class="col-md-6 file-field">
+						<label for="file-form-expiry-date">{{ _("Expiry Date") }}</label>
+						<input type="date" class="form-control" id="file-form-expiry-date">
+						<div class="file-hint">{{ _("Leave blank if it never expires.") }}</div>
+					</div>
+				</div>
+				<div class="file-field">
+					<label for="file-form-tags">{{ _("Tags") }}</label>
+					<input type="text" class="form-control" id="file-form-tags" placeholder="{{ _('e.g. 2026, renewal, state') }}">
+					<div class="file-hint">{{ _("Comma-separated. Searched alongside Title and Category.") }}</div>
+				</div>
+				<div class="file-field">
+					<label><input type="checkbox" id="file-form-private"> {{ _("Private (only I can see and manage this)") }}</label>
+					<div class="file-hint">{{ _("Hidden from everyone else, including search and downloads. Only the uploader can change this.") }}</div>
+				</div>
+				<div class="file-field">
+					<label for="file-form-description">{{ _("Description") }}</label>
+					<textarea class="form-control" id="file-form-description" rows="2"></textarea>
+				</div>
+				<div class="file-field" id="file-form-file-wrap">
+					<label for="file-form-file">{{ _("File") }}</label>
+					<input type="file" class="file-input file-input-neutral w-100" id="file-form-file">
+					<div class="file-hint">{{ _("PDF, image, or Office/text document.") }}</div>
+				</div>
+				<div class="file-field d-none" id="file-form-content-wrap">
+					<label for="file-form-content">{{ _("Extracted Content") }}</label>
+					<textarea class="form-control" id="file-form-content" rows="6" readonly></textarea>
+					<div class="file-hint" id="file-form-content-hint"></div>
+				</div>
+				<div class="d-flex justify-content-end gap-2 mt-3">
+					<button type="button" class="btn btn-outline-light" id="file-form-cancel">{{ _("Cancel") }}</button>
+					<button type="submit" class="btn btn-primary" id="file-form-submit">{{ _("Upload") }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="forms-modal-overlay d-none" id="ai-progress-overlay">
+	<div class="forms-modal ai-progress-modal" role="dialog" aria-modal="true" aria-labelledby="ai-progress-title">
+		<div class="forms-modal-body">
+			<div class="ai-progress-icon is-reading" id="ai-progress-icon"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/anthropic.svg" alt="Anthropic"></div>
+			<div class="ai-progress-title" id="ai-progress-title">{{ _("AI is reading the document") }}</div>
+			<div class="ai-progress-message" id="ai-progress-message">{{ _("Extracting information and updating the document. This can take up to a minute.") }}</div>
+			<button type="button" class="btn btn-primary mt-4 d-none" id="ai-progress-close">{{ _("Done") }}</button>
+		</div>
+	</div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var PRIVATE = {{ 1 if private else 0 }};
+
+	function call(method, args) {
+		args = args || {};
+		if (PRIVATE) args.private = 1;
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function call_form(method, formData) {
+		if (PRIVATE) formData.append("private", "1");
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: formData
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, danger) {
+		frappe.show_alert
+			? frappe.show_alert({ message: message, indicator: danger ? "red" : "green" })
+			: alert(message);
+	}
+
+	function format_date(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	function file_icon(file_name) {
+		var ext = (file_name || "").split(".").pop().toLowerCase();
+		if (["pdf"].includes(ext)) return "fa-file-pdf-o";
+		if (["png", "jpg", "jpeg", "gif", "webp", "tiff", "bmp"].includes(ext)) return "fa-file-image-o";
+		if (["doc", "docx", "odt"].includes(ext)) return "fa-file-word-o";
+		if (["xls", "xlsx", "ods", "csv"].includes(ext)) return "fa-file-excel-o";
+		return "fa-file-o";
+	}
+
+	function human_size(bytes) {
+		bytes = parseInt(bytes, 10) || 0;
+		if (!bytes) return "";
+		if (bytes < 1024) return bytes + " B";
+		if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+		return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+	}
+
+	var CATEGORIES = {{ categories | tojson }};
+
+	var body = document.getElementById("file-body");
+	if (!body) return; // no company selected -- nothing to load
+
+	var chipsEl = document.getElementById("file-chips");
+	var search = document.getElementById("file-search");
+	var expiringOnly = document.getElementById("file-expiring-only");
+	var clearBtn = document.getElementById("file-clear-btn");
+	var countHint = document.getElementById("file-count-hint");
+	var uploadBtn = document.getElementById("file-upload-btn");
+	var quickUpload = document.getElementById("file-quick-upload");
+
+	var overlay = document.getElementById("file-modal-overlay");
+	var modalTitle = document.getElementById("file-modal-title");
+	var modalClose = document.getElementById("file-modal-close");
+	var modalCancel = document.getElementById("file-form-cancel");
+	var form = document.getElementById("file-form");
+	var formName = document.getElementById("file-form-name");
+	var formTitle = document.getElementById("file-form-title");
+	var formCategory = document.getElementById("file-form-category");
+	var formDocDate = document.getElementById("file-form-document-date");
+	var formExpiryDate = document.getElementById("file-form-expiry-date");
+	var formTags = document.getElementById("file-form-tags");
+	var formPrivate = document.getElementById("file-form-private");
+	var formDescription = document.getElementById("file-form-description");
+	var formFileWrap = document.getElementById("file-form-file-wrap");
+	var formFile = document.getElementById("file-form-file");
+	var formSubmit = document.getElementById("file-form-submit");
+	var formContentWrap = document.getElementById("file-form-content-wrap");
+	var formContent = document.getElementById("file-form-content");
+	var formContentHint = document.getElementById("file-form-content-hint");
+	var aiProgressOverlay = document.getElementById("ai-progress-overlay");
+	var aiProgressIcon = document.getElementById("ai-progress-icon");
+	var aiProgressTitle = document.getElementById("ai-progress-title");
+	var aiProgressMessage = document.getElementById("ai-progress-message");
+	var aiProgressClose = document.getElementById("ai-progress-close");
+
+	var activeCategory = "All";
+	var latestCounts = {};
+	var latestTotal = 0;
+
+	function show_content(content, ai_read_at) {
+		if (!content) {
+			formContentWrap.classList.add("d-none");
+			formContent.value = "";
+			formContentHint.textContent = "";
+			return;
+		}
+		formContentWrap.classList.remove("d-none");
+		formContent.value = content;
+		formContentHint.textContent = ai_read_at ? __("Last AI Read: {0}", [ai_read_at]) : "";
+	}
+
+	function open_modal(editing, row) {
+		form.reset();
+		formName.value = "";
+		formPrivate.checked = !!PRIVATE;
+		formPrivate.disabled = false;
+		show_content("", "");
+		if (editing) {
+			modalTitle.textContent = __("Edit Document");
+			formSubmit.textContent = __("Save");
+			formFileWrap.classList.add("d-none");
+			formFile.required = false;
+			formName.value = row.name;
+			formTitle.value = row.title || "";
+			formCategory.value = row.category || "Other";
+			formDocDate.value = row.document_date || "";
+			formExpiryDate.value = row.expiry_date || "";
+			formTags.value = row.tags || "";
+			formPrivate.checked = !!row.is_private;
+			formPrivate.disabled = row.owner !== {{ frappe.session.user | tojson }};
+			formDescription.value = row.description || "";
+			if (row.ai_read_at) {
+				// The list fetch deliberately doesn't carry the (possibly long)
+				// Extracted Content field -- fetched lazily here instead, only
+				// when there's actually something to show.
+				call("ez_accounting.www.forms.user.files.get_document", { name: row.name })
+					.then(function (r) {
+						var full = r.message || {};
+						show_content(full.content || "", format_date(full.ai_read_at));
+					})
+					.catch(function () { /* non-fatal -- Edit still works without it */ });
+			}
+		} else {
+			modalTitle.textContent = __("Upload Document");
+			formSubmit.textContent = __("Upload");
+			formFileWrap.classList.remove("d-none");
+			formFile.required = true;
+		}
+		overlay.classList.remove("d-none");
+	}
+
+	function close_modal() {
+		overlay.classList.add("d-none");
+	}
+
+	function run_ai_read(name) {
+		aiProgressIcon.className = "ai-progress-icon is-reading";
+		aiProgressIcon.innerHTML = '<img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/anthropic.svg" alt="Anthropic">';
+		aiProgressTitle.textContent = __("AI is reading the document");
+		aiProgressMessage.textContent = __("Extracting information and updating the document. This can take up to a minute.");
+		aiProgressClose.textContent = __("Done");
+		aiProgressClose.classList.add("d-none");
+		aiProgressOverlay.classList.remove("d-none");
+		return call("ez_accounting.www.forms.user.files.ai_read", { name: name })
+			.then(function (r) {
+				aiProgressIcon.className = "ai-progress-icon is-success";
+				aiProgressIcon.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i>';
+				aiProgressTitle.textContent = __("AI Read complete");
+				aiProgressMessage.textContent = __("The document information and searchable content were updated successfully.");
+				if (r.message && r.message.company_changed) {
+					aiProgressMessage.textContent += " " + __("AI moved this document from {0} to {1}.", [r.message.previous_company, r.message.company]);
+				}
+				aiProgressClose.classList.remove("d-none");
+				return load();
+			})
+			.catch(function (err) {
+				aiProgressIcon.className = "ai-progress-icon is-error";
+				aiProgressIcon.innerHTML = '<i class="fa fa-exclamation-triangle" aria-hidden="true"></i>';
+				aiProgressTitle.textContent = __("AI Read could not finish");
+				aiProgressMessage.innerHTML = extract_error_message(err);
+				aiProgressClose.textContent = __("Close");
+				aiProgressClose.classList.remove("d-none");
+			});
+	}
+	aiProgressClose.addEventListener("click", function () { aiProgressOverlay.classList.add("d-none"); });
+
+	uploadBtn.addEventListener("click", function () { quickUpload.click(); });
+	quickUpload.addEventListener("change", function () {
+		var file = quickUpload.files[0];
+		if (!file) return;
+		uploadBtn.disabled = true;
+		uploadBtn.innerHTML = '<i class="fa fa-spinner fa-spin btn-icon" aria-hidden="true"></i>' + __("Uploading…");
+		var fd = new FormData();
+		fd.append("file", file);
+		call_form("ez_accounting.www.forms.user.files.upload_document", fd)
+			.then(function (r) {
+				var document = r.message || {};
+				if (!document.name) throw new Error(__("The document uploaded, but its record could not be identified."));
+				return run_ai_read(document.name);
+			})
+			.catch(function (err) { show_alert(extract_error_message(err), true); })
+			.finally(function () {
+				uploadBtn.disabled = false;
+				uploadBtn.innerHTML = '<i class="fa fa-upload btn-icon" aria-hidden="true"></i>' + __("Upload Document");
+				quickUpload.value = "";
+			});
+	});
+	modalClose.addEventListener("click", close_modal);
+	modalCancel.addEventListener("click", close_modal);
+	overlay.addEventListener("click", function (e) { if (e.target === overlay) close_modal(); });
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		var editing = !!formName.value;
+		formSubmit.disabled = true;
+		var privateValue = formPrivate.checked ? "1" : "0";
+
+		var done = function (row) {
+			formSubmit.disabled = false;
+			close_modal();
+			show_alert(editing ? __("Document updated.") : __("Document uploaded."));
+			load();
+		};
+		var failed = function (err) {
+			formSubmit.disabled = false;
+			show_alert(extract_error_message(err), true);
+		};
+
+		if (editing) {
+			call("ez_accounting.www.forms.user.files.update_document", {
+				name: formName.value,
+				title: formTitle.value,
+				category: formCategory.value,
+				document_date: formDocDate.value,
+				expiry_date: formExpiryDate.value,
+				tags: formTags.value,
+				description: formDescription.value,
+				is_private: privateValue
+			}).then(function (r) { done(r.message); }).catch(failed);
+		} else {
+			var fd = new FormData();
+			fd.append("title", formTitle.value);
+			fd.append("category", formCategory.value);
+			fd.append("document_date", formDocDate.value);
+			fd.append("expiry_date", formExpiryDate.value);
+			fd.append("tags", formTags.value);
+			fd.append("is_private", privateValue);
+			fd.append("description", formDescription.value);
+			if (formFile.files[0]) fd.append("file", formFile.files[0]);
+			call_form("ez_accounting.www.forms.user.files.upload_document", fd).then(function (r) { done(r.message); }).catch(failed);
+		}
+	});
+
+	function render_chips() {
+		var chips = [{ key: "All", label: __("All"), count: latestTotal }].concat(
+			CATEGORIES.map(function (c) { return { key: c, label: c, count: latestCounts[c] || 0 }; })
+		);
+		chipsEl.innerHTML = chips.map(function (c) {
+			return '<button type="button" class="file-chip' + (c.key === activeCategory ? " is-active" : "") +
+				'" data-category="' + frappe.utils.escape_html(c.key) + '">' +
+				frappe.utils.escape_html(c.label) + " (" + c.count + ")</button>";
+		}).join("");
+		Array.prototype.forEach.call(chipsEl.querySelectorAll(".file-chip"), function (btn) {
+			btn.addEventListener("click", function () {
+				activeCategory = btn.getAttribute("data-category");
+				load();
+			});
+		});
+	}
+
+	function status_pill(row) {
+		if (row.expiry_status === "Expired") return '<span class="status-pill pill-expired">' + __("Expired") + "</span>";
+		if (row.expiry_status === "Expiring Soon") return '<span class="status-pill pill-soon">' + __("Expiring Soon") + "</span>";
+		if (row.expiry_status === "Valid") return '<span class="status-pill pill-valid">' + __("Valid") + "</span>";
+		return '<span class="file-meta">' + __("No expiry") + "</span>";
+	}
+
+	function render(payload) {
+		var rows = payload.documents || [];
+		latestCounts = payload.counts || {};
+		latestTotal = payload.total || 0;
+		render_chips();
+
+		if (expiringOnly.checked) {
+			rows = rows.filter(function (r) { return r.expiry_status === "Expired" || r.expiry_status === "Expiring Soon"; });
+		}
+
+		if (!rows.length) {
+			body.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("No documents found for this filter.") + "</td></tr>";
+			countHint.textContent = "";
+			return;
+		}
+		countHint.textContent = __("{0} found.", [rows.length]);
+
+		body.innerHTML = rows.map(function (row) {
+			var meta = [];
+			if (row.tags) meta.push('<span class="file-tags">' + frappe.utils.escape_html(row.tags) + "</span>");
+			if (row.is_private) meta.push('<span class="file-ai-badge">🔒 ' + __("Private") + "</span>");
+			if (row.ai_read_at) meta.push('<span class="file-ai-badge">🤖 ' + __("AI Read") + "</span>");
+			return (
+				"<tr>" +
+				"<td><i class=\"fa " + file_icon(row.file_name) + " file-icon\" aria-hidden=\"true\"></i>" +
+				'<a class="history-row-link file-title-link" target="_blank" href="' + (row.file || "#") + '">' +
+					frappe.utils.escape_html(row.title) + "</a>" +
+					(meta.length ? '<div class="file-meta">' + meta.join(" &middot; ") + "</div>" : "") +
+				"</td>" +
+				"<td>" + frappe.utils.escape_html(row.category || "") + "</td>" +
+				"<td>" + format_date(row.document_date) + "</td>" +
+				"<td>" + status_pill(row) + "</td>" +
+				"<td>" + human_size(row.file_size) + "</td>" +
+				"<td class=\"files-md5\">" + frappe.utils.escape_html(row.content_hash || "") + "</td>" +
+				"<td><div class=\"file-meta\">" + format_date(row.creation) + (row.uploaded_by ? " &middot; " + frappe.utils.escape_html(row.uploaded_by) : "") + "</div></td>" +
+				'<td class="text-end file-row-actions">' +
+					'<a class="btn btn-outline-light btn-sm" target="_blank" href="' + (row.file || "#") + '" download>' + __("Download") + "</a> " +
+					'<button type="button" class="btn btn-outline-light btn-sm file-ai-row-btn file-ai-btn" data-name="' + frappe.utils.escape_html(row.name) + '">🤖 ' + __("AI Read") + "</button> " +
+					'<button type="button" class="btn btn-outline-light btn-sm file-edit-btn" data-name="' + frappe.utils.escape_html(row.name) + '">' + __("Edit") + "</button> " +
+					'<button type="button" class="btn btn-outline-danger btn-sm file-delete-btn" data-name="' + frappe.utils.escape_html(row.name) + '">' + __("Delete") + "</button>" +
+				"</td>" +
+				"</tr>"
+			);
+		}).join("");
+
+		Array.prototype.forEach.call(body.querySelectorAll(".file-edit-btn"), function (btn) {
+			btn.addEventListener("click", function () {
+				var row = rows.filter(function (r) { return r.name === btn.getAttribute("data-name"); })[0];
+				if (row) open_modal(true, row);
+			});
+		});
+		Array.prototype.forEach.call(body.querySelectorAll(".file-ai-btn"), function (btn) {
+			btn.addEventListener("click", function () {
+				var name = btn.getAttribute("data-name");
+				var row = rows.filter(function (r) { return r.name === name; })[0];
+				if (!row) return;
+				run_ai_read(name);
+			});
+		});
+		Array.prototype.forEach.call(body.querySelectorAll(".file-delete-btn"), function (btn) {
+			btn.addEventListener("click", function () {
+				var name = btn.getAttribute("data-name");
+				if (!confirm(__("Delete this document? This cannot be undone."))) return;
+				call("ez_accounting.www.forms.user.files.delete_document", { name: name })
+					.then(function () { show_alert(__("Document deleted.")); load(); })
+					.catch(function (err) { show_alert(extract_error_message(err), true); });
+			});
+		});
+	}
+
+	function load() {
+		body.innerHTML = '<tr><td colspan="8" class="text-muted">' + __("Loading…") + "</td></tr>";
+		call("ez_accounting.www.forms.user.files.get_documents", {
+			category: activeCategory,
+			search: search.value
+		}).then(function (r) {
+			render(r.message || { documents: [], counts: {}, total: 0 });
+		}).catch(function (err) {
+			body.innerHTML = '<tr><td colspan="8" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+
+	var searchDebounce = null;
+	search.addEventListener("input", function () {
+		clearTimeout(searchDebounce);
+		searchDebounce = setTimeout(load, 300);
+	});
+	expiringOnly.addEventListener("change", load);
+	clearBtn.addEventListener("click", function () {
+		search.value = "";
+		expiringOnly.checked = false;
+		activeCategory = "All";
+		load();
+	});
+
+	load();
+});
+</script>
+{% endblock %}

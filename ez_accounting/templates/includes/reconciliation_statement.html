@@ -1,0 +1,70 @@
+<style>
+	@page { size: Letter; margin: 0.45in 0.55in 0.65in; }
+	body { margin: 0; color: #000; font: 10pt Arial, Helvetica, sans-serif; line-height: 1.25; }
+	.rec-head { text-align: center; }
+	.rec-company { font-size: 15pt; font-weight: 700; }
+	.rec-title { font-size: 13pt; font-weight: 700; margin-top: 2px; }
+	.rec-subtitle { margin-top: 2px; }
+	.rec-filter { font-size: 8pt; margin-top: 12px; padding-bottom: 5px; border-bottom: 1.5px solid #000; }
+	.rec-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+	.rec-table td { padding: 2px 4px; vertical-align: bottom; }
+	.rec-label { width: 70%; }
+	.rec-amount { width: 30%; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+	.rec-section { font-weight: 700; padding-top: 9px !important; }
+	.rec-detail td { font-size: 9pt; padding-top: 1px; padding-bottom: 1px; }
+	.rec-detail .rec-date { width: 20%; padding-left: 20px; }
+	.rec-detail .rec-ref { width: 45%; }
+	.rec-detail .rec-item-amount { width: 17%; text-align: right; font-variant-numeric: tabular-nums; }
+	.rec-detail .rec-total-space { width: 18%; }
+	.rec-total-label { text-align: right; font-weight: 700; }
+	.rec-total { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+	.rec-underline { border-bottom: 1px solid #000; }
+	.rec-double { border-bottom: 3px double #000; font-weight: 700; }
+	.rec-empty { padding-left: 20px !important; color: #555; font-style: italic; }
+	.rec-final { margin-top: 12px; }
+	.rec-footer { position: fixed; left: 0; right: 0; bottom: -0.35in; display: flex; justify-content: space-between; border-top: 1px solid #999; padding-top: 4px; font-size: 8pt; }
+	@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+
+{% macro money(value) -%}
+	{% if value is not none %}{% if value < 0 %}({{ fmt_money(value|abs) }}){% else %}{{ fmt_money(value) }}{% endif %}{% endif %}
+{%- endmacro %}
+
+<div class="rec-head">
+	<div class="rec-company">{{ company_name }}</div>
+	<div class="rec-title">{{ report_title }}</div>
+	<div class="rec-subtitle">{{ _("As of {0}").format(as_of_date) }}</div>
+	<div class="rec-subtitle"><strong>{{ account_name }}</strong></div>
+	<div class="rec-subtitle">{{ _("Bank Statement Date: {0}").format(bank_statement_date) }}</div>
+</div>
+<div class="rec-filter">{{ _("Filter Criteria includes: {0}").format(filter_criteria) }}</div>
+
+<table class="rec-table">
+	<tr><td class="rec-label">{{ _("Beginning GL Balance") }}</td><td class="rec-amount">{{ money(beginning_gl_balance) }}</td></tr>
+	<tr><td class="rec-label">{{ _("Add: Cash Receipts") }}</td><td class="rec-amount">{{ money(cash_receipts) }}</td></tr>
+	<tr><td class="rec-label">{{ _("Less: Cash Disbursements") }}</td><td class="rec-amount">{{ money(cash_disbursements) }}</td></tr>
+	<tr><td class="rec-label">{{ _("Add (Less) Other") }}</td><td class="rec-amount rec-underline">{{ money(summary_other) }}</td></tr>
+	<tr><td class="rec-label"><strong>{{ _("Ending GL Balance") }}</strong></td><td class="rec-amount rec-double">{{ money(ending_gl_balance) }}</td></tr>
+	<tr><td class="rec-label rec-section">{{ _("Ending Bank Balance") }}</td><td class="rec-amount rec-section">{{ money(ending_bank_balance) }}</td></tr>
+</table>
+
+{% macro detail_section(title, rows, total_label, total) %}
+<table class="rec-table rec-detail">
+	<tr><td colspan="4" class="rec-section">{{ title }}</td></tr>
+	{% for row in rows %}
+	<tr><td class="rec-date">{{ format_date(row.posting_date) }}</td><td class="rec-ref">{{ row.reference_no or row.name }}</td><td class="rec-item-amount">{{ money(row.display_amount) }}</td><td class="rec-total-space"></td></tr>
+	{% else %}<tr><td colspan="4" class="rec-empty">{{ _("None") }}</td></tr>{% endfor %}
+	<tr><td colspan="3" class="rec-total-label">{{ total_label }}</td><td class="rec-total rec-underline">{{ money(total) }}</td></tr>
+</table>
+{% endmacro %}
+
+{{ detail_section(_("Add back deposits in transit"), deposits_in_transit, _("Total deposits in transit"), total_deposits) }}
+{{ detail_section(_("(Less) outstanding checks"), outstanding_checks, _("Total outstanding checks"), total_checks) }}
+{{ detail_section(_("Add (Less) Other"), detail_other, _("Total other"), total_detail_other) }}
+
+<table class="rec-table rec-final">
+	<tr><td class="rec-label">{{ _("Unreconciled difference") }}</td><td class="rec-amount rec-underline">{{ money(unreconciled_difference) }}</td></tr>
+	<tr><td class="rec-label"><strong>{{ _("Ending GL Balance") }}</strong></td><td class="rec-amount rec-double">{{ money(final_ending_gl_balance) }}</td></tr>
+</table>
+
+<div class="rec-footer"><span>{{ print_date }} {{ _("at") }} {{ print_time }}</span><span>{{ _("Page: {0}").format(page_number) }}</span></div>

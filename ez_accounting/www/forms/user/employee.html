@@ -1,0 +1,672 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .employee-add-card .card-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .employee-add-card .row > [class*="col-"] {
+	margin-bottom: 0.75rem;
+}
+
+body.forms-portal-dark .employee-add-card .form-control,
+body.forms-portal-dark .employee-add-card .btn {
+	min-height: 48px;
+}
+
+body.forms-portal-dark .employee-table-card .card-body {
+	padding: 1.5rem 1.5rem 0.5rem;
+}
+
+body.forms-portal-dark .employee-table-card #employee_search {
+	min-height: 56px;
+	font-size: 1.15rem;
+	padding: 0.85rem 1.1rem;
+}
+
+body.forms-portal-dark .employee-table td,
+body.forms-portal-dark .employee-table th {
+	vertical-align: middle;
+}
+
+body.forms-portal-dark .employee-table tbody tr:hover td {
+	background-color: #1e2129;
+}
+
+body.forms-portal-dark .employee-table .employee-code {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+}
+
+body.forms-portal-dark .employee-table .name-cell {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem;
+	min-width: 20rem;
+}
+
+body.forms-portal-dark .employee-table .name-cell input {
+	min-width: 6.5rem;
+	max-width: 9rem;
+}
+
+body.forms-portal-dark .employee-table .save-status {
+	font-size: 0.8rem;
+	min-width: 4.5rem;
+}
+
+body.forms-portal-dark .employee-table .save-status.is-saving {
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .employee-table .save-status.is-saved {
+	color: #6fd996;
+}
+
+body.forms-portal-dark .employee-table .save-status.is-error {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .employee-table input.ssn-input,
+body.forms-portal-dark .employee-table input.date-input,
+body.forms-portal-dark .employee-table select.holiday-list-select,
+body.forms-portal-dark .employee-table select.status-select {
+	min-width: 9rem;
+}
+
+body.forms-portal-dark .employee-table .inactive-row {
+	opacity: 0.55;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Employees") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Manage basic employee information for {0}.").format(company) }}
+	</p>
+</div>
+
+<div id="employee-add-alert" class="alert d-none" role="alert"></div>
+
+<div class="card form-card employee-add-card">
+	<div class="card-body">
+		<form id="employee-add-form" novalidate>
+			<div class="row g-3 align-items-end">
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_first_name">{{ _("First Name") }}</label>
+					<input type="text" class="form-control" id="new_employee_first_name" placeholder="{{ _('Firstname') }}" required>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_middle_name">{{ _("Middle Name") }}</label>
+					<input type="text" class="form-control" id="new_employee_middle_name" placeholder="{{ _('Middlename (optional)') }}">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_last_name">{{ _("Last Name") }}</label>
+					<input type="text" class="form-control" id="new_employee_last_name" placeholder="{{ _('Lastname (optional)') }}">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_gender">{{ _("Gender") }}</label>
+					<select class="form-control" id="new_employee_gender" required>
+						<option value="" selected disabled>{{ _("Loading…") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_date_of_birth">{{ _("Date of Birth") }}</label>
+					<input type="date" class="form-control" id="new_employee_date_of_birth" required>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_date_of_joining">{{ _("Date of Joining") }}</label>
+					<input type="date" class="form-control" id="new_employee_date_of_joining" required>
+					<div class="form-text">{{ _('Defaults to 01/01/2000 if left as-is.') }}</div>
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_ssn">{{ _("SSN") }}</label>
+					<input type="text" class="form-control" id="new_employee_ssn" placeholder="{{ _('Optional') }}">
+				</div>
+
+				<div class="col-md-3">
+					<label class="form-label" for="new_employee_holiday_list">{{ _("Holiday List") }}</label>
+					<select class="form-control" id="new_employee_holiday_list">
+						<option value="" selected>{{ _("— Automatic (Company Default) —") }}</option>
+					</select>
+				</div>
+
+				<div class="col-md-3">
+					<button type="submit" class="btn btn-primary w-100" id="employee-add-submit">
+						<span class="spinner-border spinner-border-sm d-none" id="employee-add-spinner" role="status" aria-hidden="true"></span>
+						<span id="employee-add-label">{{ _("Add Employee") }}</span>
+					</button>
+				</div>
+
+			</div>
+			<div class="form-text mt-1">
+				{{ _("A Holiday List left on Automatic uses the company's own default — if it doesn't have one, the site's only Holiday List is used instead.") }}
+			</div>
+		</form>
+	</div>
+</div>
+
+<div class="card form-card mt-4 employee-table-card">
+	<div class="card-body">
+		<div class="row g-3 mb-3">
+			<div class="col-md-6">
+				<input type="text" class="form-control" id="employee_search" autocomplete="off" disabled
+					placeholder="{{ _('Loading employees…') }}">
+				<div class="form-text" id="employee_count_hint"></div>
+			</div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered employee-table mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Name") }}</th>
+						<th>{{ _("SSN") }}</th>
+						<th>{{ _("Date of Birth") }}</th>
+						<th>{{ _("Date of Joining") }}</th>
+						<th>{{ _("Holiday List") }}</th>
+						<th>{{ _("Status") }}</th>
+					</tr>
+				</thead>
+				<tbody id="employee-table-body">
+					<tr><td colspan="6" class="text-muted">{{ _("Loading…") }}</td></tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// Every server-derived message that can end up in innerHTML is escaped
+	// first, then re-joined with <br> — so multi-line error text still renders
+	// as line breaks without ever passing raw server (or doc-field-derived)
+	// content through as markup.
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	var STATUS_OPTIONS = ["Active", "Inactive", "Suspended", "Left"];
+
+	var tbody = document.getElementById("employee-table-body");
+	var searchInput = document.getElementById("employee_search");
+	var countHint = document.getElementById("employee_count_hint");
+
+	// Rendering every employee at once (each with several inputs) would be
+	// slow enough to feel broken at this site's employee counts — same
+	// MAX_RESULTS-capped-render pattern Item Accounts/Customers use, search
+	// narrows it down instead of paging.
+	var MAX_RESULTS = 50;
+	var allEmployees = [];
+	var genders = [];
+	var holidayLists = [];
+
+	function normalize(text) {
+		return String(text || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+	}
+
+	function populate_plain_select(select, rows, placeholder) {
+		select.innerHTML = "";
+		var opt = document.createElement("option");
+		opt.value = "";
+		opt.selected = true;
+		if (placeholder.disabled) opt.disabled = true;
+		opt.textContent = placeholder.label;
+		select.appendChild(opt);
+		rows.forEach(function (row) {
+			var o = document.createElement("option");
+			o.value = row.name;
+			o.textContent = row.name;
+			select.appendChild(o);
+		});
+	}
+
+	function render_row(employee) {
+		var row = document.createElement("tr");
+		row.className = employee.status !== "Active" ? "inactive-row" : "";
+
+		// ---- Name (First/Middle/Last, each its own input) ----
+		var nameCell = document.createElement("td");
+		var nameWrap = document.createElement("div");
+		nameWrap.className = "name-cell";
+
+		var nameStatus = document.createElement("span");
+		nameStatus.className = "save-status";
+
+		var firstInput = document.createElement("input");
+		firstInput.type = "text";
+		firstInput.className = "form-control";
+		firstInput.placeholder = __("First");
+		firstInput.value = employee.first_name || "";
+
+		var middleInput = document.createElement("input");
+		middleInput.type = "text";
+		middleInput.className = "form-control";
+		middleInput.placeholder = __("Middle");
+		middleInput.value = employee.middle_name || "";
+
+		var lastInput = document.createElement("input");
+		lastInput.type = "text";
+		lastInput.className = "form-control";
+		lastInput.placeholder = __("Last");
+		lastInput.value = employee.last_name || "";
+
+		function save_name_field(field, input, previousValue) {
+			var value = input.value.trim();
+			if (value === (previousValue || "")) return;
+			nameStatus.className = "save-status is-saving";
+			nameStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.employee.update_employee_field", {
+				name: employee.name,
+				field: field,
+				value: value
+			}).then(function (r) {
+				employee[field] = r.message.value;
+				employee.employee_name = r.message.employee_name;
+				nameStatus.className = "save-status is-saved";
+				nameStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (nameStatus.classList.contains("is-saved")) nameStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				input.value = previousValue || "";
+				nameStatus.className = "save-status is-error";
+				nameStatus.innerHTML = extract_error_message(err);
+			});
+		}
+
+		[
+			[firstInput, "first_name"],
+			[middleInput, "middle_name"],
+			[lastInput, "last_name"]
+		].forEach(function (pair) {
+			var input = pair[0], field = pair[1];
+			input.addEventListener("keydown", function (e) {
+				if (e.key === "Enter") {
+					e.preventDefault();
+					input.blur();
+				}
+			});
+			input.addEventListener("blur", function () {
+				save_name_field(field, input, employee[field]);
+			});
+		});
+
+		nameWrap.appendChild(firstInput);
+		nameWrap.appendChild(middleInput);
+		nameWrap.appendChild(lastInput);
+		nameWrap.appendChild(nameStatus);
+		nameCell.appendChild(nameWrap);
+
+		var codeDiv = document.createElement("div");
+		codeDiv.className = "employee-code";
+		codeDiv.textContent = employee.name;
+		nameCell.appendChild(codeDiv);
+		row.appendChild(nameCell);
+
+		// ---- SSN ----
+		var ssnCell = document.createElement("td");
+		var ssnInput = document.createElement("input");
+		ssnInput.type = "text";
+		ssnInput.className = "form-control ssn-input";
+		ssnInput.value = employee.custom_ssn || "";
+		var ssnStatus = document.createElement("span");
+		ssnStatus.className = "save-status d-block";
+		ssnInput.addEventListener("keydown", function (e) {
+			if (e.key === "Enter") { e.preventDefault(); ssnInput.blur(); }
+		});
+		ssnInput.addEventListener("blur", function () {
+			var value = ssnInput.value.trim();
+			if (value === (employee.custom_ssn || "")) return;
+			ssnStatus.className = "save-status is-saving d-block";
+			ssnStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.employee.update_employee_field", {
+				name: employee.name, field: "custom_ssn", value: value
+			}).then(function (r) {
+				employee.custom_ssn = r.message.value;
+				ssnStatus.className = "save-status is-saved d-block";
+				ssnStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (ssnStatus.classList.contains("is-saved")) ssnStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				ssnInput.value = employee.custom_ssn || "";
+				ssnStatus.className = "save-status is-error d-block";
+				ssnStatus.innerHTML = extract_error_message(err);
+			});
+		});
+		ssnCell.appendChild(ssnInput);
+		ssnCell.appendChild(ssnStatus);
+		row.appendChild(ssnCell);
+
+		// ---- Date of Birth / Date of Joining (same immediate-save pattern) ----
+		function make_date_cell(field, currentValue) {
+			var cell = document.createElement("td");
+			var input = document.createElement("input");
+			input.type = "date";
+			input.className = "form-control date-input";
+			input.value = currentValue || "";
+			var status = document.createElement("span");
+			status.className = "save-status d-block";
+			input.addEventListener("change", function () {
+				var value = input.value;
+				if (value === (currentValue || "")) return;
+				status.className = "save-status is-saving d-block";
+				status.textContent = __("Saving…");
+				call("ez_accounting.www.forms.user.employee.update_employee_field", {
+					name: employee.name, field: field, value: value
+				}).then(function (r) {
+					currentValue = r.message.value;
+					employee[field] = r.message.value;
+					status.className = "save-status is-saved d-block";
+					status.textContent = __("Saved");
+					setTimeout(function () {
+						if (status.classList.contains("is-saved")) status.textContent = "";
+					}, 2500);
+				}).catch(function (err) {
+					input.value = currentValue || "";
+					status.className = "save-status is-error d-block";
+					status.innerHTML = extract_error_message(err);
+				});
+			});
+			cell.appendChild(input);
+			cell.appendChild(status);
+			return cell;
+		}
+		row.appendChild(make_date_cell("date_of_birth", employee.date_of_birth));
+		row.appendChild(make_date_cell("date_of_joining", employee.date_of_joining));
+
+		// ---- Holiday List (blank always re-resolves to the default — see
+		// update_employee_field()'s own handling; the client just sends
+		// whatever was chosen, including blank) ----
+		var holidayCell = document.createElement("td");
+		var holidaySelect = document.createElement("select");
+		holidaySelect.className = "form-control holiday-list-select";
+		populate_plain_select(holidaySelect, holidayLists, {label: __("— Automatic —")});
+		if (employee.holiday_list) holidaySelect.value = employee.holiday_list;
+		var holidayStatus = document.createElement("span");
+		holidayStatus.className = "save-status d-block";
+		holidaySelect.addEventListener("change", function () {
+			holidayStatus.className = "save-status is-saving d-block";
+			holidayStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.employee.update_employee_field", {
+				name: employee.name, field: "holiday_list", value: holidaySelect.value
+			}).then(function (r) {
+				employee.holiday_list = r.message.value;
+				if (r.message.value) holidaySelect.value = r.message.value;
+				holidayStatus.className = "save-status is-saved d-block";
+				holidayStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (holidayStatus.classList.contains("is-saved")) holidayStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				holidaySelect.value = employee.holiday_list || "";
+				holidayStatus.className = "save-status is-error d-block";
+				holidayStatus.innerHTML = extract_error_message(err);
+			});
+		});
+		holidayCell.appendChild(holidaySelect);
+		holidayCell.appendChild(holidayStatus);
+		row.appendChild(holidayCell);
+
+		// ---- Status ----
+		var statusCell = document.createElement("td");
+		var statusSelect = document.createElement("select");
+		statusSelect.className = "form-control status-select";
+		STATUS_OPTIONS.forEach(function (s) {
+			var opt = document.createElement("option");
+			opt.value = s;
+			opt.textContent = __(s);
+			opt.selected = employee.status === s;
+			statusSelect.appendChild(opt);
+		});
+		var statusStatus = document.createElement("span");
+		statusStatus.className = "save-status d-block";
+		statusSelect.addEventListener("change", function () {
+			var previous = employee.status;
+			statusStatus.className = "save-status is-saving d-block";
+			statusStatus.textContent = __("Saving…");
+			call("ez_accounting.www.forms.user.employee.update_employee_field", {
+				name: employee.name, field: "status", value: statusSelect.value
+			}).then(function () {
+				employee.status = statusSelect.value;
+				row.className = employee.status !== "Active" ? "inactive-row" : "";
+				statusStatus.className = "save-status is-saved d-block";
+				statusStatus.textContent = __("Saved");
+				setTimeout(function () {
+					if (statusStatus.classList.contains("is-saved")) statusStatus.textContent = "";
+				}, 2500);
+			}).catch(function (err) {
+				statusSelect.value = previous;
+				statusStatus.className = "save-status is-error d-block";
+				statusStatus.innerHTML = extract_error_message(err);
+			});
+		});
+		statusCell.appendChild(statusSelect);
+		statusCell.appendChild(statusStatus);
+		row.appendChild(statusCell);
+
+		return row;
+	}
+
+	function render_table(query) {
+		query = normalize(query);
+		var matches = !query
+			? allEmployees
+			: allEmployees.filter(function (employee) {
+				return normalize(employee.employee_name).indexOf(query) !== -1
+					|| normalize(employee.name).indexOf(query) !== -1
+					|| normalize(employee.custom_ssn).indexOf(query) !== -1;
+			});
+
+		countHint.textContent = matches.length > MAX_RESULTS
+			? __("{0} found — showing the first {1}. Keep typing to narrow down.", [matches.length, MAX_RESULTS])
+			: (query ? __("{0} found.", [matches.length]) : "");
+
+		tbody.innerHTML = "";
+		if (!matches.length) {
+			tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("No matching employees found.") + "</td></tr>";
+			return;
+		}
+		matches.slice(0, MAX_RESULTS).forEach(function (employee) {
+			tbody.appendChild(render_row(employee));
+		});
+	}
+
+	searchInput.addEventListener("input", function () {
+		render_table(searchInput.value);
+	});
+
+	function load_employees() {
+		return call("ez_accounting.www.forms.user.employee.get_employees").then(function (r) {
+			allEmployees = r.message || [];
+			if (!allEmployees.length) {
+				tbody.innerHTML = '<tr><td colspan="6" class="text-muted">' + __("No employees found.") + "</td></tr>";
+				return;
+			}
+			searchInput.disabled = false;
+			searchInput.placeholder = __("Search employees…");
+			render_table(searchInput.value);
+		}).catch(function (err) {
+			tbody.innerHTML = '<tr><td colspan="6" class="text-danger">' + extract_error_message(err) + "</td></tr>";
+		});
+	}
+	load_employees();
+
+	call("ez_accounting.www.forms.user.employee.get_genders").then(function (r) {
+		genders = r.message || [];
+		var select = document.getElementById("new_employee_gender");
+		select.innerHTML = "";
+		var placeholder = document.createElement("option");
+		placeholder.value = "";
+		placeholder.selected = true;
+		placeholder.disabled = true;
+		placeholder.textContent = __("Select…");
+		select.appendChild(placeholder);
+		genders.forEach(function (g) {
+			var opt = document.createElement("option");
+			opt.value = g.name;
+			opt.textContent = g.name;
+			select.appendChild(opt);
+		});
+		// Requested default — left as-is unless the admin changes it.
+		if (genders.some(function (g) { return g.name === "Female"; })) {
+			select.value = "Female";
+		}
+	}).catch(function () {
+		document.getElementById("new_employee_gender").innerHTML =
+			'<option value="" selected disabled>' + __("Could not load") + "</option>";
+	});
+
+	call("ez_accounting.www.forms.user.employee.get_holiday_lists").then(function (r) {
+		holidayLists = r.message || [];
+		populate_plain_select(
+			document.getElementById("new_employee_holiday_list"),
+			holidayLists,
+			{label: __("— Automatic (Company Default) —")}
+		);
+	}).catch(function () {
+		holidayLists = [];
+	});
+
+	// Add Employee form
+	var addForm = document.getElementById("employee-add-form");
+	var addAlert = document.getElementById("employee-add-alert");
+	var addSubmit = document.getElementById("employee-add-submit");
+	var addSpinner = document.getElementById("employee-add-spinner");
+	var addLabel = document.getElementById("employee-add-label");
+
+	// Requested default — left as-is unless the admin changes it.
+	var dateOfJoiningInput = document.getElementById("new_employee_date_of_joining");
+	if (!dateOfJoiningInput.value) dateOfJoiningInput.value = "2000-01-01";
+
+	// Requested default — left as-is unless the admin changes it.
+	var dateOfBirthInput = document.getElementById("new_employee_date_of_birth");
+	if (!dateOfBirthInput.value) dateOfBirthInput.value = "1988-01-01";
+
+	function show_alert(message, is_error) {
+		addAlert.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		addAlert.innerHTML = message;
+		addAlert.classList.remove("d-none");
+	}
+
+	function set_add_loading(is_loading) {
+		addSubmit.disabled = is_loading;
+		addSpinner.classList.toggle("d-none", !is_loading);
+		addLabel.textContent = is_loading ? __("Adding…") : __("Add Employee");
+	}
+
+	addForm.addEventListener("submit", function (e) {
+		e.preventDefault();
+		addAlert.classList.add("d-none");
+
+		var firstName = document.getElementById("new_employee_first_name").value.trim();
+		var middleName = document.getElementById("new_employee_middle_name").value.trim();
+		var lastName = document.getElementById("new_employee_last_name").value.trim();
+		var gender = document.getElementById("new_employee_gender").value;
+		var dateOfBirth = document.getElementById("new_employee_date_of_birth").value;
+		var dateOfJoining = dateOfJoiningInput.value;
+		var ssn = document.getElementById("new_employee_ssn").value.trim();
+		var holidayList = document.getElementById("new_employee_holiday_list").value;
+
+		if (!firstName) {
+			show_alert(__("First Name is required."), true);
+			return;
+		}
+		if (!gender) {
+			show_alert(__("Select a Gender."), true);
+			return;
+		}
+		if (!dateOfBirth) {
+			show_alert(__("Date of Birth is required."), true);
+			return;
+		}
+
+		set_add_loading(true);
+		call("ez_accounting.www.forms.user.employee.create_employee", {
+			first_name: firstName,
+			middle_name: middleName,
+			last_name: lastName,
+			gender: gender,
+			date_of_birth: dateOfBirth,
+			date_of_joining: dateOfJoining,
+			custom_ssn: ssn,
+			holiday_list: holidayList
+		}).then(function (r) {
+			set_add_loading(false);
+			var d = r.message || {};
+			show_alert(__("Added {0} as employee {1}.", [
+				"<strong>" + frappe.utils.escape_html(d.employee_name) + "</strong>",
+				frappe.utils.escape_html(d.name)
+			]), false);
+			addForm.reset();
+			dateOfJoiningInput.value = "2000-01-01";
+			document.getElementById("new_employee_first_name").focus();
+			load_employees();
+		}).catch(function (err) {
+			set_add_loading(false);
+			show_alert(extract_error_message(err), true);
+		});
+	});
+});
+</script>
+{% endblock %}

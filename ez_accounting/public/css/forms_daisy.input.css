@@ -1,0 +1,14 @@
+@layer theme, base, components, utilities;
+
+/* Keep Tailwind's global preflight out of the Bootstrap-based Forms portal. */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source inline("select select-neutral select-sm file-input file-input-neutral file-input-sm");
+
+/* Only ship the components requested by this app. */
+@plugin "daisyui" {
+  themes: dark --default;
+  include: select, fileinput;
+  logs: false;
+}

@@ -1,0 +1,199 @@
+{
+ "actions": [],
+ "autoname": "format:FCD-{#####}",
+ "creation": "2026-09-11 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "company",
+  "title",
+  "category",
+  "column_break_head",
+  "document_date",
+  "expiry_date",
+  "section_file",
+  "file",
+  "file_name",
+  "file_size",
+  "content_hash",
+  "section_notes",
+  "description",
+  "tags",
+  "section_ai",
+  "content",
+  "ai_read_at",
+  "section_meta",
+  "uploaded_by",
+  "is_private"
+ ],
+ "fields": [
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "description": "Fixed list so /forms/user/files can group and filter by it reliably — free-form Tags below are for anything finer.",
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Category",
+   "options": "Compliance\nTax Form\nLicense & Permit\nInsurance\nContract\nFinancial Statement\nPolicy\nOther",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_head",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "The document's own date (issued, filed, covers-this-period) — not when it was uploaded here. Optional.",
+   "fieldname": "document_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Document Date"
+  },
+  {
+   "description": "For anything that needs renewing (licenses, insurance, tax filings). /forms/user/files flags this Expiring Soon / Expired. Leave blank for documents that never expire.",
+   "fieldname": "expiry_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Expiry Date"
+  },
+  {
+   "fieldname": "section_file",
+   "fieldtype": "Section Break",
+   "label": "File"
+  },
+  {
+   "description": "Uploaded via /forms/user/files -- ez_accounting.www.forms.user.files.upload_document(), not this doctype's own Attach widget, so the underlying File is created with the app's own permission checks (see upload_sales_invoice_attachment's docstring for why: the desk-style /api/method/upload_file endpoint needs doctype write permission this portal role doesn't hold). Deliberately NOT `reqd` -- the record is inserted first (to get a name), then the File is created attached to it, then this field is set via db_set; upload_document() itself throws before ever inserting if no file was posted, so a record with no file is never actually reachable in practice.",
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "File Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "file_size",
+   "fieldtype": "Int",
+   "label": "File Size (bytes)",
+   "read_only": 1
+  },
+  {
+   "description": "MD5 checksum of the uploaded file's content, same as core File.content_hash -- used to detect whether a document (e.g. an email attachment) has already been filed here.",
+   "fieldname": "content_hash",
+   "fieldtype": "Data",
+   "label": "MD5",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_notes",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  },
+  {
+   "description": "Comma-separated free text — searched alongside Title/Category/File Name on /forms/user/files. E.g. \"2026, renewal, state\". Small Text rather than Data deliberately -- Data columns cap at 140 characters, too short for the kind of long, detailed keyword lists AI Read tends to suggest (see the Files memory for the truncation this fixed).",
+   "fieldname": "tags",
+   "fieldtype": "Small Text",
+   "label": "Tags"
+  },
+  {
+   "fieldname": "section_ai",
+   "fieldtype": "Section Break",
+   "label": "AI Read"
+  },
+  {
+   "description": "Full text Claude extracted from the file, via the \"AI Read\" button on /forms/user/files -- ez_accounting.www.forms.user.files.ai_read(). Read-only: re-run AI Read to refresh it, rather than hand-editing OCR'd/extracted text.",
+   "fieldname": "content",
+   "fieldtype": "Long Text",
+   "label": "Extracted Content",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ai_read_at",
+   "fieldtype": "Datetime",
+   "label": "Last AI Read",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_meta",
+   "fieldtype": "Section Break",
+   "label": "Uploaded"
+  },
+  {
+   "fieldname": "uploaded_by",
+   "fieldtype": "Link",
+   "label": "Uploaded By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "When checked, only the document's owner (the uploader) can see, open, edit, AI Read or delete it -- in /forms/user/finder, /forms/user/files, search, downloads and Desk. Unchecked = shared with everyone who can access the company.",
+   "fieldname": "is_private",
+   "fieldtype": "Check",
+   "in_standard_filter": 1,
+   "label": "Private (owner only)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-11 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Company Document",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Ez Accounting Admin",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

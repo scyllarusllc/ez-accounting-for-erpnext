@@ -1,0 +1,358 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .perm-note {
+	font-size: 0.9rem;
+	color: #9aa1ac;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	padding: 0.9rem 1.1rem;
+	margin-bottom: 1.5rem;
+	line-height: 1.55;
+}
+
+body.forms-portal-dark .perm-layout {
+	display: grid;
+	grid-template-columns: 280px 1fr;
+	gap: 1.5rem;
+	align-items: start;
+}
+
+@media (max-width: 800px) {
+	body.forms-portal-dark .perm-layout { grid-template-columns: 1fr; }
+}
+
+body.forms-portal-dark .perm-user-list {
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	overflow: hidden;
+	max-height: 70vh;
+	overflow-y: auto;
+}
+
+body.forms-portal-dark .perm-user-search {
+	width: 100%;
+	border: none;
+	border-bottom: 1px solid #2a2e37;
+	background-color: #12141a;
+	color: #e6e8eb;
+	padding: 0.7rem 1rem;
+	outline: none;
+}
+
+body.forms-portal-dark .perm-user-row {
+	display: block;
+	width: 100%;
+	text-align: left;
+	background: none;
+	border: none;
+	border-bottom: 1px solid #22262f;
+	color: #e6e8eb;
+	padding: 0.7rem 1rem;
+	cursor: pointer;
+	font: inherit;
+}
+
+body.forms-portal-dark .perm-user-row:hover { background-color: #1e2129; }
+body.forms-portal-dark .perm-user-row.is-active { background-color: rgba(91, 140, 255, 0.16); }
+
+body.forms-portal-dark .perm-user-row .perm-user-sub {
+	display: block;
+	font-size: 0.78rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .perm-badge {
+	display: inline-block;
+	font-size: 0.68rem;
+	border-radius: 4px;
+	padding: 0.05rem 0.35rem;
+	margin-top: 0.2rem;
+}
+body.forms-portal-dark .perm-badge-full { background-color: #1f3a24; color: #8fd6a0; }
+body.forms-portal-dark .perm-badge-restricted { background-color: #3a3320; color: #e0c877; }
+body.forms-portal-dark .perm-badge-open { background-color: #232630; color: #9aa1ac; }
+
+body.forms-portal-dark .perm-panel {
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	padding: 1.5rem;
+	min-height: 300px;
+}
+
+body.forms-portal-dark .perm-panel .perm-panel-empty {
+	color: #6b7280;
+	text-align: center;
+	padding: 3rem 1rem;
+}
+
+body.forms-portal-dark .perm-group { margin-bottom: 1.1rem; }
+
+body.forms-portal-dark .perm-group-label {
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6b7280;
+	margin-bottom: 0.4rem;
+}
+
+body.forms-portal-dark .perm-page-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 0.35rem 1rem;
+}
+
+body.forms-portal-dark .perm-page-check {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.92rem;
+}
+
+body.forms-portal-dark .perm-actions {
+	margin-top: 1.5rem;
+	display: flex;
+	gap: 0.75rem;
+	align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Portal Access") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Which header pages each forms user can open, and their company.") }}</p>
+</div>
+
+<div class="perm-note">
+	{{ _("This controls navigation only — which links a user sees and which pages they can open. It does NOT grant the ability to create or submit records; that still needs a Frappe role (e.g. \"Express Sales User\"), assigned in Role Permission Manager. A user with no restriction here behaves as before. System Managers always have full access.") }}
+</div>
+
+<div id="perm-alert" class="alert d-none" role="alert"></div>
+
+<div class="perm-layout">
+	<div>
+		<div class="perm-user-list" id="perm-user-list">
+			<input type="text" class="perm-user-search" id="perm-user-search" placeholder="{{ _('Search users…') }}" autocomplete="off">
+			<div id="perm-user-rows"></div>
+		</div>
+	</div>
+	<div class="perm-panel" id="perm-panel">
+		<div class="perm-panel-empty">{{ _("Select a user on the left.") }}</div>
+	</div>
+</div>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong.");
+	}
+
+	var esc = frappe.utils.escape_html;
+	var alertBox = document.getElementById("perm-alert");
+	var userRowsEl = document.getElementById("perm-user-rows");
+	var searchEl = document.getElementById("perm-user-search");
+	var panelEl = document.getElementById("perm-panel");
+
+	var CATALOG = [];
+	var COMPANIES = [];
+	var USERS = [];
+	var selectedUser = null;
+
+	function show_error(msg) {
+		alertBox.className = "alert alert-warning";
+		alertBox.innerHTML = msg;
+		alertBox.classList.remove("d-none");
+	}
+	function clear_error() { alertBox.classList.add("d-none"); }
+
+	function user_badge(u) {
+		if (u.is_system_manager) return '<span class="perm-badge perm-badge-full">' + __("Full access") + "</span>";
+		if (u.managed) {
+			var n = (u.allowed_pages || []).length;
+			return '<span class="perm-badge perm-badge-restricted">' + (n ? __("{0} pages", [n]) : __("Locked")) + "</span>";
+		}
+		return '<span class="perm-badge perm-badge-open">' + __("Unmanaged") + "</span>";
+	}
+
+	function render_user_list() {
+		var q = (searchEl.value || "").toLowerCase();
+		var rows = USERS.filter(function (u) {
+			return !q || u.full_name.toLowerCase().indexOf(q) !== -1 || u.user.toLowerCase().indexOf(q) !== -1;
+		});
+		userRowsEl.innerHTML = rows.map(function (u) {
+			var active = selectedUser === u.user ? " is-active" : "";
+			return '<button type="button" class="perm-user-row' + active + '" data-user="' + esc(u.user) + '">' +
+				esc(u.full_name) +
+				'<span class="perm-user-sub">' + esc(u.user) + "</span>" +
+				user_badge(u) +
+				"</button>";
+		}).join("") || ('<div style="padding:1rem;color:#6b7280;">' + __("No users match.") + "</div>");
+	}
+
+	function selected_user_obj() {
+		return USERS.filter(function (u) { return u.user === selectedUser; })[0];
+	}
+
+	function render_panel() {
+		var u = selected_user_obj();
+		if (!u) { panelEl.innerHTML = '<div class="perm-panel-empty">' + __("Select a user on the left.") + "</div>"; return; }
+
+		if (u.is_system_manager) {
+			panelEl.className = "perm-panel";
+			panelEl.innerHTML =
+				"<h4>" + esc(u.full_name) + "</h4>" +
+				'<p class="text-muted">' + esc(u.user) + "</p>" +
+				'<div class="perm-note" style="margin-top:1rem;">' +
+					__("This user is a System Manager and always has full access to every forms page. Nothing to restrict here.") +
+				"</div>";
+			return;
+		}
+
+		var allowed = {};
+		(u.allowed_pages || []).forEach(function (k) { allowed[k] = 1; });
+		var allowedCompanies = {};
+		(u.companies || []).forEach(function (c) { allowedCompanies[c] = 1; });
+
+		var groupsHtml = CATALOG.map(function (grp) {
+			var checks = grp.pages.map(function (p) {
+				var ck = allowed[p.key] ? " checked" : "";
+				return '<label class="perm-page-check"><input type="checkbox" class="perm-page-cb" value="' + esc(p.key) + '"' + ck + "> " + esc(p.label) + "</label>";
+			}).join("");
+			return '<div class="perm-group"><div class="perm-group-label">' + esc(grp.group) + '</div><div class="perm-page-grid">' + checks + "</div></div>";
+		}).join("");
+
+		var companyChecks = COMPANIES.map(function (c) {
+			var ck = allowedCompanies[c.name] ? " checked" : "";
+			return '<label class="perm-page-check"><input type="checkbox" class="perm-company-cb" value="' + esc(c.name) + '"' + ck + "> " + esc(c.name) + "</label>";
+		}).join("") || ('<span class="text-muted">' + __("No companies on this site.") + "</span>");
+
+		var manageNote = u.managed
+			? __("Tick the pages this user may open. None ticked = only Dashboard and Me.")
+			: __("This user isn't managed here — they can open any forms page their Frappe roles allow. Tick pages below and Save to start restricting them.");
+
+		panelEl.className = "perm-panel";
+		panelEl.innerHTML =
+			"<h4>" + esc(u.full_name) + "</h4>" +
+			'<p class="text-muted">' + esc(u.user) + " &middot; " + esc(u.user_type) + "</p>" +
+			'<p class="text-muted" style="font-size:0.88rem;">' + manageNote + "</p>" +
+			groupsHtml +
+			'<div class="perm-group"><div class="perm-group-label">' + __("Company scope") + "</div>" +
+				'<div class="perm-page-grid">' + companyChecks + "</div>" +
+				'<div class="form-text">' + __("None ticked = every company. Tick one or more to limit this user — a Company User Permission is kept in sync for each.") + "</div></div>" +
+			'<div class="perm-actions"><button type="button" class="btn btn-primary" id="perm-save">' + __("Save") + "</button>" +
+				(u.managed ? '<button type="button" class="btn btn-outline-secondary btn-sm" id="perm-unmanage">' + __("Stop managing") + "</button>" : "") +
+				'<span id="perm-save-status" class="text-muted"></span></div>';
+
+		document.getElementById("perm-save").addEventListener("click", save_panel);
+		var unmanageBtn = document.getElementById("perm-unmanage");
+		if (unmanageBtn) unmanageBtn.addEventListener("click", stop_managing);
+	}
+
+	function save_panel() {
+		var u = selected_user_obj();
+		if (!u) return;
+		clear_error();
+		var pages = Array.prototype.slice.call(panelEl.querySelectorAll(".perm-page-cb:checked")).map(function (cb) { return cb.value; });
+		var companies = Array.prototype.slice.call(panelEl.querySelectorAll(".perm-company-cb:checked")).map(function (cb) { return cb.value; });
+		var btn = document.getElementById("perm-save");
+		var status = document.getElementById("perm-save-status");
+		btn.disabled = true;
+		status.textContent = __("Saving…");
+		call("ez_accounting.www.forms.admin.permissions.save_user_access", {
+			user: u.user, pages: JSON.stringify(pages), companies: JSON.stringify(companies)
+		}).then(function (r) {
+			var d = r.message || {};
+			u.managed = !!d.managed;
+			u.allowed_pages = d.allowed_pages || [];
+			u.companies = d.companies || [];
+			status.textContent = "";
+			btn.disabled = false;
+			frappe.show_alert({ message: __("Saved"), indicator: "green" });
+			render_user_list();
+			render_panel();
+		}).catch(function (err) {
+			btn.disabled = false;
+			status.textContent = "";
+			show_error(extract_error_message(err));
+		});
+	}
+
+	function stop_managing() {
+		var u = selected_user_obj();
+		if (!u) return;
+		if (!window.confirm(__("Stop managing {0}? They'll then be able to open any forms page their Frappe roles allow.", [u.user]))) return;
+		clear_error();
+		call("ez_accounting.www.forms.admin.permissions.remove_management", { user: u.user }).then(function () {
+			u.managed = false;
+			u.allowed_pages = [];
+			u.companies = [];
+			frappe.show_alert({ message: __("Removed"), indicator: "green" });
+			render_user_list();
+			render_panel();
+		}).catch(function (err) {
+			show_error(extract_error_message(err));
+		});
+	}
+
+	userRowsEl.addEventListener("click", function (e) {
+		var row = e.target.closest(".perm-user-row");
+		if (!row) return;
+		selectedUser = row.dataset.user;
+		render_user_list();
+		render_panel();
+	});
+	searchEl.addEventListener("input", render_user_list);
+
+	call("ez_accounting.www.forms.admin.permissions.get_access_overview").then(function (r) {
+		var d = r.message || {};
+		CATALOG = d.catalog || [];
+		COMPANIES = d.companies || [];
+		USERS = d.users || [];
+		render_user_list();
+	}).catch(function (err) {
+		show_error(extract_error_message(err));
+	});
+});
+</script>
+{% endblock %}

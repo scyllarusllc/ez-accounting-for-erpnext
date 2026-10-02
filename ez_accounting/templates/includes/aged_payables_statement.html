@@ -1,0 +1,148 @@
+{#
+	Bare, self-contained "Aged Payables" statement content -- no {% extends %},
+	no site chrome. Rendered by /forms/user/printerhtml (kind=aged_payables) and
+	iframed by /forms/user/printer at true 8.5in x 11in size. The payables
+	mirror of aged_receivables_statement.html.
+
+	Context (money values are pre-formatted strings -- see printerhtml.py's
+	_render_aged_payables()):
+	  company, as_of, printed_at
+	  buckets: list of (key, label)  -- the 4 aging columns
+	  groups: list of {vendor_id, vendor_name,
+	    invoices: list of {invoice, description, <bucket key>: "amt", amount_due},
+	    subtotal: {<bucket key>: "amt", amount_due: "amt"}}
+	  grand_total: {<bucket key>: "amt", amount_due: "amt"}
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 10pt;
+		line-height: 1.35;
+	}
+
+	.ap-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.ap-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.ap-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.ap-table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
+	table.ap-table th, table.ap-table td { text-align: left; padding: 0.055in 0.09in; vertical-align: top; }
+	table.ap-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7.5pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+	table.ap-table th.num, table.ap-table td.num { text-align: right; white-space: nowrap; }
+	table.ap-table th:first-child, table.ap-table td:first-child { padding-left: 0; }
+	table.ap-table th:last-child, table.ap-table td:last-child { padding-right: 0; }
+
+	.ap-inv-desc { display: block; font-size: 8pt; color: #666; }
+	.ap-vid, .ap-vname { font-weight: 600; }
+
+	tr.ap-subtotal td {
+		border-top: 1px solid #000;
+		border-bottom: 1.5px solid #000;
+		font-weight: 700;
+		padding-top: 0.05in;
+		padding-bottom: 0.05in;
+	}
+	tr.ap-group-gap td { height: 0.14in; border: none; }
+
+	tfoot tr.ap-grand td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 10pt;
+	}
+
+	.ap-empty { color: #555; padding: 0.3in 0; }
+
+	.ap-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print {
+		thead { display: table-header-group; }
+		tr.ap-subtotal, tr.ap-grand { page-break-inside: avoid; }
+	}
+</style>
+
+<div class="ap-company">{{ company }}</div>
+<div class="ap-title">{{ _("Aged Payables") }}</div>
+<div class="ap-subtitle">{{ _("As of {0}").format(as_of) }}</div>
+
+{% if not groups %}
+<p class="ap-empty">{{ _("Nothing payable as of this date.") }}</p>
+{% else %}
+<table class="ap-table">
+	<thead>
+		<tr>
+			<th>{{ _("Vendor ID") }}</th>
+			<th>{{ _("Vendor") }}</th>
+			<th>{{ _("Invoice/CM #") }}</th>
+			{% for key, label in buckets %}
+			<th class="num">{{ _(label) }}</th>
+			{% endfor %}
+			<th class="num">{{ _("Amount Due") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for g in groups %}
+		{% for inv in g.invoices %}
+		<tr>
+			<td class="ap-vid">{{ g.vendor_id if loop.first else "" }}</td>
+			<td class="ap-vname">{{ g.vendor_name if loop.first else "" }}</td>
+			<td>
+				{{ inv.invoice }}
+				{% if inv.description %}<span class="ap-inv-desc">{{ inv.description }}</span>{% endif %}
+			</td>
+			{% for key, label in buckets %}
+			<td class="num">{{ inv[key] }}</td>
+			{% endfor %}
+			<td class="num">{{ inv.amount_due }}</td>
+		</tr>
+		{% endfor %}
+		<tr class="ap-subtotal">
+			<td></td>
+			<td></td>
+			<td>{{ _("Subtotal — {0}").format(g.vendor_name) }}</td>
+			{% for key, label in buckets %}
+			<td class="num">{{ g.subtotal[key] }}</td>
+			{% endfor %}
+			<td class="num">{{ g.subtotal.amount_due }}</td>
+		</tr>
+		<tr class="ap-group-gap"><td colspan="{{ buckets|length + 4 }}"></td></tr>
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="ap-grand">
+			<td></td>
+			<td></td>
+			<td>{{ _("Report Total") }}</td>
+			{% for key, label in buckets %}
+			<td class="num">{{ grand_total[key] }}</td>
+			{% endfor %}
+			<td class="num">{{ grand_total.amount_due }}</td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="ap-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page 1") }}</span>
+</div>

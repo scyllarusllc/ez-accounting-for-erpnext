@@ -1,0 +1,136 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .vl-table td { vertical-align: top; }
+body.forms-portal-dark .vl-table tr.vl-vendor-first td { border-top: 2px solid #2a2e37; }
+body.forms-portal-dark .vl-table tr.vl-vendor-first:first-child td { border-top: none; }
+body.forms-portal-dark .vl-vend-id, body.forms-portal-dark .vl-vend-name { font-weight: 600; }
+body.forms-portal-dark .vl-muted { color: #8a8f9c; }
+body.forms-portal-dark .vl-table td.vl-num { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Vendor Ledgers") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{% if company %}
+			{{ _("Payable balance and activity per vendor for {0}, {1} to {2}.").format(company, frappe.utils.format_date(from_date), frappe.utils.format_date(to_date)) }}
+		{% else %}
+			{{ _("No company is selected.") }}
+		{% endif %}
+	</p>
+</div>
+
+<div class="card form-card mb-4 no-print">
+	<div class="card-body">
+		<div class="quick-range-row mb-3">
+			<a href="/forms/user/vendor_ledgers?from_date={{ last_month_from }}&to_date={{ last_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'last_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("Last Month") }}</a>
+			<a href="/forms/user/vendor_ledgers?from_date={{ this_month_from }}&to_date={{ this_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'this_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("This Month") }}</a>
+		</div>
+		<div class="d-flex flex-wrap align-items-end justify-content-between gap-2">
+			<form method="GET" class="date-range-row">
+				<div class="form-group mb-0">
+					<label>{{ _("From") }}</label>
+					<input type="date" class="form-control" name="from_date" value="{{ from_date or '' }}">
+				</div>
+				<div class="form-group mb-0">
+					<label>{{ _("To") }}</label>
+					<input type="date" class="form-control" name="to_date" value="{{ to_date or '' }}">
+				</div>
+				<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+			</form>
+			{% if company %}
+			<div class="d-flex gap-2">
+				<a class="btn btn-outline-light" href="/api/method/ez_accounting.www.forms.user.vendor_ledgers.download_excel?from_date={{ from_date or '' }}&to_date={{ to_date or '' }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<a class="btn btn-outline-light" href="/forms/user/printer?kind=vendor_ledgers&from_date={{ from_date or '' }}&to_date={{ to_date or '' }}">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+			</div>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+{% if company %}
+<div class="card form-card">
+	<div class="card-body">
+		<div class="d-flex flex-wrap gap-4 mb-3">
+			<div><span class="stat-label">{{ _("Vendors") }}</span> <strong>{{ vendors|length }}</strong></div>
+			<div><span class="stat-label">{{ _("Total Debit") }}</span> <strong>{{ frappe.utils.fmt_money(total_debit) }}</strong></div>
+			<div><span class="stat-label">{{ _("Total Credit") }}</span> <strong>{{ frappe.utils.fmt_money(total_credit) }}</strong></div>
+			<div><span class="stat-label">{{ _("Total Balance") }}</span> <strong>{{ frappe.utils.fmt_money(total_balance) }}</strong></div>
+		</div>
+		<div class="table-responsive">
+			<table class="table table-bordered vl-table">
+				<thead>
+					<tr>
+						<th>{{ _("Vendor ID") }}</th>
+						<th>{{ _("Vendor") }}</th>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Trans No") }}</th>
+						<th>{{ _("Type Paid") }}</th>
+						<th class="text-right">{{ _("Debit Amt") }}</th>
+						<th class="text-right">{{ _("Credit Amt") }}</th>
+						<th class="text-right">{{ _("Balance") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for v in vendors %}
+					<tr class="vl-vendor-first">
+						<td class="vl-vend-id">{{ v.vendor_id }}</td>
+						<td class="vl-vend-name">{{ v.vendor }}</td>
+						<td></td>
+						<td></td>
+						<td class="vl-muted">{{ _("Balance Fwd") }}</td>
+						<td></td>
+						<td></td>
+						<td class="text-right vl-num">{{ frappe.utils.fmt_money(v.opening) }}</td>
+					</tr>
+					{% if v.no_activity %}
+					<tr>
+						<td></td><td></td><td></td><td></td>
+						<td class="vl-muted">{{ _("No Activity") }}</td>
+						<td></td><td></td><td></td>
+					</tr>
+					{% endif %}
+					{% for row in v.rows %}
+					<tr>
+						<td></td>
+						<td></td>
+						<td class="vl-num">{{ frappe.utils.format_date(row.date) }}</td>
+						<td>{{ row.trans_no }}</td>
+						<td>{{ row.type }}</td>
+						<td class="text-right vl-num">{{ frappe.utils.fmt_money(row.debit) if row.debit else "" }}</td>
+						<td class="text-right vl-num">{{ frappe.utils.fmt_money(row.credit) if row.credit else "" }}</td>
+						<td class="text-right vl-num">{{ frappe.utils.fmt_money(row.balance) }}</td>
+					</tr>
+					{% endfor %}
+					{% else %}
+					<tr><td colspan="8" class="vl-muted">{{ _("No vendor payable balances or activity in this period.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if vendors %}
+				<tfoot>
+					<tr>
+						<th colspan="5">{{ _("Report Total") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(total_debit) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(total_credit) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(total_balance) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endif %}
+{% endblock %}

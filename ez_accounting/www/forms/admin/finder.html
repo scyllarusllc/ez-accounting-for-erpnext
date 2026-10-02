@@ -1,0 +1,199 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_admin_header.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .admin-finder-frame {
+	border: 0;
+	width: 100%;
+	min-height: 1350px;
+	background: transparent;
+}
+body.forms-portal-dark .email-documents-card { margin-bottom: 1.25rem; }
+body.forms-portal-dark .email-documents-table { font-size: .82rem; }
+body.forms-portal-dark .email-documents-table td { vertical-align: middle; }
+body.forms-portal-dark .email-document-subject { min-width: 15rem; }
+body.forms-portal-dark .email-document-md5 { font-family: monospace; font-size: .75rem; word-break: break-all; }
+body.forms-portal-dark .email-document-filed { color: #a8e0c0; white-space: nowrap; display: inline-block; max-width: 12rem; }
+body.forms-portal-dark .email-document-filed-title { display: block; white-space: normal; word-break: break-word; }
+body.forms-portal-dark .email-document-unfiled { color: #8a8f9c; white-space: nowrap; }
+body.forms-portal-dark .email-document-actions { white-space: nowrap; }
+body.forms-portal-dark .email-document-note { font-size: .75rem; color: #8a8f9c; display: block; margin-top: .25rem; max-width: 16rem; }
+body.forms-portal-dark .ai-read-settings-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+body.forms-portal-dark .ai-read-settings-status { color: #8a8f9c; font-size: .8rem; }
+@media (max-width: 767px) { body.forms-portal-dark .ai-read-settings-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1">{{ _("Manage Finder Documents") }}</h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Upload, edit, organize, read, and remove documents used by Document Finder.") }}</p>
+</div>
+
+<section class="card form-card email-documents-card">
+	<div class="card-body">
+		<div class="form-card-header d-flex justify-content-between align-items-center gap-2">
+			<h4 class="mb-0">{{ _("AI Read Settings") }}</h4>
+			<div class="d-flex align-items-center gap-2">
+				<span class="ai-read-settings-status" id="ai-read-settings-status"></span>
+				<button type="button" class="btn btn-primary btn-sm" id="ai-read-settings-save">{{ _("Save") }}</button>
+			</div>
+		</div>
+		<p class="form-card-description">{{ _("Choose the CLI provider, model, and thinking depth used by AI Read buttons in Finder and Documents from Email.") }}</p>
+		<div class="ai-read-settings-grid">
+			<div><label for="ai-read-provider">{{ _("CLI Provider") }}</label><select class="form-select" id="ai-read-provider"></select></div>
+			<div><label for="ai-read-model">{{ _("Model") }}</label><select class="form-select" id="ai-read-model"></select></div>
+			<div><label for="ai-read-effort">{{ _("Thinking Depth") }}</label><select class="form-select" id="ai-read-effort"></select></div>
+		</div>
+	</div>
+</section>
+
+<section class="card form-card email-documents-card">
+	<div class="card-body">
+		<div class="form-card-header d-flex justify-content-between align-items-center gap-2">
+			<h4 class="mb-0">{{ _("Documents from Email") }}</h4>
+			<button type="button" class="btn btn-outline-light btn-sm" id="email-documents-refresh">{{ _("Refresh") }}</button>
+		</div>
+		<p class="form-card-description">{{ _("Attachments archived from the configured email sender.") }}</p>
+		<div class="table-responsive">
+			<table class="table email-documents-table">
+				<thead><tr><th>{{ _("Received") }}</th><th>{{ _("Sender") }}</th><th>{{ _("Subject") }}</th><th>{{ _("Document") }}</th><th>{{ _("Size") }}</th><th>{{ _("MD5") }}</th><th>{{ _("In File List") }}</th><th>{{ _("Source Email") }}</th><th class="text-end">{{ _("Actions") }}</th></tr></thead>
+				<tbody id="email-documents-body"><tr><td colspan="9" class="text-muted">{{ _("Loading…") }}</td></tr></tbody>
+			</table>
+		</div>
+	</div>
+</section>
+
+<iframe
+	class="admin-finder-frame"
+	title="{{ _('Manage Finder Documents') }}"
+	src="{{ forms_url_prefix }}/forms/user/files?embedded=1">
+</iframe>
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var body = document.getElementById("email-documents-body");
+	var providerSelect = document.getElementById("ai-read-provider");
+	var modelSelect = document.getElementById("ai-read-model");
+	var effortSelect = document.getElementById("ai-read-effort");
+	var settingsSave = document.getElementById("ai-read-settings-save");
+	var settingsStatus = document.getElementById("ai-read-settings-status");
+	var providerModels = {};
+	function esc(value) { return frappe.utils.escape_html(value || ""); }
+	function show_alert(message, danger) {
+		frappe.show_alert
+			? frappe.show_alert({ message: message, indicator: danger ? "red" : "green" })
+			: alert(message);
+	}
+	function format_size(bytes) {
+		bytes = cint(bytes);
+		if (!bytes) return "";
+		var units = ["B", "KB", "MB", "GB"];
+		var i = 0;
+		var value = bytes;
+		while (value >= 1024 && i < units.length - 1) { value /= 1024; i++; }
+		return (i === 0 ? value : value.toFixed(1)) + " " + units[i];
+	}
+	function render_models(selected) {
+		var models = providerModels[providerSelect.value] || [];
+		modelSelect.innerHTML = models.map(function (model) { return '<option value="' + esc(model) + '">' + esc(model) + '</option>'; }).join("");
+		modelSelect.value = models.indexOf(selected) >= 0 ? selected : (models[0] || "");
+	}
+	function load_ai_read_settings() {
+		fetch("/api/method/ez_accounting.www.forms.admin.finder.get_ai_read_settings", {credentials:"same-origin"})
+			.then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.exception || "Request failed"); return data.message || {}; }); })
+			.then(function (data) {
+				providerModels = data.provider_models || {};
+				providerSelect.innerHTML = Object.keys(providerModels).map(function (provider) { return '<option value="' + esc(provider) + '">' + esc(provider) + '</option>'; }).join("");
+				providerSelect.value = data.provider || "Claude CLI";
+				render_models(data.model || "");
+				var labels = {low:"Low", medium:"Medium", high:"High", xhigh:"X-High", max:"Max"};
+				effortSelect.innerHTML = (data.effort_options || []).map(function (effort) { return '<option value="' + esc(effort) + '">' + esc(labels[effort] || effort) + '</option>'; }).join("");
+				effortSelect.value = data.effort || "medium";
+				settingsStatus.textContent = "";
+			}).catch(function (error) { settingsStatus.textContent = error.message; });
+	}
+	providerSelect.addEventListener("change", function () { render_models(""); });
+	settingsSave.addEventListener("click", function () {
+		settingsSave.disabled = true; settingsStatus.textContent = __("Saving…");
+		fetch("/api/method/ez_accounting.www.forms.admin.finder.save_ai_read_settings", {
+			method:"POST", credentials:"same-origin", headers:{"Content-Type":"application/json", "X-Frappe-CSRF-Token":frappe.csrf_token},
+			body:JSON.stringify({provider:providerSelect.value, model:modelSelect.value, effort:effortSelect.value})
+		}).then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.exception || "Request failed"); return data.message || {}; }); })
+		.then(function () { settingsStatus.textContent = __("Saved"); show_alert(__("AI Read settings saved.")); })
+		.catch(function (error) { settingsStatus.textContent = __("Save failed"); show_alert(error.message, true); })
+		.finally(function () { settingsSave.disabled = false; });
+	});
+	function load_email_documents() {
+		body.innerHTML = '<tr><td colspan="9" class="text-muted">' + __("Loading…") + '</td></tr>';
+		fetch("/api/method/ez_accounting.www.forms.admin.finder.get_email_documents", {
+			method: "POST",
+			headers: {"Content-Type":"application/json", "X-Frappe-CSRF-Token":frappe.csrf_token},
+			body: "{}"
+		}).then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.exception || "Request failed"); return data.message || []; }); })
+		.then(function (rows) {
+			body.innerHTML = rows.length ? rows.map(function (row) {
+				var filed = row.in_file_list
+					? '<span class="email-document-filed">✓ ' + __("Filed") + '<a class="email-document-filed-title" href="/app/forms-company-document/' + encodeURIComponent(row.filed_document) + '" target="_blank" rel="noopener">' + esc(row.filed_title || row.filed_document) + '</a></span>'
+					: '<span class="email-document-unfiled">' + __("Not filed") + '</span>';
+				return '<tr><td>' + esc(row.email_date) + '</td><td>' + esc(row.sender) + '</td><td class="email-document-subject">' + esc(row.subject) + '</td><td><a href="' + esc(row.attachment) + '" target="_blank" rel="noopener">' + esc(row.file_name) + '</a></td><td>' + esc(format_size(row.file_size)) + '</td><td class="email-document-md5">' + esc(row.content_hash) + '</td><td>' + filed + '</td><td><a href="/app/communication/' + encodeURIComponent(row.source_communication) + '" target="_blank" rel="noopener">' + esc(row.source_communication) + '</a></td>' +
+					'<td class="text-end email-document-actions"><button type="button" class="btn btn-outline-light btn-sm email-ai-file-btn" data-name="' + esc(row.name) + '">🤖 ' + __("AI read and obtain to matched company") + '</button></td></tr>';
+			}).join("") : '<tr><td colspan="9" class="text-muted">' + __("No documents from email have been archived.") + '</td></tr>';
+			Array.prototype.forEach.call(body.querySelectorAll(".email-ai-file-btn"), function (btn) {
+				btn.addEventListener("click", function () { run_ai_file(btn); });
+			});
+		}).catch(function (error) { body.innerHTML = '<tr><td colspan="9" class="text-danger">' + esc(error.message) + '</td></tr>'; });
+	}
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) return messages.map(frappe.utils.escape_html).join("<br>");
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+	function run_ai_file(btn) {
+		var name = btn.getAttribute("data-name");
+		var original = btn.textContent;
+		btn.disabled = true;
+		btn.textContent = __("Reading…");
+		fetch("/api/method/ez_accounting.www.forms.admin.finder.ai_file_email_document", {
+			method: "POST",
+			headers: {"Content-Type":"application/json", "X-Frappe-CSRF-Token":frappe.csrf_token},
+			body: JSON.stringify({ name: name })
+		}).then(function (response) { return response.json().then(function (data) {
+			if (!response.ok) { var error = new Error(); error.data = data; throw error; }
+			return data.message || {};
+		}); })
+		.then(function (result) {
+			if (result.matched_company) {
+				show_alert(__("Filed under {0}.", [result.matched_company]));
+			} else {
+				show_alert(__("No matching company found. Suggested title: {0}", [result.suggested && result.suggested.title || ""]), true);
+			}
+			load_email_documents();
+		}).catch(function (error) {
+			show_alert(extract_error_message(error), true);
+			btn.disabled = false;
+			btn.textContent = original;
+		});
+	}
+	document.getElementById("email-documents-refresh").addEventListener("click", load_email_documents);
+	load_ai_read_settings();
+	load_email_documents();
+});
+</script>
+{% endblock %}

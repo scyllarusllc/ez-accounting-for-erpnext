@@ -1,0 +1,55 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ _("No Access") }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .no-access-wrap {
+	max-width: 560px;
+	margin: 4rem auto;
+	text-align: center;
+}
+
+body.forms-portal-dark .no-access-icon {
+	width: 56px;
+	height: 56px;
+	border-radius: 999px;
+	background-color: #3a3320;
+	color: #e0c877;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.5rem;
+	margin-bottom: 1.25rem;
+}
+
+body.forms-portal-dark .no-access-wrap h1 {
+	font-size: 1.4rem;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .no-access-wrap p {
+	color: #9aa1ac;
+	line-height: 1.6;
+}
+
+body.forms-portal-dark .no-access-wrap .btn {
+	margin-top: 1.5rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="no-access-wrap">
+	<div class="no-access-icon"><i class="fa fa-lock" aria-hidden="true"></i></div>
+	<h1>{{ _("You don't have access to this page") }}</h1>
+	<p>
+		{{ _("Your account is limited to certain pages of the portal. If you need this one, ask a portal administrator to grant it.") }}
+	</p>
+	<a href="/forms/user/dashboard" class="btn btn-primary">{{ _("Go to Dashboard") }}</a>
+</div>
+{% endblock %}

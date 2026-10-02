@@ -1,0 +1,130 @@
+{#
+	Bare, self-contained "Cash Disbursements Journal" content -- no {% extends %},
+	no site chrome. Rendered by /forms/user/printerhtml
+	(kind=cash_disbursements_journal) and iframed by /forms/user/printer at true
+	8.5in x 11in size. The credit-side mirror of
+	cash_receipts_journal_statement.html.
+
+	Context (money values are pre-formatted strings -- see printerhtml.py's
+	_render_cash_disbursements_journal()):
+	  company, period, printed_at
+	  vouchers: list of {date, check_no, lines: [{account_id, account_name,
+	    line_description, debit, credit}]}   (date + check_no shown only on the
+	    first line of each voucher)
+	  total_debit, total_credit
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.cdj-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.cdj-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.cdj-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.cdj-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+
+	table.cdj-table th, table.cdj-table td { text-align: left; padding: 0.04in 0.08in; vertical-align: top; }
+
+	table.cdj-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+
+	table.cdj-table th.num, table.cdj-table td.num { text-align: right; white-space: nowrap; }
+
+	table.cdj-table th:first-child, table.cdj-table td:first-child { padding-left: 0; }
+	table.cdj-table th:last-child, table.cdj-table td:last-child { padding-right: 0; }
+
+	td.cdj-date { white-space: nowrap; }
+
+	tr.cdj-voucher-first td { border-top: 1px solid #bbb; }
+	tr.cdj-voucher-first:first-child td { border-top: none; }
+
+	tfoot tr.cdj-total td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 9.5pt;
+	}
+
+	.cdj-empty { color: #555; padding: 0.3in 0; }
+
+	.cdj-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print {
+		thead { display: table-header-group; }
+		tr.cdj-voucher-first { page-break-inside: avoid; }
+	}
+</style>
+
+<div class="cdj-company">{{ company }}</div>
+<div class="cdj-title">{{ _("Cash Disbursements Journal") }}</div>
+<div class="cdj-subtitle">{{ _("For the Period {0}").format(period) }}</div>
+
+{% if not vouchers %}
+<p class="cdj-empty">{{ _("No cash disbursements in this period.") }}</p>
+{% else %}
+<table class="cdj-table">
+	<thead>
+		<tr>
+			<th>{{ _("Date") }}</th>
+			<th>{{ _("Check #") }}</th>
+			<th>{{ _("Name") }}</th>
+			<th>{{ _("Account ID") }}</th>
+			<th>{{ _("Account Description") }}</th>
+			<th>{{ _("Line Description") }}</th>
+			<th class="num">{{ _("Debit Amount") }}</th>
+			<th class="num">{{ _("Credit Amount") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for v in vouchers %}
+		{% for line in v.lines %}
+		<tr class="{{ 'cdj-voucher-first' if loop.first else '' }}">
+			<td class="cdj-date">{{ v.date if loop.first else "" }}</td>
+			<td>{{ v.check_no if loop.first else "" }}</td>
+			<td>{{ v.payee if loop.first else "" }}</td>
+			<td>{{ line.account_id }}</td>
+			<td>{{ line.account_name }}</td>
+			<td>{{ line.line_description }}</td>
+			<td class="num">{{ line.debit }}</td>
+			<td class="num">{{ line.credit }}</td>
+		</tr>
+		{% endfor %}
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="cdj-total">
+			<td colspan="6">{{ _("Total") }}</td>
+			<td class="num">{{ total_debit }}</td>
+			<td class="num">{{ total_credit }}</td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="cdj-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

@@ -1,0 +1,96 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% import "templates/includes/button_icons.html" as icons %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("CNMI Treasurer — Withholding Tax Payable") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("From submitted payroll for {0}.").format(company) }}</p>
+</div>
+
+{% if not_configured %}
+<div class="alert alert-warning">
+	{{ _("The Withholding Tax component isn't configured for {0} yet.").format(company) }}
+	{{ _("A System Manager needs to set it up in Forms Payroll Tax Settings before this report can show data.") }}
+</div>
+{% endif %}
+
+<div class="card form-card mb-4">
+	<div class="card-body">
+		<div class="quick-range-row mb-3">
+			<a href="/forms/user/treasurer?from_date={{ last_month_from }}&to_date={{ last_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'last_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("Last Month") }}</a>
+			<a href="/forms/user/treasurer?from_date={{ this_month_from }}&to_date={{ this_month_to }}"
+				class="btn btn-sm {{ 'btn-primary' if quick_active == 'this_month' else 'btn-outline-light' }}">{{ icons.btn_icon("calendar") }}{{ _("This Month") }}</a>
+		</div>
+		<form method="GET" class="date-range-row">
+			<div class="form-group mb-0">
+				<label>{{ _("From") }}</label>
+				<input type="date" class="form-control" name="from_date" value="{{ from_date or '' }}">
+			</div>
+			<div class="form-group mb-0">
+				<label>{{ _("To") }}</label>
+				<input type="date" class="form-control" name="to_date" value="{{ to_date or '' }}">
+			</div>
+			<button type="submit" class="btn btn-primary">{{ icons.btn_icon("filter") }}{{ _("Apply") }}</button>
+			{% if quick_active != 'last_month' %}
+			<a href="/forms/user/treasurer" class="btn btn-outline-light">{{ icons.btn_icon("x") }}{{ _("Clear") }}</a>
+			{% endif %}
+		</form>
+	</div>
+</div>
+
+<div class="card form-card mt-4" id="employee-breakdown-print">
+	<div class="card-body">
+		<div class="d-flex align-items-center justify-content-between mb-3">
+			<h5 class="mb-0">{{ _("Employee Breakdown") }}</h5>
+			<div class="d-flex gap-2 no-print">
+				<a class="btn btn-sm btn-outline-light" href="/api/method/ez_accounting.www.forms.user.treasurer.download_excel?from_date={{ from_date or '' }}&to_date={{ to_date or '' }}">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+				<button type="button" class="btn btn-sm btn-outline-light" onclick="window.print()">{{ icons.btn_icon("printer") }}{{ _("Print") }}</button>
+			</div>
+		</div>
+		<p class="text-muted no-print" style="margin-top: -0.5rem;">{{ _("From submitted payroll (Salary Slips) — one row per Salary Slip whose pay period end date falls in range.") }}</p>
+		<div class="table-responsive">
+			<table class="table table-bordered">
+				<thead>
+					<tr>
+						<th>{{ _("Employee") }}</th>
+						<th>{{ _("Start Date") }}</th>
+						<th>{{ _("End Date") }}</th>
+						<th class="text-right">{{ _("Days Worked") }}</th>
+						<th class="text-right">{{ _("Gross Pay") }}</th>
+						<th class="text-right">{{ _("Withholding Tax") }}</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for emp in employee_breakdown %}
+					<tr>
+						<td>{{ emp.employee_name or emp.employee }}</td>
+						<td>{{ frappe.utils.format_date(emp.start_date) }}</td>
+						<td>{{ frappe.utils.format_date(emp.end_date) }}</td>
+						<td class="text-right">{{ emp.days_worked }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(emp.gross_pay) }}</td>
+						<td class="text-right">{{ frappe.utils.fmt_money(emp.amount) }}</td>
+					</tr>
+					{% else %}
+					<tr><td colspan="6">{{ _("No payroll data for this period.") }}</td></tr>
+					{% endfor %}
+				</tbody>
+				{% if employee_breakdown %}
+				<tfoot>
+					<tr>
+						<th colspan="4">{{ _("All Employees") }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(breakdown_totals.gross_pay) }}</th>
+						<th class="text-right">{{ frappe.utils.fmt_money(breakdown_totals.amount) }}</th>
+					</tr>
+				</tfoot>
+				{% endif %}
+			</table>
+		</div>
+	</div>
+</div>
+{% endblock %}

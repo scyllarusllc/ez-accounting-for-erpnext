@@ -1,0 +1,172 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}{{ super() }}
+<style>
+body.forms-portal-dark .sr-table td, body.forms-portal-dark .sr-table th { vertical-align: middle; }
+body.forms-portal-dark .sr-table td.text-end, body.forms-portal-dark .sr-table th.text-end { text-align: right; }
+body.forms-portal-dark .sr-receipt { font-weight: 600; white-space: nowrap; }
+body.forms-portal-dark .sr-total-row td { font-weight: 700; border-top: 2px solid #8a8f9c; background: rgba(255,255,255,0.035); }
+body.forms-portal-dark .sr-summary-value { font-size: 1.35rem; font-weight: 700; }
+body.forms-portal-dark .sr-summary-label { color: #8a8f9c; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+body.forms-portal-dark .sr-trend-chart { width: 100%; min-height: 240px; }
+body.forms-portal-dark .sr-trend-chart svg { display: block; width: 100%; height: 240px; overflow: visible; }
+body.forms-portal-dark .sr-trend-grid { stroke: #343945; stroke-width: 1; }
+body.forms-portal-dark .sr-trend-area { fill: rgba(91, 140, 255, 0.14); }
+body.forms-portal-dark .sr-trend-line { fill: none; stroke: #7ea6ff; stroke-width: 3; stroke-linejoin: round; stroke-linecap: round; }
+body.forms-portal-dark .sr-trend-point { fill: #a9c1ff; stroke: #161920; stroke-width: 2; }
+body.forms-portal-dark .sr-trend-label { fill: #aab0bd; font-size: 11px; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Sales Report") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Submitted sales receipts. Cancelled records are excluded.") if company else _("No company is selected.") }}</p>
+</div>
+
+{% if company %}
+<div class="card form-card mb-4"><div class="card-body">
+	<div class="row g-3 mb-3">
+		<div class="col-md-2"><label class="form-label">{{ _("From") }}</label><input type="date" class="form-control" id="sr-from-date"></div>
+		<div class="col-md-2"><label class="form-label">{{ _("To") }}</label><input type="date" class="form-control" id="sr-to-date"></div>
+		<div class="col-md-2"><label class="form-label">{{ _("Deposit Day") }}</label><input type="date" class="form-control" id="sr-deposit-day"></div>
+		<div class="col-md-4"><label class="form-label">{{ _("Search") }}</label><input type="text" class="form-control" id="sr-search" autocomplete="off" placeholder="{{ _('Receipt #, customer, unique ID…') }}"></div>
+		<div class="col-md-2 d-flex align-items-end"><button type="button" class="btn btn-outline-light w-100" id="sr-clear-btn">{{ icons.btn_icon("x") }}{{ _("Clear") }}</button></div>
+	</div>
+	<div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="sr-date-presets" aria-label="{{ _('Quick date ranges') }}">
+		<span class="form-text mb-0 me-1">{{ _("Quick dates:") }}</span>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="today">{{ _("Today") }}</button>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="yesterday">{{ _("Yesterday") }}</button>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="last_7_days">{{ _("Last 7 Days") }}</button>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="this_month">{{ _("This Month") }}</button>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="last_month">{{ _("Last Month") }}</button>
+		<button type="button" class="btn btn-sm btn-outline-light" data-range="all">{{ _("All Dates") }}</button>
+	</div>
+	<div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+		<div class="form-text mb-0" id="sr-count-hint"></div>
+		<div class="d-flex gap-2">
+			<a class="btn btn-outline-light" id="sr-download-link" href="/api/method/ez_accounting.www.forms.user.salesreport.download_excel">{{ icons.btn_icon("download") }}{{ _("Download") }}</a>
+			<a class="btn btn-outline-light" id="sr-print-link" target="_blank" href="/forms/user/printer?kind=salesreport">{{ icons.btn_icon("printer") }}{{ _("Print") }}</a>
+		</div>
+	</div>
+</div></div>
+
+<div class="row g-3 mb-4" id="sr-summary">
+	<div class="col-6 col-lg-3"><div class="card form-card h-100"><div class="card-body"><div class="sr-summary-label">{{ _("Receipts") }}</div><div class="sr-summary-value" id="sr-summary-count">—</div></div></div></div>
+	<div class="col-6 col-lg-3"><div class="card form-card h-100"><div class="card-body"><div class="sr-summary-label">{{ _("Total Sales") }}</div><div class="sr-summary-value" id="sr-summary-amount">—</div></div></div></div>
+	<div class="col-6 col-lg-3"><div class="card form-card h-100"><div class="card-body"><div class="sr-summary-label">{{ _("Total Paid") }}</div><div class="sr-summary-value" id="sr-summary-paid">—</div></div></div></div>
+	<div class="col-6 col-lg-3"><div class="card form-card h-100"><div class="card-body"><div class="sr-summary-label">{{ _("Deposit Amount") }}</div><div class="sr-summary-value" id="sr-summary-deposit">—</div></div></div></div>
+</div>
+
+<div class="card form-card mb-4"><div class="card-body">
+	<div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+		<div><h4 class="mb-1">{{ _("Sales Trend") }}</h4><div class="form-text" id="sr-trend-period">{{ _("Submitted sales over time") }}</div></div>
+		<div class="text-end"><div class="sr-summary-label">{{ _("Peak Period") }}</div><div class="fw-bold" id="sr-trend-peak">—</div></div>
+	</div>
+	<div class="sr-trend-chart" id="sr-trend-chart" role="img" aria-label="{{ _('Sales trend chart') }}"></div>
+</div></div>
+
+<div class="card form-card"><div class="card-body"><div class="table-responsive">
+	<table class="table table-bordered mb-0 sr-table"><thead><tr>
+		<th>{{ _("Receipt #") }}</th><th>{{ _("Posting Date") }}</th><th>{{ _("Customer") }}</th><th>{{ _("Deposit Day") }}</th><th>{{ _("Deposit Status") }}</th><th class="text-end">{{ _("Deposit Amount") }}</th>
+		<th class="text-end">{{ _("Credit Card") }}</th><th class="text-end">{{ _("Check / Cash") }}</th><th class="text-end">{{ _("Wire Transfer") }}</th><th class="text-end">{{ _("Other Payment") }}</th><th class="text-end">{{ _("Amount") }}</th><th class="text-end">{{ _("Paid") }}</th>
+	</tr></thead><tbody id="sr-body"><tr><td colspan="12" class="text-muted">{{ _("Loading…") }}</td></tr></tbody><tfoot><tr class="sr-total-row"><td colspan="5">{{ _("Summary") }}</td><td class="text-end" id="sr-total-deposit">—</td><td class="text-end" id="sr-total-credit-card">—</td><td class="text-end" id="sr-total-check-cash">—</td><td class="text-end" id="sr-total-wire-transfer">—</td><td class="text-end" id="sr-total-other-payment">—</td><td class="text-end" id="sr-total-amount">—</td><td class="text-end" id="sr-total-paid">—</td></tr></tfoot></table>
+</div></div></div>
+{% endif %}
+{% endblock %}
+
+{% block script %}{{ super() }}
+<script>
+frappe.ready(function () {
+	function call(method, args) {
+		return fetch("/api/method/" + method, {method: "POST", headers: {"Content-Type": "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token}, body: JSON.stringify(args || {})})
+			.then(function (response) { return response.json().catch(function () { return {}; }).then(function (data) { if (!response.ok) throw new Error(data._error_message || data.exception || "Request failed"); return data; }); });
+	}
+	function format_date(value) { if (!value) return ""; try { return frappe.datetime.str_to_user(value); } catch (e) { return frappe.utils.escape_html(value); } }
+	function date_value(date) { return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0"); }
+	var body = document.getElementById("sr-body"); if (!body) return;
+	var fromDate = document.getElementById("sr-from-date"), toDate = document.getElementById("sr-to-date"), depositDay = document.getElementById("sr-deposit-day"), search = document.getElementById("sr-search");
+	var presets = document.getElementById("sr-date-presets"), countHint = document.getElementById("sr-count-hint");
+	var downloadLink = document.getElementById("sr-download-link"), printLink = document.getElementById("sr-print-link");
+	var summaryCount = document.getElementById("sr-summary-count"), summaryAmount = document.getElementById("sr-summary-amount"), summaryPaid = document.getElementById("sr-summary-paid"), summaryDeposit = document.getElementById("sr-summary-deposit");
+	var totalDeposit = document.getElementById("sr-total-deposit");
+	var totalCreditCard = document.getElementById("sr-total-credit-card"), totalCheckCash = document.getElementById("sr-total-check-cash"), totalWireTransfer = document.getElementById("sr-total-wire-transfer"), totalOtherPayment = document.getElementById("sr-total-other-payment"), totalAmount = document.getElementById("sr-total-amount"), totalPaid = document.getElementById("sr-total-paid");
+	var trendChart = document.getElementById("sr-trend-chart"), trendPeriod = document.getElementById("sr-trend-period"), trendPeak = document.getElementById("sr-trend-peak");
+	function set_active(range) { presets.querySelectorAll("[data-range]").forEach(function (b) { var active = b.dataset.range === range; b.classList.toggle("btn-light", active); b.classList.toggle("btn-outline-light", !active); b.setAttribute("aria-pressed", active ? "true" : "false"); }); }
+	function update_links() { var p = []; if (fromDate.value) p.push("from_date=" + encodeURIComponent(fromDate.value)); if (toDate.value) p.push("to_date=" + encodeURIComponent(toDate.value)); if (depositDay.value) p.push("deposit_day=" + encodeURIComponent(depositDay.value)); if (search.value) p.push("search=" + encodeURIComponent(search.value)); downloadLink.href = "/api/method/ez_accounting.www.forms.user.salesreport.download_excel" + (p.length ? "?" + p.join("&") : ""); printLink.href = "/forms/user/printer?kind=salesreport" + (p.length ? "&" + p.join("&") : ""); }
+	function render_trend(rows, currency) {
+		trendChart.innerHTML = "";
+		if (!rows.length) { trendChart.innerHTML = '<div class="text-muted py-5 text-center">' + __("No sales data for this filter.") + "</div>"; trendPeak.textContent = "—"; return; }
+		var dates = rows.map(function (r) { return String(r.posting_date || "").slice(0, 10); }).filter(Boolean).sort();
+		var first = new Date(dates[0] + "T00:00:00"), last = new Date(dates[dates.length - 1] + "T00:00:00");
+		var monthly = Math.round((last - first) / 86400000) > 90;
+		var totals = {};
+		rows.forEach(function (r) { var date = String(r.posting_date || "").slice(0, 10); if (!date) return; var key = monthly ? date.slice(0, 7) : date; totals[key] = (totals[key] || 0) + Number(r.grand_total || 0); });
+		var points = Object.keys(totals).sort().map(function (key) { return {key: key, value: totals[key]}; });
+		var max = Math.max.apply(null, points.map(function (p) { return p.value; })) || 1;
+		var peak = points.reduce(function (best, p) { return p.value > best.value ? p : best; }, points[0]);
+		var money = function (v) { return frappe.format(v, {fieldtype: "Currency", options: currency}, {only_value: true}); };
+		trendPeriod.textContent = monthly ? __("Monthly submitted sales") : __("Daily submitted sales");
+		trendPeak.textContent = peak.key + " · " + money(peak.value);
+		var ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg"); svg.setAttribute("viewBox", "0 0 900 240");
+		[25, 75, 125, 175].forEach(function (y) { var line = document.createElementNS(ns, "line"); line.setAttribute("x1", "55"); line.setAttribute("x2", "885"); line.setAttribute("y1", y); line.setAttribute("y2", y); line.setAttribute("class", "sr-trend-grid"); svg.appendChild(line); });
+		var coords = points.map(function (p, i) { return {x: points.length === 1 ? 470 : 55 + (830 * i / (points.length - 1)), y: 195 - (160 * p.value / max), data: p}; });
+		var area = document.createElementNS(ns, "polygon"); area.setAttribute("class", "sr-trend-area"); area.setAttribute("points", "55,195 " + coords.map(function (p) { return p.x + "," + p.y; }).join(" ") + " 885,195"); svg.appendChild(area);
+		var line = document.createElementNS(ns, "polyline"); line.setAttribute("class", "sr-trend-line"); line.setAttribute("points", coords.map(function (p) { return p.x + "," + p.y; }).join(" ")); svg.appendChild(line);
+		coords.forEach(function (p) { var circle = document.createElementNS(ns, "circle"); circle.setAttribute("class", "sr-trend-point"); circle.setAttribute("cx", p.x); circle.setAttribute("cy", p.y); circle.setAttribute("r", "4"); var title = document.createElementNS(ns, "title"); title.textContent = p.data.key + ": " + money(p.data.value); circle.appendChild(title); svg.appendChild(circle); });
+		[[55, points[0].key, "start"], [885, points[points.length - 1].key, "end"]].forEach(function (item) { var label = document.createElementNS(ns, "text"); label.setAttribute("x", item[0]); label.setAttribute("y", "225"); label.setAttribute("text-anchor", item[2]); label.setAttribute("class", "sr-trend-label"); label.textContent = item[1]; svg.appendChild(label); });
+		var top = document.createElementNS(ns, "text"); top.setAttribute("x", "50"); top.setAttribute("y", "20"); top.setAttribute("text-anchor", "end"); top.setAttribute("class", "sr-trend-label"); top.textContent = money(max); svg.appendChild(top);
+		trendChart.appendChild(svg);
+	}
+	function render(rows, summary) {
+		body.innerHTML = "";
+		countHint.textContent = rows.length ? __("{0} found.", [rows.length]) : "";
+		var currency = summary.currency || (rows[0] && rows[0].currency) || "";
+		var summaryMoney = function (v) { return frappe.format(v || 0, {fieldtype: "Currency", options: currency}, {only_value: true}); };
+		summaryCount.textContent = summary.invoice_count || 0;
+		summaryAmount.innerHTML = summaryMoney(summary.total_amount);
+		summaryPaid.innerHTML = summaryMoney(summary.total_paid);
+		summaryDeposit.innerHTML = summaryMoney(summary.total_deposit_amount);
+		totalDeposit.innerHTML = summaryMoney(summary.total_deposit_amount);
+		totalCreditCard.innerHTML = summaryMoney(summary.total_credit_card);
+		totalCheckCash.innerHTML = summaryMoney(summary.total_check_cash);
+		totalWireTransfer.innerHTML = summaryMoney(summary.total_wire_transfer);
+		totalOtherPayment.innerHTML = summaryMoney(summary.total_other_payment);
+		totalAmount.innerHTML = summaryMoney(summary.total_amount);
+		totalPaid.innerHTML = summaryMoney(summary.total_paid);
+		render_trend(rows, currency);
+		if (!rows.length) { body.innerHTML = '<tr><td colspan="12" class="text-muted">' + __("No submitted sales found for this filter.") + "</td></tr>"; return; }
+		body.innerHTML = rows.map(function (r) {
+			var money = function (v) { return frappe.format(v || 0, {fieldtype: "Currency", options: r.currency}, {only_value: true}); };
+			var payment = function (v) { return Number(v || 0) ? money(v) : "—"; };
+			return "<tr>" +
+				'<td class="sr-receipt">' + frappe.utils.escape_html(r.receipt_no || "—") + "</td>" +
+				"<td>" + format_date(r.posting_date) + "</td>" +
+				"<td>" + frappe.utils.escape_html(r.customer_name || r.customer || "") + "</td>" +
+				"<td>" + (r.deposit_day ? format_date(r.deposit_day) : "—") + "</td>" +
+				"<td>" + frappe.utils.escape_html(r.deposit_status || "") + "</td>" +
+				'<td class="text-end">' + payment(r.deposit_amount) + "</td>" +
+				'<td class="text-end">' + payment(r.credit_card_amount) + "</td>" +
+				'<td class="text-end">' + payment(r.check_cash_amount) + "</td>" +
+				'<td class="text-end">' + payment(r.wire_transfer_amount) + "</td>" +
+				'<td class="text-end">' + payment(r.other_payment_amount) + "</td>" +
+				'<td class="text-end">' + money(r.grand_total) + "</td>" +
+				'<td class="text-end">' + money(r.paid_amount) + "</td></tr>";
+		}).join("");
+	}
+	function load() { update_links(); body.innerHTML = '<tr><td colspan="12" class="text-muted">' + __("Loading…") + "</td></tr>"; call("ez_accounting.www.forms.user.salesreport.get_sales", {from_date: fromDate.value, to_date: toDate.value, deposit_day: depositDay.value, search: search.value}).then(function (r) { var data = r.message || {}; render(data.rows || [], data.summary || {}); }).catch(function () { body.innerHTML = '<tr><td colspan="12" class="text-danger">' + __("Could not load the sales report.") + "</td></tr>"; }); }
+	function apply_range(range) { var today = new Date(); depositDay.value = ""; today.setHours(0,0,0,0); var start = new Date(today), end = new Date(today); if (range === "yesterday") { start.setDate(start.getDate()-1); end = new Date(start); } else if (range === "last_7_days") start.setDate(start.getDate()-6); else if (range === "this_month") start = new Date(today.getFullYear(), today.getMonth(), 1); else if (range === "last_month") { start = new Date(today.getFullYear(), today.getMonth()-1, 1); end = new Date(today.getFullYear(), today.getMonth(), 0); } else if (range === "all") { fromDate.value = ""; toDate.value = ""; set_active(range); load(); return; } fromDate.value = date_value(start); toDate.value = date_value(end); set_active(range); load(); }
+	var debounce; search.addEventListener("input", function () { clearTimeout(debounce); debounce = setTimeout(load, 300); });
+	fromDate.addEventListener("change", function () { set_active(""); load(); }); toDate.addEventListener("change", function () { set_active(""); load(); });
+	depositDay.addEventListener("change", function () { set_active(""); load(); });
+	presets.addEventListener("click", function (e) { var b = e.target.closest("[data-range]"); if (b) apply_range(b.dataset.range); });
+	document.getElementById("sr-clear-btn").addEventListener("click", function () { fromDate.value = ""; toDate.value = ""; depositDay.value = ""; search.value = ""; set_active("all"); load(); });
+	set_active("all"); load();
+});
+</script>
+{% endblock %}

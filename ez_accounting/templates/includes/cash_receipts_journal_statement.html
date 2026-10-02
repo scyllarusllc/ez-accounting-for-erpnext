@@ -1,0 +1,137 @@
+{#
+	Bare, self-contained "Cash Receipts Journal" content -- no {% extends %},
+	no site chrome. Rendered by /forms/user/printerhtml
+	(kind=cash_receipts_journal) and iframed by /forms/user/printer at true
+	8.5in x 11in size, the same flow every other document in this app prints
+	through. Deliberately doesn't rely on any class from forms_portal.css
+	(not loaded here) -- all styling is in the <style> block below.
+
+	Context (money values are pre-formatted strings -- see printerhtml.py's
+	_render_cash_receipts_journal(), the only caller):
+	  company, period, printed_at
+	  vouchers: list of {date, lines: [{account_id, account_name, ref,
+	    line_description, debit, credit}]}   (date is a formatted string,
+	    shown only on the first line of each voucher)
+	  total_debit, total_credit
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9.5pt;
+		line-height: 1.3;
+	}
+
+	.crj-company { font-size: 15pt; font-weight: 700; margin: 0; }
+	.crj-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0 0; }
+	.crj-subtitle { font-size: 10pt; color: #333; margin: 0 0 0.25in; }
+
+	table.crj-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+
+	table.crj-table th,
+	table.crj-table td {
+		text-align: left;
+		padding: 0.04in 0.08in;
+		vertical-align: top;
+	}
+
+	table.crj-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+
+	table.crj-table th.num,
+	table.crj-table td.num { text-align: right; white-space: nowrap; }
+
+	table.crj-table th:first-child,
+	table.crj-table td:first-child { padding-left: 0; }
+	table.crj-table th:last-child,
+	table.crj-table td:last-child { padding-right: 0; }
+
+	td.crj-date { white-space: nowrap; }
+
+	tr.crj-voucher-first td { border-top: 1px solid #bbb; }
+	tr.crj-voucher-first:first-child td { border-top: none; }
+
+	tfoot tr.crj-total td {
+		border-top: 1.5px solid #000;
+		border-bottom: 2.5px double #000;
+		font-weight: 700;
+		font-size: 9.5pt;
+	}
+
+	.crj-empty { color: #555; padding: 0.3in 0; }
+
+	.crj-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print {
+		thead { display: table-header-group; }
+		tr.crj-voucher-first { page-break-inside: avoid; }
+	}
+</style>
+
+<div class="crj-company">{{ company }}</div>
+<div class="crj-title">{{ _("Cash Receipts Journal") }}</div>
+<div class="crj-subtitle">{{ _("For the Period {0}").format(period) }}</div>
+
+{% if not vouchers %}
+<p class="crj-empty">{{ _("No cash receipts in this period.") }}</p>
+{% else %}
+<table class="crj-table">
+	<thead>
+		<tr>
+			<th>{{ _("Date") }}</th>
+			<th>{{ _("Account ID") }}</th>
+			<th>{{ _("Account Description") }}</th>
+			<th>{{ _("Transaction Ref") }}</th>
+			<th>{{ _("Line Description") }}</th>
+			<th class="num">{{ _("Debit Amnt") }}</th>
+			<th class="num">{{ _("Credit Amnt") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for v in vouchers %}
+		{% for line in v.lines %}
+		<tr class="{{ 'crj-voucher-first' if loop.first else '' }}">
+			<td class="crj-date">{{ v.date if loop.first else "" }}</td>
+			<td>{{ line.account_id }}</td>
+			<td>{{ line.account_name }}</td>
+			<td>{{ line.ref }}</td>
+			<td>{{ line.line_description }}</td>
+			<td class="num">{{ line.debit }}</td>
+			<td class="num">{{ line.credit }}</td>
+		</tr>
+		{% endfor %}
+		{% endfor %}
+	</tbody>
+	<tfoot>
+		<tr class="crj-total">
+			<td colspan="5">{{ _("Total") }}</td>
+			<td class="num">{{ total_debit }}</td>
+			<td class="num">{{ total_credit }}</td>
+		</tr>
+	</tfoot>
+</table>
+{% endif %}
+
+<div class="crj-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

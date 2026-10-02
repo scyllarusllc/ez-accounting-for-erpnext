@@ -1,0 +1,29 @@
+{# Font Awesome icons for .btn elements, sized for buttons via the .btn-icon
+   CSS rule in forms_portal.css. Font Awesome's stylesheet is loaded app-wide
+   via web_include_css in hooks.py (website pages don't get it for free the
+   way Desk pages do). Import as:
+   {% import "templates/includes/button_icons.html" as icons %}
+   then: {{ icons.btn_icon("save") }} #}
+{% macro btn_icon(name) %}
+	{% if name == "save" %}
+	<i class="fa fa-save btn-icon" aria-hidden="true"></i>
+	{% elif name == "arrow-right" %}
+	<i class="fa fa-arrow-right btn-icon" aria-hidden="true"></i>
+	{% elif name == "arrow-left" %}
+	<i class="fa fa-arrow-left btn-icon" aria-hidden="true"></i>
+	{% elif name == "file-text" %}
+	<i class="fa fa-file-text-o btn-icon" aria-hidden="true"></i>
+	{% elif name == "calendar" %}
+	<i class="fa fa-calendar btn-icon" aria-hidden="true"></i>
+	{% elif name == "filter" %}
+	<i class="fa fa-filter btn-icon" aria-hidden="true"></i>
+	{% elif name == "x" %}
+	<i class="fa fa-times btn-icon" aria-hidden="true"></i>
+	{% elif name == "download" %}
+	<i class="fa fa-download btn-icon" aria-hidden="true"></i>
+	{% elif name == "printer" %}
+	<i class="fa fa-print btn-icon" aria-hidden="true"></i>
+	{% elif name == "zap" %}
+	<i class="fa fa-bolt btn-icon" aria-hidden="true"></i>
+	{% endif %}
+{% endmacro %}

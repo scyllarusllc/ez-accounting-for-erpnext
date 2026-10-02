@@ -1,0 +1,293 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .printersettings-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .printersettings-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .printersettings-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .printersettings-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .printersettings-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark .printersettings-section-title {
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: #c7cbd6;
+	margin: 0.5rem 0 0.25rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark #printersettings-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark #printersettings-save {
+	font-size: 1.1rem;
+	font-weight: 600;
+	padding: 0.9rem 1.6rem;
+	border-radius: 0.6rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .printersettings-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Print Settings") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Default Print Formats for {0}'s Invoice/Receipt/Check links on Express Sales, Express Purchase, and Express Payroll. Leave any field blank to keep using its built-in default.").format(company) }}
+	</p>
+</div>
+
+<div class="card form-card printersettings-card">
+	<div class="card-body">
+
+		<div id="printersettings-alert" class="alert d-none" role="alert"></div>
+
+		<form id="printersettings-form" novalidate>
+			<div class="row g-3">
+
+				<div class="col-12">
+					<div class="printersettings-section-title">{{ _("Express Sales") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="sales_invoice_format">{{ _("Sales Invoice Format") }}</label>
+					<select class="form-control" id="sales_invoice_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Invoice" link. Default: "Sales Invoice with Remarks".') }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="sales_receipt_format">{{ _("Sales Receipt Format") }}</label>
+					<select class="form-control" id="sales_receipt_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Receipt" link. Default: "Official Receipt with line descriptions".') }}</div>
+				</div>
+
+				<div class="col-12">
+					<div class="printersettings-section-title">{{ _("Express Purchase") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="purchase_invoice_format">{{ _("Purchase Invoice Format") }}</label>
+					<select class="form-control" id="purchase_invoice_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Invoice" link. Default: "Purchase Invoice with Remarks".') }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="purchase_receipt_format">{{ _("Purchase Receipt Format") }}</label>
+					<select class="form-control" id="purchase_receipt_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Receipt" link. Default: the Payment Entry doctype\'s own default format.') }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="purchase_check_format">{{ _("Purchase Check Format") }}</label>
+					<select class="form-control" id="purchase_check_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Print Check" button. Default: "FHB Check".') }}</div>
+				</div>
+
+				<div class="col-12">
+					<div class="printersettings-section-title">{{ _("Express Payroll") }}</div>
+				</div>
+
+				<div class="col-md-6">
+					<label class="form-label" for="payroll_check_format">{{ _("Payroll Check Format") }}</label>
+					<select class="form-control" id="payroll_check_format">
+						<option value="" selected>{{ _("— Use default —") }}</option>
+					</select>
+					<div class="form-text">{{ _('Used by the "Print Check" button. Default: "FHB Check for payroll".') }}</div>
+				</div>
+
+			</div>
+
+			<div class="d-grid mt-4">
+				<button type="submit" class="btn btn-primary" id="printersettings-save">
+					<span class="spinner-border spinner-border-sm d-none" id="printersettings-spinner" role="status" aria-hidden="true"></span>
+					{{ icons.btn_icon("save") }}<span id="printersettings-save-label">{{ _("Save") }}</span>
+				</button>
+			</div>
+		</form>
+
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var alertBox = document.getElementById("printersettings-alert");
+	var form = document.getElementById("printersettings-form");
+	var saveBtn = document.getElementById("printersettings-save");
+	var saveSpinner = document.getElementById("printersettings-spinner");
+	var saveLabel = document.getElementById("printersettings-save-label");
+
+	// Each field's <select> id, the doctype its options must belong to, and
+	// the settings field name the server expects — one table drives loading,
+	// populating, and saving all five instead of five near-identical blocks.
+	var FIELDS = [
+		{id: "sales_invoice_format", doctype: "Sales Invoice"},
+		{id: "sales_receipt_format", doctype: "Payment Entry"},
+		{id: "purchase_invoice_format", doctype: "Purchase Invoice"},
+		{id: "purchase_receipt_format", doctype: "Payment Entry"},
+		{id: "purchase_check_format", doctype: "Payment Entry"},
+		{id: "payroll_check_format", doctype: "Salary Slip"}
+	];
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	// Loads one field's option list, then applies `selectedValue` if it's
+	// actually among the loaded options (a stored value referencing a since-
+	// disabled/deleted Print Format is silently left unselected rather than
+	// crashing or showing a phantom option).
+	function load_field_options(field, selectedValue) {
+		var select = document.getElementById(field.id);
+		return call("ez_accounting.www.forms.user.printersettings.get_print_formats", {doctype: field.doctype})
+			.then(function (r) {
+				var rows = r.message || [];
+				select.innerHTML = '<option value="" selected>' + __("— Use default —") + "</option>";
+				rows.forEach(function (row) {
+					var opt = document.createElement("option");
+					opt.value = row.name;
+					opt.textContent = row.name;
+					select.appendChild(opt);
+				});
+				if (selectedValue && rows.some(function (row) { return row.name === selectedValue; })) {
+					select.value = selectedValue;
+				}
+			})
+			.catch(function (err) {
+				select.innerHTML = '<option value="" selected disabled>' + __("Could not load Print Formats") + "</option>";
+				show_alert(extract_error_message(err), true);
+			});
+	}
+
+	call("ez_accounting.www.forms.user.printersettings.get_settings").then(function (r) {
+		var settings = r.message || {};
+		FIELDS.forEach(function (field) {
+			load_field_options(field, settings[field.id]);
+		});
+	}).catch(function (err) {
+		show_alert(extract_error_message(err), true);
+		FIELDS.forEach(function (field) { load_field_options(field, null); });
+	});
+
+	function set_saving(is_saving) {
+		saveBtn.disabled = is_saving;
+		saveSpinner.classList.toggle("d-none", !is_saving);
+		saveLabel.textContent = is_saving ? __("Saving…") : __("Save");
+	}
+
+	form.addEventListener("submit", function (e) {
+		e.preventDefault();
+		alertBox.classList.add("d-none");
+
+		var args = {};
+		FIELDS.forEach(function (field) {
+			args[field.id] = document.getElementById(field.id).value;
+		});
+
+		set_saving(true);
+		call("ez_accounting.www.forms.user.printersettings.save_settings", args)
+			.then(function () {
+				set_saving(false);
+				show_alert(__("Saved."), false);
+			})
+			.catch(function (err) {
+				set_saving(false);
+				show_alert(extract_error_message(err), true);
+			});
+	});
+});
+</script>
+
+{% endblock %}

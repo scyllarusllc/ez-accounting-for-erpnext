@@ -1,0 +1,91 @@
+<style>
+@page { size: Letter portrait; margin: .10in; }
+html, body { margin: 0 !important; padding: 0 !important; width: 100%; }
+.bdap-sheet { width: 100%; margin: 0; padding: .04in .06in; box-sizing: border-box; color: #000; font: 7pt/1.1 Arial, sans-serif; }
+.bdap-page { width: 100%; box-sizing: border-box; }
+.bdap-other-payments { margin-top: .09in; break-inside: avoid; page-break-inside: avoid; }
+.bdap-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1pt solid #000; padding-bottom: .025in; margin-bottom: .035in; }
+.bdap-company { font-size: 14pt; font-weight: 800; }
+.bdap-title { font-size: 8.5pt; font-weight: 700; }
+.bdap-page-label { font-size: 7pt; font-weight: 700; }
+.bdap-meta, .bdap-lines, .bdap-details, .bdap-payments { width: 100%; border-collapse: collapse; }
+.bdap-meta { margin-bottom: .04in; }
+.bdap-meta td { padding: .012in .025in; vertical-align: top; white-space: nowrap; }
+.bdap-meta .label { font-size: 6.4pt; font-weight: 700; color: #333; }
+.bdap-meta .value { font-weight: 600; }
+.bdap-summary { display: grid; grid-template-columns: 1fr 1fr; gap: .08in; margin-bottom: .04in; }
+.bdap-box { border: .5pt solid #555; padding: .025in .04in; }
+.bdap-box-title { font-size: 6.5pt; font-weight: 700; border-bottom: .5pt solid #999; margin-bottom: .015in; }
+.bdap-lines td { padding: .008in 0; }
+.bdap-lines td:last-child { text-align: right; white-space: nowrap; }
+.bdap-total td { border-top: .75pt solid #000; padding-top: .02in; font-weight: 700; font-size: 8pt; }
+.bdap-details, .bdap-payments { table-layout: fixed; font-size: 6.2pt; }
+.bdap-details th, .bdap-details td, .bdap-payments th, .bdap-payments td { border: .35pt solid #777; padding: .014in .02in; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bdap-details th, .bdap-payments th { background: #eee; font-size: 5.8pt; text-align: left; }
+.bdap-details .amount, .bdap-payments .amount { text-align: right; }
+.bdap-details tfoot td, .bdap-payments tfoot td { font-weight: 700; border-top: .75pt solid #000; }
+.bdap-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: .18in; margin-top: .075in; }
+.bdap-sign span { border-top: .5pt solid #000; text-align: center; padding-top: .018in; font-size: 6.5pt; }
+.bdap-period { text-align: center; font-size: 7pt; margin: -.015in 0 .045in; }
+.bdap-mode-summary { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: .045in; }
+.bdap-mode-summary th, .bdap-mode-summary td { border: .5pt solid #777; padding: .025in .04in; text-align: right; }
+.bdap-mode-summary th { background: #eee; font-size: 6.2pt; }
+.bdap-mode-summary td { font-size: 7pt; font-weight: 700; }
+.bdap-grand-total { display:flex; justify-content:flex-end; align-items:baseline; gap:.18in; border:1pt solid #000; margin-top:.055in; padding:.045in .07in; font-weight:700; }
+.bdap-grand-total-label { font-size:7pt; }
+.bdap-grand-total-amount { font-size:9pt; min-width:1.1in; text-align:right; }
+@media print { .bdap-page { break-inside: auto; } }
+</style>
+
+{% set items = doc.get_receipt_details() %}
+{% set other_payments = doc.get_other_period_payments() %}
+{% set deposit_totals = namespace(amount=0) %}
+{% set other_totals = namespace(credit_card=0, wire_transfer=0, other_payment=0, amount=0) %}
+{% for item in items %}{% set deposit_totals.amount = deposit_totals.amount + (item.paid_amount or 0) %}{% endfor %}
+{% for item in other_payments %}
+  {% set other_totals.amount = other_totals.amount + (item.paid_amount or 0) %}
+  {% if item.payment_bucket == 'credit_card' %}{% set other_totals.credit_card = other_totals.credit_card + (item.paid_amount or 0) %}
+  {% elif item.payment_bucket == 'wire_transfer' %}{% set other_totals.wire_transfer = other_totals.wire_transfer + (item.paid_amount or 0) %}
+  {% else %}{% set other_totals.other_payment = other_totals.other_payment + (item.paid_amount or 0) %}{% endif %}
+{% endfor %}
+
+<div class="bdap-sheet">
+  <section class="bdap-page">
+    <div class="bdap-head"><span class="bdap-company">{{ doc.company }}</span><span class="bdap-title">BANK DEPOSIT SHEET</span><span class="bdap-page-label">DEPOSIT COPY</span></div>
+    <table class="bdap-meta">
+      <tr><td class="label">DOC ID</td><td class="value">{{ doc.name }}</td><td class="label">DEPOSIT DATE</td><td class="value">{{ doc.get_formatted('deposit_date') }}</td><td class="label">SEQ</td><td class="value">{{ doc.custom_sequence_number or doc.name }}</td></tr>
+      <tr><td class="label">BANK</td><td class="value" colspan="3">{{ doc.bank_account }}</td><td class="label">RECEIPTS</td><td class="value">{{ doc.get_formatted('from_receipt_date') }} – {{ doc.get_formatted('to_receipt_date') }}</td></tr>
+    </table>
+    <div class="bdap-summary">
+      <div class="bdap-box"><div class="bdap-box-title">CASH COUNT</div><table class="bdap-lines">
+        <tr><td>$100 × {{ doc.usd100 or 0 }}</td><td>${{ "{:,.2f}".format((doc.usd100 or 0) * 100) }}</td></tr>
+        <tr><td>$50 × {{ doc.usd50 or 0 }}</td><td>${{ "{:,.2f}".format((doc.usd50 or 0) * 50) }}</td></tr>
+        <tr><td>$20 × {{ doc.usd20 or 0 }}</td><td>${{ "{:,.2f}".format((doc.usd20 or 0) * 20) }}</td></tr>
+        <tr><td>$10 × {{ doc.usd10 or 0 }}</td><td>${{ "{:,.2f}".format((doc.usd10 or 0) * 10) }}</td></tr>
+        <tr><td>$5 × {{ doc.usd5 or 0 }}, $1 × {{ doc.usd1 or 0 }}, coins</td><td>{{ doc.get_formatted('coins') }}</td></tr>
+        <tr class="bdap-total"><td>TOTAL CASH</td><td>{{ doc.get_formatted('total_physical_cash') }}</td></tr>
+      </table></div>
+      <div class="bdap-box"><div class="bdap-box-title">DEPOSIT TOTALS</div><table class="bdap-lines">
+        <tr><td>System expected cash</td><td>{{ doc.get_formatted('system_expected_cash') }}</td></tr>
+        <tr><td>Cash variance</td><td>{{ doc.get_formatted('variance') }}</td></tr>
+        <tr><td>Check deposit</td><td>{{ doc.get_formatted('check_amount') if doc.check_amount else '$ 0.00' }}</td></tr>
+        <tr><td>Check variance</td><td>{{ doc.get_formatted('check_variance') if doc.check_variance else '$ 0.00' }}</td></tr>
+        <tr class="bdap-total"><td>TOTAL DEPOSIT</td><td>{{ doc.get_formatted('total_deposit') }}</td></tr>
+      </table></div>
+    </div>
+    <table class="bdap-details"><thead><tr><th style="width:17%">Receipt</th><th style="width:9%">Date</th><th style="width:19%">Student / Party</th><th style="width:15%">Mode</th><th style="width:14%">Reference</th><th style="width:15%">Remarks</th><th style="width:11%" class="amount">Amount</th></tr></thead><tbody>
+      {% for item in items %}<tr><td>{{ item.name }}</td><td>{{ item.posting_date.strftime('%m/%d/%y') if item.posting_date else '' }}</td><td>{{ item.party_name or 'N/A' }}</td><td>{{ item.mode_of_payment }}</td><td>{{ item.reference_no or '' }}</td><td>{{ item.remarks or '' }}</td><td class="amount">${{ "{:,.2f}".format(item.paid_amount or 0) }}</td></tr>{% else %}<tr><td colspan="7">No deposited receipts</td></tr>{% endfor %}
+    </tbody><tfoot><tr><td colspan="6" class="amount">DEPOSIT RECEIPTS TOTAL</td><td class="amount">${{ "{:,.2f}".format(deposit_totals.amount) }}</td></tr></tfoot></table>
+    <div class="bdap-sign"><span>Counted By</span><span>Checked By</span><span>Verified By</span></div>
+  </section>
+
+  <section class="bdap-page bdap-other-payments">
+    <div class="bdap-head"><span class="bdap-company">{{ doc.company }}</span><span class="bdap-title">OTHER PAYMENTS IN RECEIPT PERIOD</span><span class="bdap-page-label">{{ doc.name }}</span></div>
+    <div class="bdap-period">Excludes Cash Undeposited and Check Undeposited · {{ doc.get_formatted('from_receipt_date') }} – {{ doc.get_formatted('to_receipt_date') }}</div>
+    <table class="bdap-mode-summary"><thead><tr><th>Credit Card</th><th>Wire Transfer</th><th>Other Payment</th><th>Summary</th></tr></thead><tbody><tr><td>${{ "{:,.2f}".format(other_totals.credit_card) }}</td><td>${{ "{:,.2f}".format(other_totals.wire_transfer) }}</td><td>${{ "{:,.2f}".format(other_totals.other_payment) }}</td><td>${{ "{:,.2f}".format(other_totals.amount) }}</td></tr></tbody></table>
+    <table class="bdap-payments"><thead><tr><th style="width:17%">Receipt</th><th style="width:9%">Date</th><th style="width:19%">Student / Party</th><th style="width:15%">Mode</th><th style="width:14%">Reference</th><th style="width:15%">Remarks</th><th style="width:11%" class="amount">Amount</th></tr></thead><tbody>
+      {% for item in other_payments %}<tr><td>{{ item.name }}</td><td>{{ item.posting_date.strftime('%m/%d/%y') if item.posting_date else '' }}</td><td>{{ item.party_name or 'N/A' }}</td><td>{{ item.mode_of_payment }}</td><td>{{ item.reference_no or '' }}</td><td>{{ item.description }}</td><td class="amount">${{ "{:,.2f}".format(item.paid_amount or 0) }}</td></tr>{% else %}<tr><td colspan="7">No other payments in this receipt period</td></tr>{% endfor %}
+    </tbody><tfoot><tr><td colspan="6" class="amount">OTHER PAYMENTS TOTAL</td><td class="amount">${{ "{:,.2f}".format(other_totals.amount) }}</td></tr></tfoot></table>
+    <div class="bdap-grand-total"><span class="bdap-grand-total-label">TOTAL (DEPOSIT RECEIPTS TOTAL + OTHER PAYMENTS TOTAL)</span><span class="bdap-grand-total-amount">${{ "{:,.2f}".format(deposit_totals.amount + other_totals.amount) }}</span></div>
+  </section>
+</div>

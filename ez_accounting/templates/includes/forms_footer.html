@@ -1,0 +1,22 @@
+<footer class="forms-footer">
+	<div class="container forms-footer-inner">
+		{% if show_gl_links %}
+		<div class="forms-footer-links">
+			{{ _("Quick Links") }}:
+			<a href="/desk" target="_blank" rel="noreferrer">{{ _("ERPNext") }}</a>
+			|
+			<a href="/desk/query-report/Balance Sheet" target="_blank" rel="noreferrer">{{ _("Financial Statement") }}</a>
+		</div>
+		{% endif %}
+		<div class="forms-footer-links">
+			<a href="/forms/user/dashboard">{{ _("User Portal") }}</a>
+			|
+			{% if show_admin_dashboard_link %}
+			<a href="/forms/admin/email">{{ _("Admin") }}</a>
+			|
+			{% endif %}
+			<a href="/logout">{{ _("Log out") }}</a>
+		</div>
+		<div class="forms-footer-copyright">&copy; {{ current_year }}</div>
+	</div>
+</footer>

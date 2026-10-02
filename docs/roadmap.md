@@ -1,11 +1,10 @@
 # Roadmap
 
-- [x] Express Sale — service layer (full / partial / split payment → Sales Invoice + Payment Entry)
-- [x] Deposit Management — service layer (group undeposited Payment Entries into one Journal Entry)
-- [ ] Express Sale — UI (Frappe desk page)
-- [ ] Deposit Management — UI (Frappe desk page)
-- [ ] `ez_deposited_in` custom field on Payment Entry (via `fixtures` / custom field JSON)
-- [ ] Bank Reconciliation — match bank statement lines against ERPNext transactions
-- [ ] Accounting Dashboard — sales, payments, undeposited funds, outstanding AR
-- [ ] Tests for Reconciliation service
+- [x] Express Sales, Deposit Management, Bank Reconciliation — implemented
+- [x] Payroll reports (FICA, Treasurer, Payroll Summary)
+- [x] Core accounting reports (aged AR/AP, journals, ledgers, 1099)
+- [x] Per-user page access control
+- [ ] Automated test coverage (currently light — most logic lives in Frappe web-route handlers, which need a live site to exercise)
+- [ ] Packaged fixtures for a clean first install (roles, default print formats)
 - [ ] Demo video / screenshots
+- [ ] CONTRIBUTING.md for outside contributors

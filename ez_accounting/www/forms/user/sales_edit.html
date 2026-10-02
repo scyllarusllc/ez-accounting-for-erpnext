@@ -1,0 +1,693 @@
+{% extends "templates/web.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .back-to-list-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	color: #7ea6ff;
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .back-to-list-link:hover {
+	color: #a7c4ff;
+}
+
+body.forms-portal-dark .sales-edit-card .card-body {
+	padding: 1.75rem;
+}
+
+body.forms-portal-dark .sales-edit-summary {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.25rem;
+	padding: 0.9rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	margin-bottom: 1.25rem;
+}
+
+body.forms-portal-dark .sales-edit-stat-label {
+	display: block;
+	font-size: 0.75rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .sales-edit-stat-value {
+	display: block;
+	font-size: 1.05rem;
+	font-weight: 600;
+}
+
+body.forms-portal-dark a.sales-edit-profile-link {
+	display: block;
+	margin-top: 0.2rem;
+	font-size: 0.8rem;
+	font-weight: 400;
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark a.sales-edit-profile-link:hover {
+	color: #a9c4ff;
+	text-decoration: underline;
+}
+
+body.forms-portal-dark .sales-edit-items-table {
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .sales-edit-note {
+	font-size: 0.85rem;
+	color: #8a8f9c;
+	margin-bottom: 1.25rem;
+}
+
+body.forms-portal-dark .save-status {
+	font-size: 0.85rem;
+	margin-left: 0.75rem;
+}
+
+body.forms-portal-dark .save-status.is-saving {
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .save-status.is-saved {
+	color: #6fd996;
+}
+
+body.forms-portal-dark .save-status.is-error {
+	color: #f0a8a8;
+}
+
+body.forms-portal-dark .sales-edit-remarks-editor {
+	min-height: 8rem;
+	padding: 0.75rem 1rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	color: #cbd2da;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	margin-bottom: 0.4rem;
+}
+
+body.forms-portal-dark .sales-edit-remarks-editor:focus {
+	outline: none;
+	border-color: #5b8cff;
+}
+
+body.forms-portal-dark .sales-edit-remarks-editor:empty::before {
+	content: attr(data-placeholder);
+	color: #5b6270;
+}
+
+body.forms-portal-dark .sales-edit-remarks-editor img {
+	max-width: 100%;
+	border-radius: 0.35rem;
+	margin: 0.4rem 0;
+	display: block;
+}
+
+body.forms-portal-dark a.history-row-link {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark a.history-row-link:hover {
+	color: #a7c4ff;
+}
+
+body.forms-portal-dark .document-upload-row {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	flex-wrap: wrap;
+	margin-bottom: 0.85rem;
+	padding-bottom: 0.85rem;
+	border-bottom: 1px dashed #2a2e37;
+}
+
+body.forms-portal-dark .document-upload-row .form-control,
+body.forms-portal-dark .document-upload-row .file-input {
+	flex: 1 1 12rem;
+}
+
+body.forms-portal-dark .document-upload-hint {
+	font-size: 0.75rem;
+	color: #8a8f9c;
+	flex-basis: 100%;
+	margin: 0.3rem 0 0;
+}
+
+body.forms-portal-dark .document-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.65rem 0.85rem;
+	background-color: #1e2129;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+	margin-bottom: 0.6rem;
+}
+
+body.forms-portal-dark .document-row:last-child {
+	margin-bottom: 0;
+}
+
+body.forms-portal-dark .document-row-info {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+body.forms-portal-dark .document-row-info a.history-row-link {
+	display: inline-flex;
+	align-items: center;
+	font-weight: 600;
+}
+
+body.forms-portal-dark .document-row-meta {
+	font-size: 0.8rem;
+	color: #8a8f9c;
+	margin-top: 0.2rem;
+}
+
+body.forms-portal-dark .document-row-actions {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	padding-left: 0.75rem;
+	border-left: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .document-remove-btn {
+	display: inline-flex;
+	align-items: center;
+	background: none;
+	border: 1px solid #3a2a2a;
+	border-radius: 0.4rem;
+	color: #f0a8a8;
+	cursor: pointer;
+	font-size: 0.85rem;
+	padding: 0.45rem 0.75rem;
+	min-height: 2.25rem;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .document-remove-btn:hover {
+	background-color: rgba(240, 168, 168, 0.12);
+	border-color: #f0a8a8;
+}
+
+body.forms-portal-dark .no-versions-hint {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+	margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<a class="back-to-list-link" href="/forms/user/sales">&larr; {{ _("Back to Express Sales") }}</a>
+
+{% if not sales_invoice %}
+<div class="alert alert-warning">{{ _("No Sales Invoice specified — open this page from the \"Edit\" link on a row in Sales Invoice History.") }}</div>
+{% else %}
+
+<div id="sales-edit-alert" class="alert d-none" role="alert"></div>
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="" id="sales-edit-title">{{ _("Loading…") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">{{ _("Payment history and attachments for {0}").format(sales_invoice) }}</p>
+</div>
+
+<div class="card form-card sales-edit-card">
+	<div class="card-body">
+		<div class="sales-edit-summary" id="sales-edit-summary"></div>
+
+		<div class="table-responsive sales-edit-items-table">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Item") }}</th>
+						<th>{{ _("Qty") }}</th>
+						<th>{{ _("Rate") }}</th>
+						<th>{{ _("Amount") }}</th>
+					</tr>
+				</thead>
+				<tbody id="sales-edit-items-body"></tbody>
+			</table>
+		</div>
+
+		<div class="d-flex align-items-center mb-2">
+			<h4 class="mb-0">{{ _("Enhanced Remarks") }}</h4>
+			<span class="save-status" id="sales-edit-remarks-status"></span>
+		</div>
+		<div class="sales-edit-remarks-editor" id="sales-edit-remarks-editor" contenteditable="true" data-placeholder="{{ _('Type a note, or paste a screenshot/photo — it uploads and saves automatically.') }}"></div>
+		<p class="sales-edit-note mb-4">{{ _("Saved separately from the invoice's own Remarks field — pasting an image uploads it automatically, and every change here saves on its own a moment after you stop typing.") }}</p>
+
+		<h4 class="mb-3">{{ _("Payment History") }}</h4>
+		<div class="table-responsive sales-edit-items-table">
+			<table class="table table-bordered mb-0">
+				<thead>
+					<tr>
+						<th>{{ _("Date") }}</th>
+						<th>{{ _("Payment Entry") }}</th>
+						<th>{{ _("Mode of Payment") }}</th>
+						<th>{{ _("Reference No") }}</th>
+						<th>{{ _("Amount") }}</th>
+					</tr>
+				</thead>
+				<tbody id="sales-edit-payments-body"></tbody>
+			</table>
+		</div>
+
+		<h4 class="mb-3">{{ _("Attachments") }}</h4>
+		<div class="document-upload-row">
+			<input type="file" class="file-input file-input-neutral w-100" id="sales-edit-attachment-input">
+			<div class="document-upload-hint">{{ _("Uploaded privately to the invoice — not a public link.") }}</div>
+		</div>
+		<div id="sales-edit-attachments-list"></div>
+	</div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	{% if not sales_invoice %}
+	return;
+	{% endif %}
+
+	var SALES_INVOICE = {{ sales_invoice | tojson }};
+
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	// A real multipart POST (not JSON, unlike call() above) to this page's own
+	// upload_sales_invoice_attachment endpoint rather than straight to Frappe's
+	// /api/method/upload_file — the latter needs write permission on the Sales
+	// Invoice, which non-admin office staff don't have, and this page is open
+	// to any logged-in user. The endpoint attaches the file privately after
+	// checking only that the caller is logged in and named a real invoice in
+	// the selected company. filename is optional — a pasted-from-clipboard
+	// image Blob has no filename of its own (unlike a real file picked via
+	// <input type="file">), so the Enhanced Remarks paste handler passes one.
+	function upload_file(file, filename) {
+		var formData = new FormData();
+		if (filename) {
+			formData.append("file", file, filename);
+		} else {
+			formData.append("file", file);
+		}
+		formData.append("name", SALES_INVOICE);
+		return fetch("/api/method/ez_accounting.www.forms.user.sales_edit.upload_sales_invoice_attachment", {
+			method: "POST",
+			headers: { "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: formData
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Upload failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function doc_link(doctype, name) {
+		return "/desk/" + doctype.toLowerCase().replace(/ /g, "-") + "/" + encodeURIComponent(name);
+	}
+
+	function show_alert(message, is_error) {
+		var el = document.getElementById("sales-edit-alert");
+		el.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		el.innerHTML = message;
+		el.classList.remove("d-none");
+	}
+
+	function format_timestamp(value) {
+		if (!value) return "";
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return frappe.utils.escape_html(value);
+		}
+	}
+
+	var summaryEl = document.getElementById("sales-edit-summary");
+	var itemsBody = document.getElementById("sales-edit-items-body");
+	var paymentsBody = document.getElementById("sales-edit-payments-body");
+	var titleEl = document.getElementById("sales-edit-title");
+	var attachmentsList = document.getElementById("sales-edit-attachments-list");
+	var attachmentInput = document.getElementById("sales-edit-attachment-input");
+	var remarksEditor = document.getElementById("sales-edit-remarks-editor");
+	var remarksStatus = document.getElementById("sales-edit-remarks-status");
+
+	function stat_tile(label, value) {
+		var div = document.createElement("div");
+		var labelEl = document.createElement("span");
+		labelEl.className = "sales-edit-stat-label";
+		labelEl.textContent = label;
+		var valueEl = document.createElement("span");
+		valueEl.className = "sales-edit-stat-value";
+		valueEl.textContent = value;
+		div.appendChild(labelEl);
+		div.appendChild(valueEl);
+		return div;
+	}
+
+	function render_attachments(attachments) {
+		attachmentsList.innerHTML = "";
+		if (!attachments.length) {
+			var hint = document.createElement("div");
+			hint.className = "no-versions-hint";
+			hint.textContent = __("No attachments yet.");
+			attachmentsList.appendChild(hint);
+			return;
+		}
+		attachments.forEach(function (a) {
+			var row = document.createElement("div");
+			row.className = "document-row";
+
+			var info = document.createElement("div");
+			info.className = "document-row-info";
+			var link = document.createElement("a");
+			link.className = "history-row-link";
+			link.target = "_blank";
+			link.href = a.file_url;
+			link.textContent = a.file_name;
+			info.appendChild(link);
+			var meta = document.createElement("div");
+			meta.className = "document-row-meta";
+			meta.textContent = format_timestamp(a.creation) + (a.owner ? " — " + a.owner : "");
+			info.appendChild(meta);
+			row.appendChild(info);
+
+			var actions = document.createElement("div");
+			actions.className = "document-row-actions";
+			var removeBtn = document.createElement("button");
+			removeBtn.type = "button";
+			removeBtn.className = "document-remove-btn";
+			removeBtn.textContent = __("Remove");
+			removeBtn.addEventListener("click", function () {
+				call("ez_accounting.www.forms.user.sales_edit.delete_sales_invoice_attachment", { name: SALES_INVOICE, file_name: a.name })
+					.then(function () {
+						load_attachments();
+					})
+					.catch(function (err) {
+						show_alert(extract_error_message(err), true);
+					});
+			});
+			actions.appendChild(removeBtn);
+			row.appendChild(actions);
+
+			attachmentsList.appendChild(row);
+		});
+	}
+
+	function load_attachments() {
+		return call("ez_accounting.www.forms.user.sales_edit.get_sales_invoice_attachments", { name: SALES_INVOICE }).then(function (r) {
+			render_attachments(r.message || []);
+		}).catch(function (err) {
+			show_alert(extract_error_message(err), true);
+		});
+	}
+
+	attachmentInput.addEventListener("change", function () {
+		if (!attachmentInput.files || !attachmentInput.files.length) return;
+		var file = attachmentInput.files[0];
+		attachmentInput.disabled = true;
+		upload_file(file).then(function () {
+			attachmentInput.disabled = false;
+			attachmentInput.value = "";
+			load_attachments();
+		}).catch(function (err) {
+			attachmentInput.disabled = false;
+			attachmentInput.value = "";
+			show_alert(extract_error_message(err), true);
+		});
+	});
+
+	// ---- Enhanced Remarks: a contenteditable note that accepts a pasted
+	// image, uploads it automatically, and autosaves the whole thing a
+	// moment after every change. No rich-text library — this app builds
+	// everything with vanilla DOM APIs (see e.g. the searchable-select combo
+	// in sales.html), and the only "rich" behavior actually needed here is
+	// inline images, which a plain contenteditable div already supports.
+	function insert_image_at_cursor(imgUrl) {
+		remarksEditor.focus();
+		var sel = window.getSelection();
+		var range;
+		if (sel.rangeCount && remarksEditor.contains(sel.anchorNode)) {
+			range = sel.getRangeAt(0);
+		} else {
+			// No prior selection inside the editor (e.g. it never had focus
+			// yet) — fall back to appending at the end rather than losing
+			// the image entirely.
+			range = document.createRange();
+			range.selectNodeContents(remarksEditor);
+			range.collapse(false);
+		}
+		range.deleteContents();
+		var img = document.createElement("img");
+		img.src = imgUrl;
+		range.insertNode(img);
+		range.setStartAfter(img);
+		range.setEndAfter(img);
+		sel.removeAllRanges();
+		sel.addRange(range);
+	}
+
+	function show_remarks_status(text, cls) {
+		remarksStatus.className = "save-status" + (cls ? " " + cls : "");
+		remarksStatus.textContent = text;
+	}
+
+	function save_enhanced_remarks() {
+		show_remarks_status(__("Saving…"), "is-saving");
+		call("ez_accounting.www.forms.user.sales_edit.save_sales_invoice_enhanced_remarks", {
+			name: SALES_INVOICE,
+			content: remarksEditor.innerHTML
+		}).then(function () {
+			show_remarks_status(__("Saved"), "is-saved");
+			setTimeout(function () {
+				if (remarksStatus.classList.contains("is-saved")) show_remarks_status("");
+			}, 2500);
+		}).catch(function (err) {
+			show_remarks_status("", "");
+			remarksStatus.className = "save-status is-error";
+			remarksStatus.innerHTML = extract_error_message(err);
+		});
+	}
+
+	// Debounced — this is a real save request per change, not the kind of
+	// thing that should fire on every single keystroke; 1s after the admin
+	// stops typing is the same "wait for a pause" shape the searchable
+	// history search boxes elsewhere in this app already use (just a longer
+	// delay, since typing a note is a longer-running activity than a search
+	// query).
+	var remarksSaveDebounce = null;
+	remarksEditor.addEventListener("input", function () {
+		clearTimeout(remarksSaveDebounce);
+		remarksSaveDebounce = setTimeout(save_enhanced_remarks, 1000);
+	});
+
+	// Upload one image Blob and drop it into the editor at the cursor.
+	function upload_pasted_image(blob) {
+		if (!blob) return;
+		var type = blob.type || "image/png";
+		var extension = (type.split("/")[1] || "png").split("+")[0];
+		var filename = "pasted-image-" + Date.now() + "." + extension;
+		show_remarks_status(__("Uploading image…"), "is-saving");
+		upload_file(blob, filename).then(function (r) {
+			insert_image_at_cursor(r.message.file_url);
+			save_enhanced_remarks();
+		}).catch(function (err) {
+			remarksStatus.className = "save-status is-error";
+			remarksStatus.innerHTML = extract_error_message(err);
+		});
+	}
+
+	function paste_image_help() {
+		remarksStatus.className = "save-status is-error";
+		remarksStatus.textContent = __(
+			"That image couldn't be pasted directly. In Windows press Win+Shift+S to snip it and paste again, or right-click the picture in Word → Save as Picture and add it under Attachments below."
+		);
+	}
+
+	// A pasted image can reach us three ways, and copying a picture out of
+	// Microsoft Word hits the awkward one: Word puts an HTML fragment (with an
+	// <img src="file:///…"> the browser can't load) and a bitmap on the
+	// clipboard, but older/!Chromium browsers don't expose that bitmap in the
+	// synchronous paste event at all — so we also look in clipboardData.files
+	// and, failing that, fall back to the async Clipboard API, which Chromium
+	// does populate with a PNG rendering of the Word picture. A plain
+	// Win+Shift+S / PrtScn screenshot always shows up as a normal image item
+	// and never needs the fallback.
+	remarksEditor.addEventListener("paste", function (e) {
+		var clipboardData = e.clipboardData || window.clipboardData;
+		if (!clipboardData) return;
+
+		var items = clipboardData.items || [];
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].kind === "file" && items[i].type && items[i].type.indexOf("image/") === 0) {
+				e.preventDefault();
+				upload_pasted_image(items[i].getAsFile());
+				return;
+			}
+		}
+
+		var files = clipboardData.files || [];
+		for (var j = 0; j < files.length; j++) {
+			if (files[j].type && files[j].type.indexOf("image/") === 0) {
+				e.preventDefault();
+				upload_pasted_image(files[j]);
+				return;
+			}
+		}
+
+		// No bitmap in the sync event. If the clipboard also has no image-bearing
+		// HTML, it's an ordinary text/HTML paste — let the browser handle it.
+		var html = "";
+		try { html = clipboardData.getData("text/html") || ""; } catch (ex) { /* ignore */ }
+		if (!/<img\b/i.test(html)) return;
+
+		// It looked like an image paste (e.g. from Word) but we have no bitmap —
+		// don't let the browser insert the dead file:// <img>. Try the async
+		// Clipboard API, then guide the user if that fails too.
+		e.preventDefault();
+		if (!navigator.clipboard || !navigator.clipboard.read) {
+			paste_image_help();
+			return;
+		}
+		show_remarks_status(__("Reading pasted image…"), "is-saving");
+		navigator.clipboard.read().then(function (clipItems) {
+			for (var k = 0; k < clipItems.length; k++) {
+				var types = clipItems[k].types || [];
+				for (var t = 0; t < types.length; t++) {
+					if (types[t].indexOf("image/") === 0) {
+						return clipItems[k].getType(types[t]).then(upload_pasted_image);
+					}
+				}
+			}
+			paste_image_help();
+		}).catch(function () {
+			paste_image_help();
+		});
+	});
+
+	function load() {
+		call("ez_accounting.www.forms.user.sales_edit.get_sales_invoice_edit_data", { name: SALES_INVOICE }).then(function (r) {
+			var d = r.message;
+			if (!d) return;
+
+			titleEl.textContent = d.name;
+
+			summaryEl.innerHTML = "";
+			var customerTile = stat_tile(__("Customer"), d.customer_name);
+			if (d.is_student) {
+				var profileLink = document.createElement("a");
+				profileLink.className = "sales-edit-profile-link";
+				profileLink.target = "_blank";
+				profileLink.rel = "noopener";
+				profileLink.href = "/forms/user/student_customer_profile?customer=" + encodeURIComponent(d.customer);
+				profileLink.textContent = __("Open student profile");
+				customerTile.appendChild(profileLink);
+			}
+			summaryEl.appendChild(customerTile);
+			summaryEl.appendChild(stat_tile(__("Posting Date"), d.posting_date));
+			summaryEl.appendChild(stat_tile(__("Status"), d.status));
+			summaryEl.appendChild(stat_tile(__("Grand Total"), frappe.format(d.grand_total, {fieldtype: "Currency"}, {only_value: true})));
+			summaryEl.appendChild(stat_tile(__("Paid"), frappe.format(d.paid_amount, {fieldtype: "Currency"}, {only_value: true})));
+			summaryEl.appendChild(stat_tile(__("Outstanding"), frappe.format(d.outstanding_amount, {fieldtype: "Currency"}, {only_value: true})));
+
+			itemsBody.innerHTML = (d.items || []).map(function (item) {
+				return (
+					"<tr>" +
+					"<td>" + frappe.utils.escape_html(item.item_name || item.item_code) +
+						(item.description && item.description !== item.item_name
+							? '<div class="text-muted small">' + frappe.utils.escape_html(item.description) + "</div>"
+							: "") +
+					"</td>" +
+					"<td>" + item.qty + "</td>" +
+					"<td>" + frappe.format(item.rate, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					"<td>" + frappe.format(item.amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					"</tr>"
+				);
+			}).join("") || '<tr><td colspan="4" class="text-muted">' + __("No items found.") + "</td></tr>";
+
+			paymentsBody.innerHTML = (d.payments || []).map(function (p) {
+				return (
+					"<tr>" +
+					"<td>" + (p.posting_date || "") + "</td>" +
+					"<td><a class=\"history-row-link\" target=\"_blank\" href=\"" + doc_link("payment-entry", p.payment_entry) + "\">" + frappe.utils.escape_html(p.payment_entry) + "</a></td>" +
+					"<td>" + (p.mode_of_payment ? frappe.utils.escape_html(p.mode_of_payment) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					"<td>" + (p.reference_no ? frappe.utils.escape_html(p.reference_no) : '<span class="text-muted">&mdash;</span>') + "</td>" +
+					"<td>" + frappe.format(p.amount, {fieldtype: "Currency"}, {only_value: true}) + "</td>" +
+					"</tr>"
+				);
+			}).join("") || '<tr><td colspan="5" class="text-muted">' + __("No payments recorded yet.") + "</td></tr>";
+
+			// Setting innerHTML directly doesn't fire the editor's own
+			// "input" listener (that only fires from real user edits), so
+			// loading the saved content here never triggers a spurious
+			// autosave of the exact same thing back to the server.
+			remarksEditor.innerHTML = d.custom_enhanced_remarks || "";
+		}).catch(function (err) {
+			titleEl.textContent = __("Not found");
+			show_alert(extract_error_message(err), true);
+		});
+	}
+	load();
+	load_attachments();
+});
+</script>
+{% endblock %}

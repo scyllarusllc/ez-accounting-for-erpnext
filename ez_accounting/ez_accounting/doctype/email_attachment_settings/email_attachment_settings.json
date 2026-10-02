@@ -1,0 +1,22 @@
+{
+ "actions": [],
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["email_account", "sender_email", "include_spam"],
+ "fields": [
+  {"fieldname": "email_account", "fieldtype": "Link", "label": "Receive From Account", "options": "Email Account"},
+  {"default": "scanner@example.com", "fieldname": "sender_email", "fieldtype": "Data", "label": "Sender Email", "reqd": 1},
+  {"default": "0", "fieldname": "include_spam", "fieldtype": "Check", "label": "Include Spam Folder"}
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "module": "Ez Accounting",
+ "name": "Email Attachment Settings",
+ "permissions": [
+  {"read": 1, "role": "Ez Accounting Admin", "write": 1},
+  {"read": 1, "role": "System Manager", "write": 1}
+ ],
+ "states": [],
+ "track_changes": 1
+}

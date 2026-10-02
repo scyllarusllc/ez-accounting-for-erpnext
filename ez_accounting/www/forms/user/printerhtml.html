@@ -1,0 +1,5 @@
+<!-- Deliberately does not extend any base template — this page outputs
+     only the Print Format's own rendered content (see printerhtml.py), none
+     of web.html's navbar/footer/site chrome. Meant to be loaded in an
+     iframe by /forms/user/printer, not visited as a standalone page. -->
+{{ rendered_html | safe }}

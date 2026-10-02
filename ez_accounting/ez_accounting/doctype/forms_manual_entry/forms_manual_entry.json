@@ -1,0 +1,30 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-09-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": ["company", "category", "question", "answer", "sort_order"],
+ "fields": [
+  {"fieldname":"company","fieldtype":"Link","in_list_view":1,"label":"Company","options":"Company","reqd":1},
+  {"fieldname":"category","fieldtype":"Data","in_list_view":1,"label":"Category"},
+  {"fieldname":"question","fieldtype":"Data","in_list_view":1,"label":"Question / Procedure","reqd":1},
+  {"fieldname":"answer","fieldtype":"Long Text","label":"Answer / Instructions","reqd":1},
+  {"default":"0","fieldname":"sort_order","fieldtype":"Int","label":"Sort Order"}
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-09-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Manual Entry",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"System Manager","share":1,"write":1}
+ ],
+ "sort_field": "sort_order",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

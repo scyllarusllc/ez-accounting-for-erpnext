@@ -1,0 +1,1595 @@
+/* Dark theme for the Forms portal (/forms/user/*, /forms/admin/*).
+   Scoped to body.forms-portal-dark so it never leaks onto other website pages. */
+
+body.forms-portal-dark {
+	background-color: #12141a;
+	color: #e6e8eb;
+}
+
+/* Full-width layout — these pages carry wide, many-column tables (deposit /
+   clearing / sales history, the item/customer/employee grids) that Bootstrap's
+   ~1140px .container squeezes. Override .container for the whole portal (page
+   <main>, the nav, and the footer all use it) so everything runs edge-to-edge
+   with a comfortable gutter. Scoped to body.forms-portal-dark, so other website
+   pages keep the default width. */
+body.forms-portal-dark .container {
+	max-width: none;
+	width: 100%;
+	padding-left: 2rem;
+	padding-right: 2rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .container {
+		padding-left: 1rem;
+		padding-right: 1rem;
+	}
+}
+
+body.forms-portal-dark a {
+	color: #7ea6ff;
+}
+
+/* Hover effects are disabled app-wide: hover states are kept identical to the
+   base state below (deleting the rules outright would let Bootstrap's own
+   default :hover styling show through instead). */
+body.forms-portal-dark a:hover {
+	color: #7ea6ff;
+	text-decoration: none;
+}
+
+body.forms-portal-dark h1,
+body.forms-portal-dark h2,
+body.forms-portal-dark h3,
+body.forms-portal-dark h4,
+body.forms-portal-dark h5,
+body.forms-portal-dark h6 {
+	color: #f2f3f5;
+}
+
+body.forms-portal-dark .text-muted {
+	color: #9aa1ac !important;
+}
+
+/* Navbar */
+body.forms-portal-dark .navbar {
+	background-color: #1a1d24;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .navbar-light .navbar-brand,
+body.forms-portal-dark .navbar-light .navbar-nav .nav-link {
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .navbar-light .navbar-nav .nav-link:hover {
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .navbar-toggler-icon {
+	filter: invert(1);
+}
+
+/* Footer — a small custom footer (forms_footer.html), replacing the site's
+   default "Standard Footer" entirely rather than trying to keep fixing its
+   Bootstrap-grid layout (its background kept rendering shorter than its
+   floated children no matter how it was contained). Centered, two lines,
+   no "Built on Frappe" branding. */
+body.forms-portal-dark .forms-footer {
+	background-color: #1a1d24;
+	border-top: 1px solid #2a2e37;
+	margin-top: 2rem;
+}
+
+body.forms-portal-dark .forms-footer-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 20px;
+	text-align: center;
+}
+
+body.forms-portal-dark .forms-footer-links {
+	color: #9aa1ac;
+	font-size: 0.9rem;
+}
+
+body.forms-portal-dark .forms-footer-links a {
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .forms-footer-links a:hover {
+	color: #ffffff;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-footer-copyright {
+	font-size: 0.8rem;
+	color: #6b7280;
+}
+
+body.forms-portal-dark .web-footer a {
+	color: #9aa1ac;
+}
+
+/* Cards */
+body.forms-portal-dark .card {
+	background-color: #1a1d24;
+	border: 1px solid #2a2e37;
+	color: #e6e8eb;
+}
+
+/* Alerts */
+body.forms-portal-dark .alert-warning {
+	background-color: #3a2f12;
+	border-color: #5c4a1c;
+	color: #f0c674;
+}
+
+body.forms-portal-dark .alert-info {
+	background-color: #12303a;
+	border-color: #1c4a56;
+	color: #7fd1e0;
+}
+
+body.forms-portal-dark .alert-light {
+	background-color: #1e2129;
+	border-color: #2a2e37;
+	color: #c3c8cf;
+}
+
+/* Badges */
+body.forms-portal-dark .badge-secondary {
+	background-color: #2a2e37;
+	color: #cbd2da;
+}
+
+/* Tables */
+body.forms-portal-dark .table {
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .table-bordered,
+body.forms-portal-dark .table-bordered th,
+body.forms-portal-dark .table-bordered td {
+	border-color: #2a2e37;
+}
+
+body.forms-portal-dark .table thead th {
+	border-bottom-color: #2a2e37;
+	color: #f2f3f5;
+}
+
+/* Forms */
+body.forms-portal-dark .form-control {
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .form-control:focus {
+	background-color: #12141a;
+	border-color: #5b8cff;
+	color: #e6e8eb;
+	box-shadow: 0 0 0 0.2rem rgba(91, 140, 255, 0.25);
+}
+
+body.forms-portal-dark .form-control::placeholder {
+	color: #6b7280;
+}
+
+body.forms-portal-dark .form-control:disabled {
+	background-color: #1a1d24;
+	color: #9aa1ac;
+}
+
+/* DaisyUI select component compatibility with the portal's full-width form
+   controls and its compact company switcher in the navigation bar. */
+body.forms-portal-dark select.select {
+	width: 100%;
+	max-width: 100%;
+}
+
+body.forms-portal-dark #forms-company-select-input.select {
+	width: auto;
+	min-width: 10rem;
+	background-color: #05070b;
+	border-color: #7898d4;
+	color: #ffffff;
+	box-shadow: 0 0 0 1px rgba(126, 166, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+body.forms-portal-dark #forms-company-select-input.select:focus,
+body.forms-portal-dark #forms-company-select-input.select:open {
+	border-color: #9ab8ff;
+	outline-color: #7ea6ff;
+	box-shadow: 0 0 0 0.2rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark label {
+	color: #cbd2da;
+}
+
+/* Bare checkboxes dropped straight into a table cell (Customer/Supplier/
+   Item Disabled toggles) — .form-check-input's default CSS assumes a
+   .form-check wrapper (which supplies position:relative + padding-left) for
+   its own position:absolute + negative margin-left. Without that wrapper it
+   renders shifted/clipped inside the cell. Scoped to direct <td> children
+   only, so checkboxes correctly wrapped in .form-check elsewhere (the Add
+   forms' "Restrict to company" toggles) are unaffected. */
+body.forms-portal-dark td > input.form-check-input {
+	position: static;
+	margin: 0;
+	width: 1.15rem;
+	height: 1.15rem;
+	cursor: pointer;
+}
+
+body.forms-portal-dark .form-check-label {
+	color: #e6e8eb;
+}
+
+/* Buttons */
+body.forms-portal-dark .btn-primary {
+	background-color: #5b8cff;
+	border-color: #5b8cff;
+	color: #0d1117;
+}
+
+body.forms-portal-dark .btn-primary:hover {
+	background-color: #5b8cff;
+	border-color: #5b8cff;
+	color: #0d1117;
+}
+
+body.forms-portal-dark .btn-outline-light,
+body.forms-portal-dark .btn-outline-light:hover {
+	color: #cbd2da;
+	border-color: #2a2e37;
+	background-color: transparent;
+}
+
+/* Progress bars */
+body.forms-portal-dark .progress {
+	background-color: #2a2e37;
+}
+
+body.forms-portal-dark .progress-bar {
+	background-color: #5b8cff;
+}
+
+/* ---------------------------------------------------------------- */
+/* Dashboard: hero header                                           */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .dashboard-hero {
+	margin: 0.5rem 0 1.75rem;
+}
+
+body.forms-portal-dark .dashboard-hero h1 {
+	font-size: 1.75rem;
+	font-weight: 600;
+}
+
+/* Every page's <h1> wraps its title text in a plain <a href=""> — clicking
+   it reloads the page fresh, same "click the title/logo to go back to a
+   clean state" convention as a site logo going home. A real link, not a
+   JS click listener: an empty href always means "this exact URL", so the
+   browser does the reload on its own with no script involved. Styled to
+   read exactly like plain heading text until hovered. */
+body.forms-portal-dark .dashboard-hero h1 a {
+	color: inherit;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .dashboard-hero h1 a:hover {
+	color: #7ea6ff;
+}
+
+body.forms-portal-dark .dashboard-subtitle {
+	color: #9aa1ac;
+	font-size: 0.95rem;
+}
+
+body.forms-portal-dark .dashboard-hero-row {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .my-account-link {
+	border-color: #2a2e37;
+	color: #cbd2da;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .my-account-link:hover {
+	border-color: #2a2e37;
+	color: #cbd2da;
+}
+
+/* ---------------------------------------------------------------- */
+/* Dashboard: card grid                                             */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .dash-card-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 1.25rem;
+}
+
+body.forms-portal-dark .form-card {
+	border-radius: 0.75rem;
+}
+
+body.forms-portal-dark .form-card-header {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .form-card-header h4 {
+	font-size: 1.05rem;
+	flex: 1;
+}
+
+body.forms-portal-dark .form-card-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	border-radius: 0.5rem;
+	background-color: #12303a;
+	color: #7fd1e0;
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark .form-card-icon svg {
+	width: 18px;
+	height: 18px;
+}
+
+body.forms-portal-dark .filing-meta {
+	color: #cbd2da;
+	font-size: 0.9rem;
+	margin-bottom: 1rem;
+}
+
+body.forms-portal-dark .form-card-description {
+	color: #8a8f9c;
+	font-size: 0.85rem;
+	line-height: 1.4;
+	margin-bottom: 1rem;
+}
+
+/* Status pills */
+body.forms-portal-dark .status-pill {
+	font-size: 0.72rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	padding: 0.22rem 0.6rem;
+	border-radius: 999px;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .pill-draft {
+	background-color: #2a2e37;
+	color: #cbd2da;
+}
+
+body.forms-portal-dark .pill-review {
+	background-color: #3a2f12;
+	color: #f0c674;
+}
+
+body.forms-portal-dark .pill-final {
+	background-color: #12331f;
+	color: #6fd996;
+}
+
+/* Overdue — deliberately its own color, not shared with pill-cancelled: an
+   overdue invoice still needs collecting (urgent), unlike a cancelled one
+   (dismissed, nothing to act on). Unlike every other pill here (dark fill,
+   tinted text), this one is a solid, saturated orange fill with dark text —
+   made to visually jump out of the row rather than blend in like the rest,
+   since this is the one status that means "go chase this payment." */
+body.forms-portal-dark .pill-overdue {
+	background-color: #ff8c1a;
+	color: #2a1400;
+	box-shadow: 0 0 0 1px #ffb066, 0 0 8px rgba(255, 140, 26, 0.55);
+}
+
+/* Stat tiles */
+body.forms-portal-dark .stat-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.75rem;
+	margin-bottom: 0.25rem;
+}
+
+body.forms-portal-dark .stat-tile {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	padding: 0.65rem 0.75rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.5rem;
+}
+
+body.forms-portal-dark .stat-label {
+	font-size: 0.72rem;
+	color: #9aa1ac;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+body.forms-portal-dark .stat-value {
+	font-size: 1.15rem;
+	font-weight: 600;
+	color: #f2f3f5;
+}
+
+/* Progress block */
+body.forms-portal-dark .dash-progress-wrap {
+	margin-top: 0.75rem;
+}
+
+body.forms-portal-dark .dash-progress-labels {
+	display: flex;
+	justify-content: space-between;
+	margin-bottom: 0.35rem;
+}
+
+body.forms-portal-dark .dash-progress {
+	height: 6px;
+	border-radius: 999px;
+}
+
+body.forms-portal-dark .dash-progress .progress-bar {
+	border-radius: 999px;
+}
+
+/* ---------------------------------------------------------------- */
+/* My Account page                                                  */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .back-link {
+	font-size: 0.85rem;
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .back-link:hover {
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .profile-card {
+	max-width: 560px;
+}
+
+body.forms-portal-dark .profile-header {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	padding-bottom: 1.25rem;
+	margin-bottom: 1.25rem;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .profile-avatar {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 56px;
+	height: 56px;
+	border-radius: 50%;
+	background-color: #12303a;
+	color: #7fd1e0;
+	font-size: 1.1rem;
+	font-weight: 600;
+	flex-shrink: 0;
+	overflow: hidden;
+}
+
+body.forms-portal-dark .profile-avatar img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+body.forms-portal-dark .profile-email {
+	color: #9aa1ac;
+	font-size: 0.9rem;
+}
+
+body.forms-portal-dark .profile-detail-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 0.75rem;
+	margin-bottom: 1.25rem;
+}
+
+body.forms-portal-dark .detail-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+body.forms-portal-dark .detail-value {
+	font-size: 0.95rem;
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .profile-roles .stat-label {
+	display: block;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .role-chip-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+}
+
+body.forms-portal-dark .role-chip {
+	font-size: 0.78rem;
+	padding: 0.25rem 0.65rem;
+	border-radius: 999px;
+	background-color: #2a2e37;
+	color: #cbd2da;
+}
+
+/* "+N more" roles disclosure: display:contents lets the toggle and the
+   revealed chips flow as siblings inside the flex-wrap role-chip-row. */
+body.forms-portal-dark .role-chip-more {
+	display: contents;
+}
+
+body.forms-portal-dark .role-chip-more summary {
+	cursor: pointer;
+}
+
+body.forms-portal-dark .role-chip-more summary::-webkit-details-marker {
+	display: none;
+}
+
+/* Empty state */
+body.forms-portal-dark .empty-state {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: 0.6rem;
+	padding: 1.5rem 0.5rem;
+	color: #6b7280;
+}
+
+body.forms-portal-dark .empty-state svg {
+	width: 28px;
+	height: 28px;
+	opacity: 0.6;
+}
+
+body.forms-portal-dark .empty-state p {
+	font-size: 0.88rem;
+	max-width: 220px;
+}
+
+/* ---------------------------------------------------------------- */
+/* Minimal portal nav (Dashboard / Me only)                         */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .forms-nav {
+	background-color: #1a1d24;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .forms-nav-inner {
+	display: flex;
+	align-items: stretch;
+	gap: 0.25rem;
+}
+
+body.forms-portal-dark .forms-nav-brand {
+	display: inline-flex;
+	align-items: center;
+	flex: 0 0 auto;
+	margin-right: 0.35rem;
+	padding: 0.35rem 0;
+}
+
+body.forms-portal-dark .forms-nav-brand img {
+	display: block;
+	height: 34px;
+	max-width: 126px;
+	object-fit: contain;
+	width: auto;
+}
+
+body.forms-portal-dark .forms-nav-brand:hover { text-decoration: none; }
+
+body.forms-portal-dark .forms-nav-link {
+	padding: 0.9rem 0.85rem;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #9aa1ac;
+	border-bottom: 2px solid transparent;
+}
+
+body.forms-portal-dark .forms-nav-link:hover {
+	color: #9aa1ac;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-nav-link.is-active {
+	color: #ffffff;
+	border-bottom-color: #5b8cff;
+}
+
+body.forms-portal-dark .forms-nav-link-right {
+	margin-left: auto;
+	padding: 0.4rem 1rem;
+	border: 1px solid #2a2e37;
+	border-radius: 999px;
+	background-color: #232630;
+	align-self: center;
+}
+
+body.forms-portal-dark .forms-nav-link-right:hover {
+	background-color: #2a2e37;
+	border-color: #3a3f4b;
+	color: #ffffff;
+}
+
+body.forms-portal-dark .forms-nav-link-right.is-active {
+	background-color: #5b8cff;
+	border-color: #5b8cff;
+	color: #ffffff;
+}
+
+/* Quick Jump trigger (a <button>, unlike its <a> siblings — reset the extra
+   button-only defaults browsers apply on top of .forms-nav-link-right). */
+body.forms-portal-dark button.forms-quick-jump-trigger {
+	font: inherit;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+body.forms-portal-dark .forms-quick-jump-kbd {
+	font-size: 0.7rem;
+	color: #6b7280;
+	border: 1px solid #3a3f4b;
+	border-radius: 4px;
+	padding: 0.05rem 0.35rem;
+}
+
+body.forms-portal-dark button.forms-quick-jump-trigger:hover .forms-quick-jump-kbd {
+	color: #9aa1ac;
+	border-color: #4a4f5b;
+}
+
+@media (max-width: 767px) {
+	/* The keyboard hint is meaningless on a touch device — hide it, keep the
+	   icon + label as a plain tap target. */
+	body.forms-portal-dark .forms-quick-jump-kbd { display: none; }
+	body.forms-portal-dark .forms-nav-brand img { height: 28px; max-width: 104px; }
+}
+
+body.forms-portal-dark .forms-nav-more {
+	position: relative;
+}
+
+body.forms-portal-dark .forms-nav-more-btn {
+	background: none;
+	border: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+body.forms-portal-dark .forms-nav-more-btn i {
+	font-size: 0.75rem;
+}
+
+body.forms-portal-dark .forms-nav-more-menu {
+	position: absolute;
+	top: calc(100% + 0.35rem);
+	left: 0;
+	min-width: 12rem;
+	background-color: #1e2129;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.4);
+	padding: 0.4rem;
+	max-height: min(70vh, 32rem);
+	overflow-y: auto;
+	z-index: 30;
+}
+
+body.forms-portal-dark .forms-nav-more-link {
+	display: block;
+	padding: 0.6rem 0.75rem;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #9aa1ac;
+	border-radius: 0.4rem;
+}
+
+body.forms-portal-dark .forms-nav-more-link:hover {
+	background-color: #2a2e37;
+	color: #ffffff;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-nav-more-link.is-active {
+	color: #ffffff;
+	background-color: rgba(91, 140, 255, 0.14);
+}
+
+body.forms-portal-dark .forms-company-select {
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+}
+
+/* ---------------------------------------------------------------- */
+/* /forms/admin/* header + footer (forms_admin_header.html /            */
+/* forms_admin_footer.html) — its own simpler bar, not forms_nav.html's  */
+/* fuller one (no company selector/Quick Jump/More menu makes sense here */
+/* — nothing under /forms/admin/ is company-scoped). Same visual language */
+/* as forms_nav's own rules just above, deliberately kept in lockstep.   */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .forms-admin-nav {
+	background-color: #1a1d24;
+	border-bottom: 1px solid #2a2e37;
+}
+
+body.forms-portal-dark .forms-admin-nav-inner {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .forms-admin-nav-brand {
+	padding: 0.9rem 1rem 0.9rem 0;
+	font-size: 0.95rem;
+	font-weight: 700;
+	color: #f2f3f5;
+}
+
+body.forms-portal-dark .forms-admin-nav-brand:hover {
+	color: #f2f3f5;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-admin-nav-link {
+	padding: 0.9rem 0.85rem;
+	font-size: 0.9rem;
+	font-weight: 500;
+	color: #9aa1ac;
+	border-bottom: 2px solid transparent;
+}
+
+body.forms-portal-dark .forms-admin-nav-link:hover {
+	color: #9aa1ac;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-admin-nav-link.is-active {
+	color: #ffffff;
+	border-bottom-color: #5b8cff;
+}
+
+body.forms-portal-dark .forms-admin-nav-link-right {
+	margin-left: auto;
+	padding: 0.4rem 1rem;
+	border: 1px solid #2a2e37;
+	border-radius: 999px;
+	background-color: #232630;
+	align-self: center;
+}
+
+body.forms-portal-dark .forms-admin-nav-link-right:hover {
+	background-color: #2a2e37;
+	border-color: #3a3f4b;
+	color: #ffffff;
+}
+
+body.forms-portal-dark .forms-admin-footer {
+	background-color: #1a1d24;
+	border-top: 1px solid #2a2e37;
+	margin-top: 2rem;
+}
+
+body.forms-portal-dark .forms-admin-footer-inner {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 20px;
+	text-align: center;
+}
+
+body.forms-portal-dark .forms-admin-footer-links {
+	color: #9aa1ac;
+	font-size: 0.9rem;
+}
+
+body.forms-portal-dark .forms-admin-footer-links a {
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .forms-admin-footer-links a:hover {
+	color: #ffffff;
+	text-decoration: none;
+}
+
+body.forms-portal-dark .forms-admin-footer-copyright {
+	font-size: 0.8rem;
+	color: #6b7280;
+}
+
+/* ---------------------------------------------------------------- */
+/* Quick Jump (Ctrl/Cmd+K) — global command palette, built lazily by  */
+/* forms_quick_jump.js on first open. Site-wide, not per-page, so it  */
+/* lives here rather than in any one page's own <style> block.        */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .quick-jump-overlay {
+	position: fixed;
+	inset: 0;
+	background-color: rgba(0, 0, 0, 0.6);
+	z-index: 2000;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	padding: 10vh 1.5rem 1.5rem;
+}
+
+body.forms-portal-dark .quick-jump-panel {
+	background-color: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: 100%;
+	max-width: 560px;
+	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+body.forms-portal-dark .quick-jump-input-row {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+	padding: 0.9rem 1.1rem;
+	border-bottom: 1px solid #2a2e37;
+	color: #6b7280;
+}
+
+body.forms-portal-dark .quick-jump-input-row input {
+	flex: 1;
+	background: none;
+	border: none;
+	outline: none;
+	color: #e6e8eb;
+	font-size: 1.05rem;
+}
+
+body.forms-portal-dark .quick-jump-input-row input::placeholder {
+	color: #6b7280;
+}
+
+body.forms-portal-dark .quick-jump-esc-hint {
+	font-size: 0.7rem;
+	color: #6b7280;
+	border: 1px solid #3a3f4b;
+	border-radius: 4px;
+	padding: 0.05rem 0.35rem;
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark .quick-jump-results {
+	overflow-y: auto;
+	padding: 0.5rem;
+}
+
+body.forms-portal-dark .quick-jump-section-label {
+	font-size: 0.72rem;
+	font-weight: 600;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: #6b7280;
+	padding: 0.6rem 0.75rem 0.3rem;
+}
+
+body.forms-portal-dark .quick-jump-item {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.6rem 0.75rem;
+	border-radius: 0.5rem;
+	cursor: pointer;
+	color: #e6e8eb;
+}
+
+body.forms-portal-dark .quick-jump-item .quick-jump-item-sub {
+	display: block;
+	font-size: 0.78rem;
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .quick-jump-item.is-active {
+	background-color: rgba(91, 140, 255, 0.16);
+}
+
+body.forms-portal-dark .quick-jump-item-type {
+	font-size: 0.72rem;
+	color: #6b7280;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark .quick-jump-empty {
+	padding: 1.5rem 0.75rem;
+	text-align: center;
+	color: #6b7280;
+	font-size: 0.9rem;
+}
+
+/* ---------------------------------------------------------------- */
+/* GL date-range filter (FICA / Treasurer)                          */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .date-range-row {
+	display: flex;
+	align-items: flex-end;
+	gap: 1rem;
+	flex-wrap: wrap;
+}
+
+body.forms-portal-dark .date-range-row .form-group {
+	min-width: 160px;
+}
+
+/* Multi-line journal entries can list dozens of counter-accounts in a single
+   GL Entry's "against" field — truncate so one row can't blow out the table;
+   the title attribute still exposes the full value as a native tooltip. */
+body.forms-portal-dark .gl-truncate {
+	max-width: 260px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+body.forms-portal-dark .quick-range-row {
+	display: flex;
+	gap: 0.5rem;
+}
+
+/* Inline feather-style icons inside .btn elements (see
+   templates/includes/button_icons.html) — sized to sit on the button's own
+   text baseline instead of at the SVG's native 24x24. */
+/* Not scoped to .btn — also used on plain links (e.g. the "Print" link in
+   Purchase/Sales Invoice History), not just <button>/.btn elements. */
+body.forms-portal-dark .btn-icon {
+	font-size: 0.95em;
+	margin-right: 0.4rem;
+	vertical-align: middle;
+}
+
+/* Print-only view of the Employee Breakdown table (FICA / Treasurer) — the
+   "Print" button targets #employee-breakdown-print; everything else on the
+   page (nav, filters, other cards) is hidden so only that table prints. */
+@media print {
+	body.forms-portal-dark * {
+		visibility: hidden;
+	}
+
+	body.forms-portal-dark #employee-breakdown-print,
+	body.forms-portal-dark #employee-breakdown-print *,
+	body.forms-portal-dark #payroll-summary-print,
+	body.forms-portal-dark #payroll-summary-print * {
+		visibility: visible;
+	}
+
+	body.forms-portal-dark #employee-breakdown-print,
+	body.forms-portal-dark #payroll-summary-print {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+	}
+
+	/* Payroll Summary is wide (one column per deduction): landscape, white
+	   paper, black ink, small type, no scroll-clipping. */
+	@page { size: landscape; margin: 0.4in; }
+	body.forms-portal-dark #payroll-summary-print,
+	body.forms-portal-dark #payroll-summary-print .card-body {
+		background: #fff !important;
+		border: 0 !important;
+		box-shadow: none !important;
+		padding: 0 !important;
+	}
+	body.forms-portal-dark #payroll-summary-print .table-responsive {
+		overflow: visible !important;
+	}
+	body.forms-portal-dark #payroll-summary-print h5,
+	body.forms-portal-dark #payroll-summary-print th,
+	body.forms-portal-dark #payroll-summary-print td {
+		color: #000 !important;
+		background: #fff !important;
+		border-color: #666 !important;
+		font-size: 7.5pt;
+		padding: 2px 4px;
+	}
+	body.forms-portal-dark #payroll-summary-print thead { display: table-header-group; }
+	body.forms-portal-dark #payroll-summary-print tr { page-break-inside: avoid; }
+
+	body.forms-portal-dark .no-print {
+		display: none !important;
+	}
+}
+
+/* mini Martin -- floating AI assistant chat button, built lazily by
+   forms_martin.js on first open (same convention as Quick Jump above: the
+   JS is site-wide, so its CSS lives here rather than in any one page). */
+.mini-martin-trigger {
+	position: fixed;
+	right: 1.5rem;
+	bottom: 1.5rem;
+	width: 56px;
+	height: 56px;
+	padding: 0;
+	overflow: hidden;
+	border-radius: 999px;
+	border: 2px solid #5b8cff;
+	background: #181a20;
+	box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(91, 140, 255, 0.5);
+	cursor: pointer;
+	z-index: 2500;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.mini-martin-trigger img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+	border-radius: 999px;
+}
+.mini-martin-trigger:hover {
+	transform: translateY(-2px) scale(1.04);
+	box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(91, 140, 255, 0.18);
+}
+/* hover: avatar cross-fades into a purple smiley bubble */
+.mini-martin-trigger .mini-martin-smile {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #a855f7, #6d28d9);
+	opacity: 0;
+	transition: opacity 0.2s ease;
+	pointer-events: none;
+}
+.mini-martin-trigger:hover .mini-martin-smile,
+.mini-martin-trigger:focus-visible .mini-martin-smile {
+	opacity: 1;
+}
+.mini-martin-trigger:hover {
+	border-color: #a855f7;
+	box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.5), 0 0 0 6px rgba(168, 85, 247, 0.25);
+}
+.mini-martin-trigger.is-active {
+	border-color: #3b63cc;
+}
+.mini-martin-panel {
+	position: fixed;
+	right: 1.5rem;
+	bottom: 5.5rem;
+	width: 360px;
+	max-width: calc(100vw - 2rem);
+	height: 500px;
+	max-height: calc(100vh - 8rem);
+	background: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	z-index: 2500;
+	opacity: 0;
+	transform: translateY(12px) scale(0.98);
+	pointer-events: none;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.mini-martin-resize-handle {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 22px;
+	height: 22px;
+	z-index: 2;
+	cursor: nwse-resize;
+	touch-action: none;
+}
+.mini-martin-resize-handle::after {
+	content: "";
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	width: 8px;
+	height: 8px;
+	border-top: 2px solid #6f7785;
+	border-left: 2px solid #6f7785;
+	border-radius: 2px 0 0;
+}
+.mini-martin-resize-handle:hover::after,
+.mini-martin-resize-handle:focus-visible::after {
+	border-color: #8fb0ff;
+}
+.mini-martin-panel.is-resizing {
+	transition: none;
+	user-select: none;
+}
+.mini-martin-panel.is-dragging {
+	transition: none;
+	user-select: none;
+}
+.mini-martin-panel.is-open {
+	opacity: 1;
+	transform: translateY(0) scale(1);
+	pointer-events: auto;
+}
+.mini-martin-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.75rem 1rem 0.75rem 1.35rem;
+	border-bottom: 1px solid #2a2e37;
+	background: #1a1d24;
+	cursor: grab;
+	touch-action: none;
+}
+.mini-martin-panel.is-dragging .mini-martin-header {
+	cursor: grabbing;
+}
+.mini-martin-header button {
+	cursor: pointer;
+}
+@media (max-width: 480px), (max-height: 560px) {
+	.mini-martin-resize-handle {
+		display: none;
+	}
+	.mini-martin-header {
+		padding-left: 1rem;
+	}
+}
+.mini-martin-header-info {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	min-width: 0;
+	flex: 1 1 auto;
+}
+.mini-martin-avatar {
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	object-fit: cover;
+	border: 1px solid #2a2e37;
+	flex-shrink: 0;
+}
+.mini-martin-title {
+	font-weight: 700;
+	font-size: 0.95rem;
+	color: #f2f3f5;
+}
+.mini-martin-subtitle {
+	font-size: 0.68rem;
+	color: #9aa1ac;
+	line-height: 1.25;
+	white-space: normal;
+}
+.mini-martin-lang-toggle {
+	width: 34px;
+	height: 34px;
+	flex: 0 0 34px;
+	align-self: flex-end;
+	border: 1px solid #2a2e37;
+	border-radius: 999px;
+	background: #12141a;
+	color: #cbd2da;
+	font-size: 1rem;
+	cursor: pointer;
+}
+.mini-martin-lang-toggle:hover {
+	border-color: #3a3f4b;
+	background: #181b22;
+}
+.mini-martin-lang-modal-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.6);
+	z-index: 3000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1.5rem;
+}
+.mini-martin-lang-modal-overlay[hidden] { display: none; }
+.mini-martin-lang-modal {
+	background: #181a20;
+	border: 1px solid #2a2e37;
+	border-radius: 0.75rem;
+	width: min(360px, 100%);
+	max-height: 70vh;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+}
+.mini-martin-lang-modal-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.9rem 1.1rem;
+	border-bottom: 1px solid #2a2e37;
+}
+.mini-martin-lang-modal-header h4 {
+	margin: 0;
+	font-size: 1rem;
+	color: #f2f3f5;
+}
+.mini-martin-lang-modal-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.4rem;
+	line-height: 1;
+	cursor: pointer;
+}
+.mini-martin-lang-modal-close:hover {
+	color: #e6e8eb;
+}
+.mini-martin-lang-modal-list {
+	overflow-y: auto;
+	padding: 0.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+.mini-martin-lang-option {
+	text-align: left;
+	background: none;
+	border: 1px solid transparent;
+	border-radius: 0.5rem;
+	color: #e6e8eb;
+	font-size: 0.88rem;
+	padding: 0.55rem 0.75rem;
+	cursor: pointer;
+}
+.mini-martin-lang-option:hover {
+	background: #232630;
+}
+.mini-martin-lang-option.is-active {
+	background: rgba(91, 140, 255, 0.16);
+	border-color: #5b8cff;
+	color: #fff;
+	font-weight: 600;
+}
+.mini-martin-close {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.4rem;
+	line-height: 1;
+	cursor: pointer;
+	padding: 0 0.25rem;
+}
+.mini-martin-close:hover {
+	color: #e6e8eb;
+}
+.mini-martin-messages {
+	flex: 1;
+	overflow-y: auto;
+	padding: 0.85rem 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+}
+.mini-martin-bubble {
+	max-width: 82%;
+	padding: 0.5rem 0.75rem;
+	border-radius: 0.9rem;
+	font-size: 0.85rem;
+	line-height: 1.4;
+	word-wrap: break-word;
+	white-space: pre-wrap;
+}
+.mini-martin-message-time {
+	margin-top: 0.3rem;
+	font-size: 0.66rem;
+	line-height: 1;
+	opacity: 0.68;
+	text-align: right;
+}
+.mini-martin-bubble-user {
+	align-self: flex-end;
+	background: #5b8cff;
+	color: #fff;
+	border-bottom-right-radius: 0.25rem;
+}
+.mini-martin-bubble-assistant {
+	align-self: flex-start;
+	background: #232630;
+	color: #e6e8eb;
+	border: 1px solid #2a2e37;
+	border-bottom-left-radius: 0.25rem;
+}
+.mini-martin-typing {
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.65rem 0.85rem;
+}
+
+.mini-martin-progress {
+	margin-left: 0.35rem;
+	color: var(--text-muted, #6c757d);
+	font-size: 0.72rem;
+	font-style: normal;
+}
+.mini-martin-typing span {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: #9aa1ac;
+	display: inline-block;
+	animation: mini-martin-bounce 1.1s infinite ease-in-out;
+}
+.mini-martin-typing span:nth-child(2) {
+	animation-delay: 0.15s;
+}
+.mini-martin-typing span:nth-child(3) {
+	animation-delay: 0.3s;
+}
+@keyframes mini-martin-bounce {
+	0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+	30% { transform: translateY(-4px); opacity: 1; }
+}
+.mini-martin-attachment-chip {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin: 0 0.75rem;
+	padding: 0.35rem 0.65rem;
+	background: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+	font-size: 0.78rem;
+	color: #cbd2da;
+}
+.mini-martin-attachment-chip[hidden] { display: none; }
+.mini-martin-attachment-name {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-martin-attachment-remove {
+	background: none;
+	border: none;
+	color: #9aa1ac;
+	font-size: 1.1rem;
+	line-height: 1;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.mini-martin-attachment-remove:hover {
+	color: #e6e8eb;
+}
+.mini-martin-input-row {
+	display: flex;
+	position: relative;
+	align-items: flex-end;
+	gap: 0.5rem;
+	padding: 0.75rem;
+	border-top: 1px solid #2a2e37;
+	background: #1a1d24;
+}
+.mini-martin-plus-toggle,
+.mini-martin-emoji-toggle {
+	width: 34px;
+	height: 34px;
+	flex: 0 0 34px;
+	align-self: flex-end;
+	border: 1px solid #2a2e37;
+	border-radius: 999px;
+	background: #12141a;
+	color: #cbd2da;
+	font-size: 1rem;
+	cursor: pointer;
+}
+.mini-martin-plus-toggle {
+	font-size: 1.3rem;
+	font-weight: 600;
+	line-height: 1;
+}
+.mini-martin-plus-toggle:hover,
+.mini-martin-emoji-toggle:hover {
+	border-color: #3a3f4b;
+	background: #181b22;
+}
+.mini-martin-emoji-picker {
+	position: absolute;
+	left: 0.75rem;
+	bottom: calc(100% + 0.4rem);
+	z-index: 3;
+	width: min(290px, calc(100% - 1.5rem));
+	max-height: 180px;
+	overflow-y: auto;
+	padding: 0.55rem;
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	gap: 0.25rem;
+	background: #181b22;
+	border: 1px solid #343947;
+	border-radius: 0.75rem;
+	box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+.mini-martin-emoji-picker[hidden] { display: none; }
+.mini-martin-emoji {
+	border: 0;
+	border-radius: 0.35rem;
+	background: transparent;
+	padding: 0.25rem;
+	font-size: 1.1rem;
+	line-height: 1.4;
+	cursor: pointer;
+}
+.mini-martin-emoji:hover,
+.mini-martin-emoji:focus { background: #2b303b; }
+.mini-martin-input {
+	flex: 1;
+	min-width: 0;
+	min-height: 64px;
+	height: auto;
+	max-height: min(45vh, 280px);
+	overflow-y: auto;
+	resize: none;
+	background: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 1.1rem;
+	padding: 0.75rem 1rem;
+	color: #e6e8eb;
+	font-size: 0.92rem;
+	line-height: 1.45;
+	outline: none;
+}
+.mini-martin-input:focus {
+	border-color: #5b8cff;
+	box-shadow: 0 0 0 0.2rem rgba(91, 140, 255, 0.25);
+}
+.mini-martin-send {
+	width: 34px;
+	height: 34px;
+	border-radius: 999px;
+	border: none;
+	background: #5b8cff;
+	color: #fff;
+	font-size: 0.9rem;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+.mini-martin-send:hover {
+	background: #3b63cc;
+}
+@media (max-width: 480px) {
+	.mini-martin-panel {
+		right: 1rem;
+		left: 1rem;
+		width: auto;
+		bottom: 5rem;
+	}
+	.mini-martin-trigger {
+		right: 1rem;
+		bottom: 1rem;
+	}
+}
+
+/* mini Martin: rendered markdown in assistant bubbles */
+.mini-martin-bubble-assistant:has(.mm-md) { white-space: normal; max-width: 92%; }
+.mm-md > :first-child { margin-top: 0; }
+.mm-md > :last-child { margin-bottom: 0; }
+.mm-md p { margin: 0 0 .55rem; }
+.mm-md .mm-h { margin: .7rem 0 .35rem; font-size: .92rem; font-weight: 700; color: #fff; }
+.mm-md ul, .mm-md ol { margin: 0 0 .55rem; padding-left: 1.2rem; }
+.mm-md li { margin: .15rem 0; }
+.mm-md a { color: #8fb0ff; text-decoration: underline; }
+.mm-md blockquote { margin: 0 0 .55rem; padding: .25rem .7rem; border-left: 3px solid #5b8cff; color: #b9bfca; background: rgba(91,140,255,.08); border-radius: 0 .4rem .4rem 0; }
+.mm-md hr { border: 0; border-top: 1px solid #2a2e37; margin: .6rem 0; }
+.mm-md .mm-inline { padding: .1rem .35rem; background: #14161c; border: 1px solid #2a2e37; border-radius: .3rem; font-size: .8em; color: #f0c674; }
+.mm-md .mm-code { margin: 0; padding: .6rem .75rem; background: #111319; border: 1px solid #2a2e37; border-top: 0; border-radius: 0 0 .5rem .5rem; overflow-x: auto; white-space: pre; font-size: .78rem; color: #d8dbe3; }
+.mm-md .mm-code code { background: none; color: inherit; padding: 0; }
+.mm-md .mm-table-wrap { overflow-x: auto; margin: 0 0 .55rem; }
+.mm-md .mm-table { border-collapse: collapse; font-size: .78rem; }
+.mm-md .mm-table th, .mm-md .mm-table td { padding: .35rem .6rem; border: 1px solid #2a2e37; text-align: left; }
+.mm-md .mm-table th { background: #1b1e26; color: #fff; position: sticky; top: 0; }
+.mm-md .mm-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.035); }
+.mm-md .mm-table tbody tr:hover td { background: rgba(91,140,255,.10); }
+.mm-md .mm-table .mm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.mm-md .mm-table-wrap { max-height: 22rem; }
+
+/* mini Martin polish */
+.mini-martin-messages { scroll-behavior: smooth; gap: .7rem; }
+.mini-martin-bubble { position: relative; animation: mm-in .22s ease-out both; line-height: 1.55; font-size: .88rem; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+@keyframes mm-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.mini-martin-bubble-user { background: linear-gradient(135deg, #6a97ff, #4b6fe0); }
+.mini-martin-bubble-assistant { background: linear-gradient(160deg, rgba(38,42,54,.92), rgba(30,33,43,.92)); backdrop-filter: blur(6px); margin-left: 2rem; }
+.mini-martin-bubble-assistant::before {
+	content: ""; position: absolute; left: -2rem; bottom: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+	background: var(--mm-avatar) center / cover, #232630; border: 1px solid #2a2e37;
+}
+.mini-martin-bubble-assistant:has(.mm-md) { max-width: calc(100% - 2rem); }
+.mm-md .mm-h { padding-bottom: .25rem; border-bottom: 1px solid #2a2e37; }
+.mini-martin-typing span { animation: mini-martin-bounce 1.1s infinite ease-in-out, mm-pulse 1.6s infinite ease-in-out; }
+@keyframes mm-pulse { 50% { opacity: .45; } }
+.mini-martin-copy-msg {
+	position: absolute; top: .25rem; right: .3rem; padding: 0 .3rem; font-size: .8rem; line-height: 1.3;
+	background: #14161c; color: #9aa1ac; border: 1px solid #2a2e37; border-radius: .3rem; cursor: pointer; opacity: 0; transition: opacity .15s;
+}
+.mini-martin-bubble:hover .mini-martin-copy-msg, .mini-martin-copy-msg:focus { opacity: 1; }
+.mini-martin-copy-msg:hover { color: #fff; }
+.mm-codebox { margin: 0 0 .55rem; }
+.mm-codebar { display: flex; justify-content: space-between; align-items: center; padding: .2rem .6rem; background: #1b1e26; border: 1px solid #2a2e37; border-radius: .5rem .5rem 0 0; font-size: .7rem; color: #9aa1ac; }
+.mm-lang { text-transform: uppercase; letter-spacing: .04em; }
+.mm-copy { background: none; border: 0; color: #8fb0ff; font-size: .7rem; cursor: pointer; padding: 0; }
+.mm-copy:hover { color: #fff; }
+.mm-code .hljs-keyword, .mm-code .hljs-literal, .mm-code .hljs-built_in { color: #c792ea; }
+.mm-code .hljs-string, .mm-code .hljs-attr { color: #a8e0a0; }
+.mm-code .hljs-number, .mm-code .hljs-symbol { color: #f5a97f; }
+.mm-code .hljs-comment { color: #6f7785; font-style: italic; }
+.mm-code .hljs-title, .mm-code .hljs-function { color: #82aaff; }
+.mm-code .hljs-type, .mm-code .hljs-variable { color: #f0c674; }
+.mini-martin-day { align-self: stretch; display: flex; align-items: center; gap: .6rem; color: #6f7785; font-size: .68rem; text-transform: uppercase; letter-spacing: .05em; }
+.mini-martin-day::before, .mini-martin-day::after { content: ""; flex: 1; border-top: 1px solid #2a2e37; }
+.mini-martin-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: 2rem; }
+.mini-martin-chip { padding: .3rem .7rem; font-size: .78rem; color: #b8cdff; background: rgba(91,140,255,.10); border: 1px solid rgba(91,140,255,.35); border-radius: 999px; cursor: pointer; transition: background .15s, transform .15s; }
+.mini-martin-chip:hover { background: rgba(91,140,255,.25); color: #fff; transform: translateY(-1px); }
+.mini-martin-max { margin: 0 .35rem 0 auto; background: none; border: 0; color: #9aa1ac; font-size: 1.05rem; cursor: pointer; line-height: 1; }
+.mini-martin-max:hover { color: #e6e8eb; }
+.mini-martin-panel.is-max { width: min(920px, calc(100vw - 2rem)) !important; height: calc(100vh - 7rem) !important; max-height: none; }
+@media (prefers-reduced-motion: reduce) { .mini-martin-bubble, .mini-martin-typing span { animation: none; } }
+
+/* Pull-to-refresh bubble (forms_portal.js) */
+.forms-ptr-bubble {
+	position: fixed; top: 0; left: 50%; z-index: 100000;
+	width: 40px; height: 40px; border-radius: 50%;
+	display: flex; align-items: center; justify-content: center;
+	background: #fff; color: #4f46e5;
+	box-shadow: 0 2px 10px rgba(0,0,0,.35);
+	opacity: 0; pointer-events: none;
+	transform: translate(-50%, -44px);
+}
+.forms-ptr-bubble.is-ready { color: #7c3aed; }
+.forms-ptr-bubble.is-spinning svg { animation: forms-ptr-spin .7s linear infinite; }
+@keyframes forms-ptr-spin { to { transform: rotate(360deg); } }

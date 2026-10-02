@@ -1,0 +1,100 @@
+{#
+	Bare, self-contained "Deposits" content -- no {% extends %}, no site
+	chrome. Rendered by /forms/user/printerhtml (kind=deposits) and iframed
+	by /forms/user/printer at true 8.5in x 11in size.
+
+	Context (see printerhtml.py's _render_deposits()):
+	  company, period, printed_at
+	  deposits: list of {sequence_number, deposit_date, created, created_by,
+	    total_deposit, variance, check_variance, status, cancelled}
+#}
+<style>
+	body {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+		color: #000;
+		margin: 0;
+		padding: 0.5in 0.5in 0.9in;
+		font-size: 9pt;
+		line-height: 1.3;
+	}
+
+	.dep-company { font-size: 15pt; font-weight: 700; margin: 0; text-align: center; }
+	.dep-title { font-size: 12pt; font-weight: 700; margin: 0.04in 0; text-align: center; }
+	.dep-period { font-size: 9pt; color: #444; margin: 0 0 0.25in; text-align: center; }
+
+	table.dep-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+	table.dep-table th, table.dep-table td { text-align: left; padding: 0.045in 0.09in; vertical-align: top; }
+	table.dep-table thead th {
+		border-bottom: 1.5px solid #000;
+		font-size: 7.5pt;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		color: #444;
+		font-weight: 700;
+	}
+	table.dep-table td { border-bottom: 0.5px solid #ddd; }
+	table.dep-table th:first-child, table.dep-table td:first-child { padding-left: 0; }
+	table.dep-table th:last-child, table.dep-table td:last-child { padding-right: 0; }
+	table.dep-table td.text-end, table.dep-table th.text-end { text-align: right; }
+	table.dep-table tr.is-cancelled td { color: #888; text-decoration: line-through; }
+	table.dep-table tr.is-cancelled td.dep-status { text-decoration: none; font-weight: 700; }
+
+	.dep-empty { color: #555; padding: 0.3in 0; }
+
+	.dep-footer {
+		position: fixed;
+		left: 0.5in;
+		right: 0.5in;
+		bottom: 0.35in;
+		display: flex;
+		justify-content: space-between;
+		font-size: 8pt;
+		color: #444;
+		border-top: 1px solid #999;
+		padding-top: 0.04in;
+	}
+
+	@media print { thead { display: table-header-group; } }
+</style>
+
+<div class="dep-company">{{ company }}</div>
+<div class="dep-title">{{ _("Deposits") }}</div>
+<div class="dep-period">{{ period }}</div>
+
+{% if not deposits %}
+<p class="dep-empty">{{ _("No deposits found for this filter.") }}</p>
+{% else %}
+<table class="dep-table">
+	<thead>
+		<tr>
+			<th>{{ _("Sequence No") }}</th>
+			<th>{{ _("Deposit Date") }}</th>
+			<th>{{ _("Created") }}</th>
+			<th>{{ _("Created By") }}</th>
+			<th class="text-end">{{ _("Total Deposit") }}</th>
+			<th class="text-end">{{ _("Variance") }}</th>
+			<th class="text-end">{{ _("Check Variance") }}</th>
+			<th>{{ _("Status") }}</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for d in deposits %}
+		<tr class="{{ 'is-cancelled' if d.cancelled else '' }}">
+			<td>{{ d.sequence_number }}</td>
+			<td>{{ d.deposit_date }}</td>
+			<td>{{ d.created }}</td>
+			<td>{{ d.created_by or "—" }}</td>
+			<td class="text-end">{{ d.total_deposit }}</td>
+			<td class="text-end">{{ d.variance or "—" }}</td>
+			<td class="text-end">{{ d.check_variance or "—" }}</td>
+			<td class="dep-status">{{ d.status }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% endif %}
+
+<div class="dep-footer">
+	<span>{{ printed_at }}</span>
+	<span>{{ _("Page: 1") }}</span>
+</div>

@@ -1,0 +1,701 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .dash-shortcut-grid {
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	margin-bottom: 1.75rem;
+}
+
+body.forms-portal-dark a.dash-shortcut-card {
+	color: inherit;
+	text-decoration: none;
+	transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+body.forms-portal-dark a.dash-shortcut-card:hover {
+	border-color: #5b8cff;
+	text-decoration: none;
+	color: inherit;
+	transform: translateY(-1px);
+}
+
+body.forms-portal-dark a.dash-shortcut-card .card-body {
+	display: flex;
+	align-items: center;
+	gap: 0.85rem;
+	padding: 1.1rem 1.25rem;
+}
+
+body.forms-portal-dark .dash-shortcut-label {
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+body.forms-portal-dark .dash-shortcut-card .form-card-icon .fa {
+	font-size: 16px;
+}
+
+body.forms-portal-dark .dash-metric-card .card-body {
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.15rem;
+}
+
+body.forms-portal-dark .dash-metric-label {
+	font-size: 0.78rem;
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .dash-metric-value {
+	font-size: 1.4rem;
+	font-weight: 700;
+}
+
+body.forms-portal-dark .dash-metric-sub {
+	font-size: 0.78rem;
+	color: #6b7280;
+}
+
+/* "Sales Activity" spans 2 grid tracks (room for 4 side-by-side mini-stats)
+   — auto-fit collapses it back to a single column on a narrow viewport, and
+   the row itself wraps if the track is still too tight, no extra media query
+   needed. */
+body.forms-portal-dark .dash-metric-wide {
+	grid-column: span 2;
+}
+
+body.forms-portal-dark .dash-metric-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem 1.75rem;
+	margin-top: 0.5rem;
+}
+
+body.forms-portal-dark .dash-metric-col {
+	display: flex;
+	flex-direction: column;
+}
+
+/* ---------------------------------------------------------------- */
+/* Hero "trending" kicker -- online count, open to every viewer      */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .hero-trending {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4rem;
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: #9aa1ac;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 0.4rem;
+}
+
+body.forms-portal-dark .hero-trending #hero-online-count {
+	color: #3fbf6f;
+	font-size: 0.85rem;
+	transition: color 0.2s ease;
+}
+
+body.forms-portal-dark .hero-trending #hero-online-count.is-pulsing {
+	animation: formsStatPulse 0.6s ease;
+}
+
+/* ---------------------------------------------------------------- */
+/* Activity panel                                                    */
+/* ---------------------------------------------------------------- */
+
+body.forms-portal-dark .activity-card {
+	margin-bottom: 1.75rem;
+}
+
+body.forms-portal-dark .activity-scope-label {
+	font-size: 0.74rem;
+	font-weight: 600;
+	color: #7ea6ff;
+	background-color: #172038;
+	border-radius: 999px;
+	padding: 0.1rem 0.6rem;
+}
+
+body.forms-portal-dark .activity-live-dot {
+	width: 0.55rem;
+	height: 0.55rem;
+	border-radius: 50%;
+	background-color: #3fbf6f;
+	display: inline-block;
+	animation: formsActivityPulseDot 1.8s ease-in-out infinite;
+}
+
+@keyframes formsActivityPulseDot {
+	0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(63, 191, 111, 0.5); }
+	50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(63, 191, 111, 0); }
+}
+
+body.forms-portal-dark .activity-stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+	gap: 0.9rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .activity-stat-tile {
+	background-color: #14161c;
+	border: 1px solid #262a33;
+	border-radius: 0.6rem;
+	padding: 0.85rem 1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+body.forms-portal-dark .activity-stat-label {
+	font-size: 0.74rem;
+	color: #9aa1ac;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+body.forms-portal-dark .activity-stat-value {
+	font-size: 1.55rem;
+	font-weight: 700;
+	display: inline-block;
+	transition: color 0.2s ease;
+}
+
+/* The animated-count-up flash: JS toggles this class for one animation
+   cycle whenever a tile's value actually changes between polls (never on
+   the very first render, so page-load isn't one big flashing wall). */
+body.forms-portal-dark .activity-stat-value.is-pulsing {
+	animation: formsStatPulse 0.6s ease;
+}
+
+@keyframes formsStatPulse {
+	0% { transform: scale(1); color: inherit; }
+	35% { transform: scale(1.16); color: #7ea6ff; }
+	100% { transform: scale(1); color: inherit; }
+}
+
+body.forms-portal-dark .activity-stat-sub {
+	font-size: 0.72rem;
+	color: #6b7280;
+}
+
+body.forms-portal-dark .activity-panels {
+	display: grid;
+	grid-template-columns: 2fr 1fr;
+	gap: 1.5rem;
+}
+
+@media (max-width: 820px) {
+	body.forms-portal-dark .activity-panels {
+		grid-template-columns: 1fr;
+	}
+}
+
+body.forms-portal-dark .activity-panel-title {
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: #9aa1ac;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	margin-bottom: 0.6rem;
+}
+
+body.forms-portal-dark .activity-feed,
+body.forms-portal-dark .activity-online {
+	max-height: 340px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 0.1rem;
+}
+
+body.forms-portal-dark .activity-feed-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid #22252c;
+}
+
+body.forms-portal-dark .activity-feed-row:last-child { border-bottom: none; }
+
+body.forms-portal-dark .activity-feed-icon {
+	width: 1.75rem;
+	height: 1.75rem;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	font-size: 0.8rem;
+	background-color: #1f232b;
+	color: #9aa1ac;
+}
+
+body.forms-portal-dark .activity-feed-icon.kind-login { color: #7ea6ff; background-color: #172038; }
+body.forms-portal-dark .activity-feed-icon.kind-invoice { color: #a8e0c0; background-color: #16241c; }
+body.forms-portal-dark .activity-feed-icon.kind-payment { color: #f2d3a8; background-color: #26200f; }
+body.forms-portal-dark .activity-feed-icon.kind-payroll { color: #c9b3f2; background-color: #201a2e; }
+body.forms-portal-dark .activity-feed-icon.kind-delete { color: #f2b8bd; background-color: #2a1418; }
+
+body.forms-portal-dark .activity-feed-text { font-size: 0.85rem; line-height: 1.35; }
+body.forms-portal-dark .activity-feed-text strong { font-weight: 600; }
+body.forms-portal-dark .activity-feed-detail { color: #9aa1ac; }
+a.activity-feed-detail { text-decoration: underline; text-underline-offset: 2px; }
+a.activity-feed-detail:hover { color: var(--bs-primary, #2b6cb0); }
+body.forms-portal-dark .activity-feed-time {
+	font-size: 0.72rem;
+	color: #6b7280;
+	white-space: nowrap;
+	margin-left: auto;
+	padding-left: 0.5rem;
+}
+
+body.forms-portal-dark .activity-online-row {
+	display: flex;
+	align-items: center;
+	gap: 0.55rem;
+	padding: 0.4rem 0;
+}
+
+body.forms-portal-dark .activity-online-dot {
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 50%;
+	background-color: #3fbf6f;
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark .activity-online-name { font-size: 0.85rem; }
+body.forms-portal-dark .activity-online-time { font-size: 0.72rem; color: #6b7280; margin-left: auto; }
+
+body.forms-portal-dark .activity-empty { color: #6b7280; font-size: 0.85rem; padding: 0.5rem 0; }
+</style>
+{% include "templates/includes/forms_mid_autumn_style.html" %}
+{% endblock %}
+
+{% block page_content %}
+
+{% macro icon(name) %}
+	{% if name == "building" %}
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/><path d="M10 21v-3h4v3"/></svg>
+	{% elif name == "calendar" %}
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+	{% elif name == "users" %}
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+	{% elif name == "file" %}
+	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13h6M9 17h6"/></svg>
+	{% endif %}
+{% endmacro %}
+
+{% macro status_pill(status) %}
+	{% set cls = {"Draft": "pill-draft", "Under Review": "pill-review", "Final": "pill-final"}.get(status, "pill-draft") %}
+	<span class="status-pill {{ cls }}">{{ status }}</span>
+{% endmacro %}
+
+{% macro stat_tile(label, value) %}
+	<div class="stat-tile">
+		<span class="stat-label">{{ label }}</span>
+		<span class="stat-value">{{ value }}</span>
+	</div>
+{% endmacro %}
+
+{% macro progress(label, percent) %}
+	<div class="dash-progress-wrap">
+		<div class="dash-progress-labels">
+			<span class="stat-label">{{ label }}</span>
+			<span class="stat-label">{{ percent }}%</span>
+		</div>
+		<div class="progress dash-progress">
+			<div class="progress-bar" role="progressbar" style="width: {{ percent }}%;"></div>
+		</div>
+	</div>
+{% endmacro %}
+
+{% macro empty_state(message) %}
+	<div class="empty-state">
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"/><path d="M22 8H2l2.45-4.9A2 2 0 0 1 6.24 2h11.52a2 2 0 0 1 1.79 1.1L22 8Z"/><path d="M12 12v3"/></svg>
+		<p class="text-muted mb-0">{{ message }}</p>
+	</div>
+{% endmacro %}
+
+<div class="dashboard-hero mid-autumn-hero">
+	{% include "templates/includes/forms_mid_autumn_decor.html" %}
+	{# A bare count, not names -- open to every logged-in user (unlike the
+	   admin-only Activity panel further down), fetched by get_online_count()
+	   and re-polled/animated by the standalone script at the bottom of this
+	   page. Sits above the title as a "trending" kicker line. #}
+	<div class="hero-trending" id="hero-trending">
+		<span class="activity-live-dot"></span>
+		<span id="hero-online-count">—</span> {{ _("online now") }}
+	</div>
+	<h1 class="mb-1"><a href="">{{ _("Welcome back, {0}").format(full_name) }}</a></h1>
+</div>
+
+{% if show_activity_section %}
+{# Who's doing what, right now -- admin-tier only (see get_context()'s own
+   comment on show_activity_section for why: this crosses users/companies
+   and includes deletions, so it's gated well past "just logged in" even
+   though /forms/user/dashboard itself is a UNIVERSAL_PAGES page everyone
+   can open). Numbers are real live queries (ez_accounting.www.forms.user.dashboard
+   .get_activity()), fetched on load and re-polled -- see the script block
+   for the animated count-up/pulse on a tile whose value actually changed. #}
+<div class="card form-card activity-card">
+	<div class="card-body">
+		<div class="d-flex align-items-center gap-2 mb-3">
+			<h4 class="mb-0">{{ _("Activity") }}</h4>
+			<span class="activity-live-dot" id="activity-live-dot" title="{{ _('Live') }}"></span>
+			{% if dashboard_scope_label %}
+			<span class="activity-scope-label">{{ dashboard_scope_label }}</span>
+			{% endif %}
+		</div>
+		<div class="activity-stat-grid" id="activity-stats"></div>
+		<div class="activity-panels">
+			<div class="activity-panel">
+				<div class="activity-panel-title">{{ _("Recent Activity") }}</div>
+				<div class="activity-feed" id="activity-feed">
+					<div class="activity-empty">{{ _("Loading…") }}</div>
+				</div>
+			</div>
+			<div class="activity-panel">
+				<div class="activity-panel-title">{{ _("Online Now") }}</div>
+				<div class="activity-online" id="activity-online">
+					<div class="activity-empty">{{ _("Loading…") }}</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+{% endif %}
+
+{% if show_gl_shortcuts %}
+{# Daily-work shortcuts + one metric — sits above the tax-form cards below
+   since, on this site, Express Sales/Purchase/Deposit/Students/Payroll are
+   the actual day-to-day work and the 990/941/W2/1023 filings are periodic.
+   Reuses the exact same dash-card-grid / form-card / form-card-icon classes
+   as the cards below, not a new visual pattern — just 5 shortcuts + 1
+   number, not a wall of every feature this app has. #}
+{% if dashboard_scope_label and not show_activity_section %}
+{# Non-admin viewers don't get the Activity card's own copy of this label
+   (see above) -- shown here instead so it's still clear whether "Sales
+   Activity" etc. below means one company or the whole organization. #}
+<p class="activity-scope-label mb-2">{{ dashboard_scope_label }}</p>
+{% endif %}
+<div class="dash-card-grid dash-shortcut-grid">
+	<a href="/forms/user/sales" class="card form-card dash-shortcut-card">
+		<div class="card-body">
+			<span class="form-card-icon"><i class="fa fa-file-text-o" aria-hidden="true"></i></span>
+			<span class="dash-shortcut-label">{{ _("Sales") }}</span>
+		</div>
+	</a>
+	<a href="/forms/user/purchase" class="card form-card dash-shortcut-card">
+		<div class="card-body">
+			<span class="form-card-icon"><i class="fa fa-shopping-cart" aria-hidden="true"></i></span>
+			<span class="dash-shortcut-label">{{ _("Purchase") }}</span>
+		</div>
+	</a>
+	<a href="/forms/user/deposit" class="card form-card dash-shortcut-card">
+		<div class="card-body">
+			<span class="form-card-icon"><i class="fa fa-university" aria-hidden="true"></i></span>
+			<span class="dash-shortcut-label">{{ _("Deposit") }}</span>
+		</div>
+	</a>
+	{% if show_payroll_link %}
+	<a href="/forms/user/payroll" class="card form-card dash-shortcut-card">
+		<div class="card-body">
+			<span class="form-card-icon"><i class="fa fa-money" aria-hidden="true"></i></span>
+			<span class="dash-shortcut-label">{{ _("Payroll") }}</span>
+		</div>
+	</a>
+	{% endif %}
+	{% if undeposited_summary %}
+	<a href="/forms/user/deposit" class="card form-card dash-shortcut-card dash-metric-card">
+		<div class="card-body">
+			<span class="dash-metric-label">{{ _("Not Yet Deposited") }}</span>
+			<span class="dash-metric-value">{{ frappe.utils.fmt_money(undeposited_summary.total) }}</span>
+			<span class="dash-metric-sub">{{ _("{0} receipts").format(undeposited_summary.count) }}</span>
+		</div>
+	</a>
+	{% endif %}
+	{% if outstanding_sales_summary %}
+	<a href="/forms/user/sales" class="card form-card dash-shortcut-card dash-metric-card">
+		<div class="card-body">
+			<span class="dash-metric-label">{{ _("Outstanding Sales") }}</span>
+			<span class="dash-metric-value">{{ frappe.utils.fmt_money(outstanding_sales_summary.total) }}</span>
+			<span class="dash-metric-sub">{{ _("{0} invoices").format(outstanding_sales_summary.count) }}</span>
+		</div>
+	</a>
+	{% endif %}
+	{% if sales_activity %}
+	<a href="/forms/user/sales" class="card form-card dash-shortcut-card dash-metric-card dash-metric-wide">
+		<div class="card-body">
+			<span class="dash-metric-label">{{ _("Sales Activity") }}</span>
+			<div class="dash-metric-row">
+				<div class="dash-metric-col">
+					<span class="dash-metric-value">{{ sales_activity.today.count }}</span>
+					<span class="dash-metric-sub">{{ _("Today") }} · {{ frappe.utils.fmt_money(sales_activity.today.total) }}</span>
+				</div>
+				<div class="dash-metric-col">
+					<span class="dash-metric-value">{{ sales_activity.week.count }}</span>
+					<span class="dash-metric-sub">{{ _("This Week") }} · {{ frappe.utils.fmt_money(sales_activity.week.total) }}</span>
+				</div>
+				<div class="dash-metric-col">
+					<span class="dash-metric-value">{{ sales_activity.month.count }}</span>
+					<span class="dash-metric-sub">{{ _("This Month") }} · {{ frappe.utils.fmt_money(sales_activity.month.total) }}</span>
+				</div>
+				<div class="dash-metric-col">
+					<span class="dash-metric-value">{{ sales_activity.last_month.count }}</span>
+					<span class="dash-metric-sub">{{ _("Last Month") }} · {{ frappe.utils.fmt_money(sales_activity.last_month.total) }}</span>
+				</div>
+			</div>
+		</div>
+	</a>
+	{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+// Hero "trending" online count -- open to every viewer (get_online_count()
+// only requires being logged in), independent of the admin-only Activity
+// panel's own script below. Small and standalone on purpose: it has to run
+// even when show_activity_section is false and none of that script's markup
+// exists on the page.
+frappe.ready(function () {
+	var countEl = document.getElementById("hero-online-count");
+	if (!countEl) return;
+
+	var HERO_POLL_MS = 20000;
+	var last = null;
+
+	function load() {
+		fetch("/api/method/ez_accounting.www.forms.user.dashboard.get_online_count", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: "{}"
+		})
+			.then(function (r) { return r.json(); })
+			.then(function (data) {
+				var count = ((data && data.message) || {}).online_count;
+				if (typeof count !== "number") return;
+				countEl.textContent = count;
+				if (last !== null && last !== count) {
+					countEl.classList.remove("is-pulsing");
+					void countEl.offsetWidth;
+					countEl.classList.add("is-pulsing");
+				}
+				last = count;
+			})
+			.catch(function () { /* leave the last good count on screen */ });
+	}
+
+	load();
+	setInterval(load, HERO_POLL_MS);
+});
+</script>
+{% if show_activity_section %}
+<script>
+frappe.ready(function () {
+	var statsEl = document.getElementById("activity-stats");
+	if (!statsEl) return; // section not rendered for this viewer
+
+	var feedEl = document.getElementById("activity-feed");
+	var onlineEl = document.getElementById("activity-online");
+	var liveDot = document.getElementById("activity-live-dot");
+
+	// Polling interval -- frequent enough that the panel feels "live" without
+	// hammering the server; the animated count-up (see animate_number below)
+	// is what actually sells the "live" feeling, not the poll rate itself.
+	var POLL_MS = 20000;
+
+	// Definition of the stat tiles, in display order. `key`/`totalKey` name
+	// fields in get_activity()'s own "summary" dict; `money` tiles animate
+	// their count AND show a currency-formatted sub-line for the total.
+	var TILE_DEFS = [
+		{ key: "online_count", label: __("Online Now") },
+		{ key: "logins_today", label: __("Logins Today") },
+		{ key: "invoices_today", label: __("Invoices Today"), totalKey: "invoices_today_total", money: true },
+		{ key: "payments_today", label: __("Payments Today"), totalKey: "payments_today_total", money: true },
+		{ key: "payroll_week", label: __("Payroll Runs This Week") },
+		{ key: "deletions_today", label: __("Deletions Today") }
+	];
+
+	var lastValues = {}; // key -> last displayed number, to know what actually changed
+
+	function fmt_money(value, currency) {
+		try {
+			return frappe.format(value, { fieldtype: "Currency", options: currency || "USD" }, { only_value: true });
+		} catch (e) {
+			return "$" + (Math.round(value * 100) / 100).toLocaleString();
+		}
+	}
+
+	// Eased count-up from whatever the tile currently shows to `to`, ending
+	// with a brief scale/color pulse -- the "css animate when the number
+	// changing" the panel exists to show off. Skips the tween (jumps
+	// straight to the final value, still pulses) on the very first render
+	// for a given tile, since counting up from 0 on every page load would
+	// just be noise, not a real "changed" signal.
+	function animate_number(el, to, opts) {
+		opts = opts || {};
+		var format = opts.format || function (v) { return Math.round(v).toLocaleString(); };
+		var from = opts.first ? to : parseFloat(el.getAttribute("data-raw") || "0");
+		el.setAttribute("data-raw", to);
+
+		if (from === to) {
+			el.textContent = format(to);
+			return;
+		}
+
+		var duration = opts.first ? 0 : 700;
+		var start = null;
+		function step(ts) {
+			if (start === null) start = ts;
+			var t = duration ? Math.min((ts - start) / duration, 1) : 1;
+			var eased = 1 - Math.pow(1 - t, 3);
+			el.textContent = format(from + (to - from) * eased);
+			if (t < 1) {
+				requestAnimationFrame(step);
+			} else {
+				el.textContent = format(to);
+				el.classList.remove("is-pulsing");
+				// Reflow so re-adding the class restarts the CSS animation.
+				void el.offsetWidth;
+				el.classList.add("is-pulsing");
+			}
+		}
+		requestAnimationFrame(step);
+	}
+
+	function render_stats(summary, first) {
+		if (first) {
+			statsEl.innerHTML = TILE_DEFS.map(function (def) {
+				return (
+					'<div class="activity-stat-tile">' +
+					'<span class="activity-stat-label">' + def.label + "</span>" +
+					'<span class="activity-stat-value" id="activity-stat-' + def.key + '">0</span>' +
+					(def.totalKey ? '<span class="activity-stat-sub" id="activity-stat-' + def.totalKey + '"></span>' : "") +
+					"</div>"
+				);
+			}).join("");
+		}
+		TILE_DEFS.forEach(function (def) {
+			var el = document.getElementById("activity-stat-" + def.key);
+			if (!el) return;
+			animate_number(el, summary[def.key] || 0, { first: first });
+			if (def.totalKey) {
+				var subEl = document.getElementById("activity-stat-" + def.totalKey);
+				if (subEl) subEl.textContent = fmt_money(summary[def.totalKey] || 0, summary.currency);
+			}
+		});
+	}
+
+	// Minimal relative-time formatter ("5m ago", "Yesterday") -- deliberately
+	// not a dependency on frappe.datetime.comment_when(), which belongs to
+	// the Desk JS bundle this website page doesn't load.
+	function time_ago(value) {
+		var then = frappe.datetime.str_to_obj ? frappe.datetime.str_to_obj(value) : new Date(value.replace(" ", "T"));
+		var seconds = Math.max(0, (Date.now() - then.getTime()) / 1000);
+		if (seconds < 60) return __("just now");
+		var minutes = Math.floor(seconds / 60);
+		if (minutes < 60) return __("{0}m ago", [minutes]);
+		var hours = Math.floor(minutes / 60);
+		if (hours < 24) return __("{0}h ago", [hours]);
+		var days = Math.floor(hours / 24);
+		if (days === 1) return __("Yesterday");
+		if (days < 7) return __("{0}d ago", [days]);
+		try {
+			return frappe.datetime.str_to_user(value);
+		} catch (e) {
+			return value;
+		}
+	}
+
+	var KIND_ICON = {
+		login: "fa-sign-in",
+		invoice: "fa-file-text-o",
+		payment: "fa-money",
+		payroll: "fa-users",
+		delete: "fa-trash-o"
+	};
+
+	function render_feed(rows) {
+		if (!rows.length) {
+			feedEl.innerHTML = '<div class="activity-empty">' + __("No activity in the last 7 days.") + "</div>";
+			return;
+		}
+		feedEl.innerHTML = rows.map(function (row) {
+			return (
+				'<div class="activity-feed-row">' +
+				'<span class="activity-feed-icon kind-' + row.kind + '"><i class="fa ' + (KIND_ICON[row.kind] || "fa-circle") + '" aria-hidden="true"></i></span>' +
+				'<span class="activity-feed-text"><strong>' + frappe.utils.escape_html(row.full_name) + "</strong> " +
+					frappe.utils.escape_html(row.label) +
+					(row.detail ? (row.url ? ' <a class="activity-feed-detail" href="' + frappe.utils.escape_html(row.url) + '">' + frappe.utils.escape_html(row.detail) + "</a>" : ' <span class="activity-feed-detail">' + frappe.utils.escape_html(row.detail) + "</span>") : "") +
+				"</span>" +
+				'<span class="activity-feed-time">' + time_ago(row.creation) + "</span>" +
+				"</div>"
+			);
+		}).join("");
+	}
+
+	function render_online(rows) {
+		if (!rows.length) {
+			onlineEl.innerHTML = '<div class="activity-empty">' + __("No one else is online right now.") + "</div>";
+			return;
+		}
+		onlineEl.innerHTML = rows.map(function (row) {
+			return (
+				'<div class="activity-online-row">' +
+				'<span class="activity-online-dot"></span>' +
+				'<span class="activity-online-name">' + frappe.utils.escape_html(row.full_name) + "</span>" +
+				'<span class="activity-online-time">' + time_ago(row.last_seen) + "</span>" +
+				"</div>"
+			);
+		}).join("");
+	}
+
+	var firstLoad = true;
+	function load() {
+		fetch("/api/method/ez_accounting.www.forms.user.dashboard.get_activity", {
+			method: "POST",
+			headers: { "Content-Type": "application/json", "X-Frappe-CSRF-Token": frappe.csrf_token },
+			body: "{}"
+		})
+			.then(function (r) { return r.json(); })
+			.then(function (data) {
+				var result = (data && data.message) || {};
+				render_stats(result.summary || {}, firstLoad);
+				render_feed(result.feed || []);
+				render_online(result.online || []);
+				firstLoad = false;
+			})
+			.catch(function () {
+				if (firstLoad) {
+					feedEl.innerHTML = '<div class="activity-empty">' + __("Couldn't load activity.") + "</div>";
+					onlineEl.innerHTML = "";
+				}
+				// A later poll failing silently keeps the last good data on
+				// screen rather than blanking a working panel over one hiccup.
+			});
+	}
+
+	load();
+	setInterval(load, POLL_MS);
+});
+</script>
+{% endif %}
+{% endblock %}

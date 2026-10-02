@@ -1,0 +1,495 @@
+{% extends "templates/web.html" %}
+{% import "templates/includes/button_icons.html" as icons %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+
+{% block style %}
+{{ super() }}
+<style>
+body.forms-portal-dark .printer-card .card-body {
+	padding: 2.25rem 2rem;
+}
+
+body.forms-portal-dark .printer-card .row > [class*="col-"] {
+	margin-bottom: 1.1rem;
+}
+
+body.forms-portal-dark .printer-card .form-label {
+	font-size: 1.05rem;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+body.forms-portal-dark .printer-card .form-control {
+	height: auto;
+	min-height: 54px;
+	padding: 0.85rem 1rem;
+	font-size: 1.15rem;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .printer-card .form-control:focus {
+	box-shadow: 0 0 0 0.25rem rgba(91, 140, 255, 0.3);
+}
+
+body.forms-portal-dark #printer-alert {
+	margin-top: 0.5rem;
+	margin-bottom: 1.5rem;
+}
+
+body.forms-portal-dark .printer-doctype-hint {
+	font-size: 0.95rem;
+	color: #8a8f9c;
+}
+
+body.forms-portal-dark .printer-doctype-hint.is-found {
+	color: #7fd18a;
+}
+
+/* Printing Preview — a container that holds the live print-preview iframe at
+   *actual* US Letter dimensions (8.5in x 11in, in real CSS inches — the
+   browser's reference-pixel definition of an inch, the same one print
+   dialogs use), not scaled to fit the screen. Scrolls in both directions
+   like looking at a physical page bigger than your viewport, rather than
+   shrinking it down to "fit" and misrepresenting the real print size — the
+   whole point of this page. */
+body.forms-portal-dark .printer-preview-card .card-body {
+	padding: 1.5rem;
+}
+
+body.forms-portal-dark .printer-page-frame-wrap {
+	overflow: auto;
+	max-height: 85vh;
+	padding: 2rem;
+	background-color: #12141a;
+	border: 1px solid #2a2e37;
+	border-radius: 0.6rem;
+}
+
+body.forms-portal-dark .printer-page-frame {
+	display: block;
+	width: 8.5in;
+	height: 11in;
+	border: none;
+	background-color: #fff;
+	box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.5);
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark .printer-page-frame-empty {
+	width: 8.5in;
+	height: 11in;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: #5a6069;
+	font-size: 1.1rem;
+	background-color: #1a1c22;
+	border: 1px dashed #2a2e37;
+	border-radius: 0.4rem;
+	text-align: center;
+	padding: 2rem;
+	flex-shrink: 0;
+}
+
+body.forms-portal-dark #printer-print-btn {
+	font-size: 1.05rem;
+	font-weight: 600;
+	padding: 0.7rem 1.4rem;
+	border-radius: 0.6rem;
+}
+
+@media (max-width: 767px) {
+	body.forms-portal-dark .printer-card .card-body {
+		padding: 1.5rem 1.25rem;
+	}
+}
+</style>
+{% endblock %}
+
+{% block page_content %}
+
+<div class="dashboard-hero">
+	<h1 class="mb-1"><a href="">{{ _("Printer") }}</a></h1>
+	<p class="dashboard-subtitle mb-0">
+		{{ _("Print anything in the system — just provide a document ID.") }}
+	</p>
+</div>
+
+<div class="card form-card printer-card" id="printer-lookup-card">
+	<div class="card-body">
+
+		<div id="printer-alert" class="alert d-none" role="alert"></div>
+
+		<div class="row g-3">
+
+			<div class="col-md-6">
+				<label class="form-label" for="printer-id-input">{{ _("Document ID") }}</label>
+				<input type="text" class="form-control" id="printer-id-input" autocomplete="off" autofocus
+					placeholder="{{ _('e.g. ACC-PAY-2026-00233') }}">
+				<div class="form-text printer-doctype-hint" id="printer-doctype-hint"></div>
+			</div>
+
+			<div class="col-md-6 d-none" id="printer-doctype-picker-wrap">
+				<label class="form-label" for="printer-doctype-picker">{{ _("Doctype") }}</label>
+				<select class="form-control" id="printer-doctype-picker"></select>
+				<div class="form-text">{{ _("This ID exists in more than one doctype — pick which one you mean.") }}</div>
+			</div>
+
+			<div class="col-md-6">
+				<label class="form-label" for="printer-format-select">{{ _("Print Format") }}</label>
+				<select class="form-control" id="printer-format-select" disabled>
+					<option value="" selected>{{ _("— Look up a document ID first —") }}</option>
+				</select>
+			</div>
+
+		</div>
+	</div>
+</div>
+
+
+<div class="card form-card mt-4 printer-preview-card">
+	<div class="card-body">
+		<div class="form-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+			<h4 class="mb-0">{{ _("Printing Preview") }}</h4>
+			<button type="button" class="btn btn-primary" id="printer-print-btn" disabled>
+				{{ icons.btn_icon("printer") }}{{ _("Print") }}
+			</button>
+		</div>
+		<p class="text-muted">{{ _("Shown at actual US Letter size (8.5\" x 11\") — scroll to see the whole page, not scaled to fit your screen.") }}</p>
+		<div class="printer-page-frame-wrap">
+			<div class="printer-page-frame-empty" id="printer-page-frame-empty">{{ _("Look up a document to see its print preview here.") }}</div>
+			<iframe class="printer-page-frame d-none" id="printer-page-frame" title="{{ _('Print preview') }}"></iframe>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
+
+{% block script %}
+{{ super() }}
+<script>
+frappe.ready(function () {
+	var idInput = document.getElementById("printer-id-input");
+	var doctypeHint = document.getElementById("printer-doctype-hint");
+	var doctypePickerWrap = document.getElementById("printer-doctype-picker-wrap");
+	var doctypePicker = document.getElementById("printer-doctype-picker");
+	var formatSelect = document.getElementById("printer-format-select");
+	var alertBox = document.getElementById("printer-alert");
+	var printBtn = document.getElementById("printer-print-btn");
+	var frame = document.getElementById("printer-page-frame");
+	var frameEmpty = document.getElementById("printer-page-frame-empty");
+
+	// Website pages only load frappe-web.bundle.js, not request.js, so
+	// frappe.call() itself isn't available here — talk to the whitelisted
+	// methods directly instead. frappe.csrf_token *is* available: base.html
+	// injects it as an inline script for any logged-in session (this page
+	// requires login), independently of frappe.boot.
+	function call(method, args) {
+		return fetch("/api/method/" + method, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Frappe-CSRF-Token": frappe.csrf_token
+			},
+			body: JSON.stringify(args || {})
+		}).then(function (response) {
+			return response.json().catch(function () { return {}; }).then(function (data) {
+				if (!response.ok) {
+					var error = new Error(data._error_message || data.exception || "Request failed");
+					error.data = data;
+					throw error;
+				}
+				return data;
+			});
+		});
+	}
+
+	function extract_error_message(err) {
+		var data = err && err.data;
+		if (data && data._server_messages) {
+			try {
+				var messages = JSON.parse(data._server_messages).map(function (m) {
+					try { return JSON.parse(m).message; } catch (e) { return m; }
+				});
+				if (messages.length) {
+					return messages.map(frappe.utils.escape_html).join("<br>");
+				}
+			} catch (e) { /* fall through */ }
+		}
+		if (data && data.exception) return frappe.utils.escape_html(data.exception);
+		return __("Something went wrong. Check the Error Log for details.");
+	}
+
+	function show_alert(message, is_error) {
+		alertBox.className = "alert " + (is_error ? "alert-warning" : "alert-info");
+		alertBox.innerHTML = message;
+		alertBox.classList.remove("d-none");
+	}
+
+	function hide_alert() {
+		alertBox.classList.add("d-none");
+	}
+
+	// /forms/user/printerhtml renders *only* the Print Format's own content —
+	// none of /desk/print's on-screen "gutter" wrapper (.print-format-gutter
+	// > .print-format, with its own max-width/padding meant for a
+	// comfortable browser preview, not a true-to-size one), so what's shown
+	// here is exactly the format's own markup/CSS at its own declared
+	// physical size, nothing else influencing it. doctype isn't part of the
+	// URL — a Print Format always belongs to exactly one doc_type, so
+	// printerhtml.py resolves it from `format` alone.
+	function printerhtml_link(name, print_format) {
+		// Keep the current company's /c/<abbr>/ prefix so the iframe's
+		// printerhtml render scopes to the same company as this tab.
+		var base = "/forms/user/printerhtml?id=" + encodeURIComponent(name) + "&format=" + encodeURIComponent(print_format);
+		return (window.FORMS_URL_PREFIX || "") + base;
+	}
+
+	var currentDoctype = null;
+	var currentName = null;
+	// Set by the ?format= query param (see the bootstrap at the bottom of
+	// this script) — applied once load_print_formats() populates the
+	// <select> for the just-detected doctype, then cleared so it doesn't
+	// affect a later manual lookup typed into the same page load.
+	var pendingFormat = null;
+
+	function clear_preview() {
+		frame.src = "about:blank";
+		frame.classList.add("d-none");
+		frameEmpty.classList.remove("d-none");
+		printBtn.disabled = true;
+	}
+
+	function refresh_preview() {
+		if (!currentDoctype || !currentName || !formatSelect.value) {
+			clear_preview();
+			return;
+		}
+		frame.src = printerhtml_link(currentName, formatSelect.value);
+		frame.classList.remove("d-none");
+		frameEmpty.classList.add("d-none");
+		printBtn.disabled = false;
+	}
+
+	function load_print_formats(doctype) {
+		formatSelect.disabled = true;
+		formatSelect.innerHTML = '<option value="" selected>' + __("Loading…") + "</option>";
+		call("ez_accounting.www.forms.user.printer.get_print_formats", {doctype: doctype})
+			.then(function (r) {
+				var rows = r.message || [];
+				if (!rows.length) {
+					formatSelect.innerHTML = '<option value="" selected disabled>' + __("No print formats for this doctype") + "</option>";
+					clear_preview();
+					return;
+				}
+				formatSelect.innerHTML = "";
+				rows.forEach(function (row, idx) {
+					var opt = document.createElement("option");
+					opt.value = row.name;
+					opt.textContent = row.name;
+					if (idx === 0) opt.selected = true;
+					formatSelect.appendChild(opt);
+				});
+				if (pendingFormat && rows.some(function (row) { return row.name === pendingFormat; })) {
+					formatSelect.value = pendingFormat;
+				}
+				pendingFormat = null;
+				formatSelect.disabled = false;
+				refresh_preview();
+			})
+			.catch(function (err) {
+				show_alert(extract_error_message(err), true);
+				clear_preview();
+			});
+	}
+
+	function select_doctype(doctype) {
+		currentDoctype = doctype;
+		load_print_formats(doctype);
+	}
+
+	var lookupTimer = null;
+
+	function do_lookup() {
+		var name = idInput.value.trim();
+		currentName = name || null;
+		doctypePickerWrap.classList.add("d-none");
+		doctypePicker.innerHTML = "";
+
+		if (!name) {
+			doctypeHint.className = "form-text printer-doctype-hint";
+			doctypeHint.textContent = "";
+			currentDoctype = null;
+			formatSelect.disabled = true;
+			formatSelect.innerHTML = '<option value="" selected>' + __("— Look up a document ID first —") + "</option>";
+			clear_preview();
+			return;
+		}
+
+		doctypeHint.className = "form-text printer-doctype-hint";
+		doctypeHint.textContent = __("Looking up…");
+		hide_alert();
+
+		call("ez_accounting.www.forms.user.printer.detect_doctype", {name: name})
+			.then(function (r) {
+				// The admin may have kept typing while this was in flight —
+				// a stale response landing after the input changed again
+				// would show the wrong doctype for what's now in the box.
+				if (idInput.value.trim() !== name) return;
+
+				var matches = r.message || [];
+				if (!matches.length) {
+					doctypeHint.className = "form-text printer-doctype-hint text-danger";
+					doctypeHint.textContent = __("No document found with this ID.");
+					currentDoctype = null;
+					formatSelect.disabled = true;
+					formatSelect.innerHTML = '<option value="" selected>' + __("— Look up a document ID first —") + "</option>";
+					clear_preview();
+					return;
+				}
+
+				if (matches.length === 1) {
+					doctypeHint.className = "form-text printer-doctype-hint is-found";
+					doctypeHint.textContent = __("Found: {0}", [matches[0]]);
+					select_doctype(matches[0]);
+					return;
+				}
+
+				// Rare: the same ID exists in more than one doctype — let the
+				// admin pick which one they actually mean rather than guessing.
+				doctypeHint.className = "form-text printer-doctype-hint";
+				doctypeHint.textContent = __("Found in {0} doctypes — pick one.", [matches.length]);
+				matches.forEach(function (dt, idx) {
+					var opt = document.createElement("option");
+					opt.value = dt;
+					opt.textContent = dt;
+					if (idx === 0) opt.selected = true;
+					doctypePicker.appendChild(opt);
+				});
+				doctypePickerWrap.classList.remove("d-none");
+				select_doctype(matches[0]);
+			})
+			.catch(function (err) {
+				doctypeHint.className = "form-text printer-doctype-hint text-danger";
+				doctypeHint.textContent = "";
+				show_alert(extract_error_message(err), true);
+				clear_preview();
+			});
+	}
+
+	// Debounced on typing (no separate "Look Up" button — the whole point of
+	// this page is "just provide an ID") plus immediate on Enter.
+	idInput.addEventListener("input", function () {
+		clearTimeout(lookupTimer);
+		lookupTimer = setTimeout(do_lookup, 400);
+	});
+	idInput.addEventListener("keydown", function (e) {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			clearTimeout(lookupTimer);
+			do_lookup();
+		}
+	});
+
+	doctypePicker.addEventListener("change", function () {
+		select_doctype(doctypePicker.value);
+	});
+
+	formatSelect.addEventListener("change", refresh_preview);
+
+	// ---- Pre-fill from a link (e.g. Express Purchase's "Print Check" button
+	// linking straight here with ?id=<Payment Entry>&format=FHB%20Check) —
+	// same lookup path as typing the ID by hand, just triggered automatically
+	// instead of waiting for input. format is optional; if given but not a
+	// valid option for the detected doctype it's silently ignored (see
+	// pendingFormat above) rather than left half-applied.
+	//
+	// A ?kind=<...> link skips all of that entirely — these aren't real
+	// documents with a doctype or Print Format to look up, just this app's
+	// own computed printouts, so there's nothing for the ID/format UI above
+	// to do. The lookup card is hidden and the preview iframe is pointed
+	// straight at the matching printerhtml route:
+	//   kind=statement&customer=<name>            — a student's Statement of Account
+	//   kind=student_customer_paid&customer=<name> — a student's "Total Paid" breakdown
+	//   kind=outstanding_invoices&customer=<name>  — a student's itemized outstanding invoices
+	//   kind=aged_receivables[&as_of=..]          — the selected company's A/R aging
+	//   kind=aged_payables[&as_of=..]             — the selected company's A/P aging
+	//   kind=cash_receipts_journal[&from_date=..&to_date=..] — the cash receipts journal
+	//   kind=cash_disbursements_journal[&from_date=..&to_date=..] — the cash disbursements journal
+	//   kind=check_register[&from_date=..&to_date=..]         — the check register
+	//   kind=customer_ledgers[&from_date=..&to_date=..]      — the customer ledgers report
+	//   kind=vendor_ledgers[&from_date=..&to_date=..]        — the vendor ledgers report
+	//   kind=payments[&from_date=..&to_date=..]              — the payments report
+	//   kind=deposits[&from_date=..&to_date=..]              — the deposits report
+	//   kind=sales_journal[&from_date=..&to_date=..]         — the sales journal
+	//   kind=purchase_journal[&from_date=..&to_date=..]      — the purchase journal
+	//   kind=vendor_1099_report[&year=YYYY]                  — the 1099 vendor report
+	//   kind=vendor_list                                     — the vendor directory
+	var params = new URLSearchParams(window.location.search);
+	var kind = params.get("kind");
+	var computedSrc = null;
+	var PERIOD_KINDS = ["cash_receipts_journal", "cash_disbursements_journal", "check_register", "customer_ledgers", "sales_journal", "salesreport", "purchase_journal", "vendor_ledgers", "payments", "deposits"];
+	if (kind === "statement" && params.get("customer")) {
+		computedSrc = "/forms/user/printerhtml?kind=statement&customer=" + encodeURIComponent(params.get("customer"));
+	} else if (kind === "pay_bill_receipt" && params.get("id")) {
+		computedSrc = "/forms/user/printerhtml?kind=pay_bill_receipt&id=" + encodeURIComponent(params.get("id"));
+	} else if (kind === "student_customer_paid" && params.get("customer")) {
+		computedSrc = "/forms/user/printerhtml?kind=student_customer_paid&customer=" + encodeURIComponent(params.get("customer"));
+	} else if (kind === "outstanding_invoices" && params.get("customer")) {
+		computedSrc = "/forms/user/printerhtml?kind=outstanding_invoices&customer=" + encodeURIComponent(params.get("customer"));
+	} else if (kind === "vendor_list") {
+		computedSrc = "/forms/user/printerhtml?kind=vendor_list";
+	} else if (kind === "aged_receivables" || kind === "aged_payables") {
+		computedSrc = "/forms/user/printerhtml?kind=" + encodeURIComponent(kind);
+		if (params.get("as_of")) computedSrc += "&as_of=" + encodeURIComponent(params.get("as_of"));
+	} else if (kind === "vendor_1099_report") {
+		computedSrc = "/forms/user/printerhtml?kind=vendor_1099_report";
+		if (params.get("year")) computedSrc += "&year=" + encodeURIComponent(params.get("year"));
+	} else if (kind === "reconciliation" && params.get("account") && params.get("as_of_date")) {
+		computedSrc = "/forms/user/printerhtml?kind=reconciliation&account=" + encodeURIComponent(params.get("account"));
+		computedSrc += "&as_of_date=" + encodeURIComponent(params.get("as_of_date"));
+		computedSrc += "&statement_balance=" + encodeURIComponent(params.get("statement_balance") || "0");
+	} else if (PERIOD_KINDS.indexOf(kind) !== -1) {
+		computedSrc = "/forms/user/printerhtml?kind=" + encodeURIComponent(kind);
+		if (params.get("from_date")) computedSrc += "&from_date=" + encodeURIComponent(params.get("from_date"));
+		if (params.get("to_date")) computedSrc += "&to_date=" + encodeURIComponent(params.get("to_date"));
+		if (kind === "cash_disbursements_journal" && params.get("check_no")) computedSrc += "&check_no=" + encodeURIComponent(params.get("check_no"));
+		if (kind === "payments" && params.get("payment_type")) computedSrc += "&payment_type=" + encodeURIComponent(params.get("payment_type"));
+		if (kind === "salesreport" && params.get("search")) computedSrc += "&search=" + encodeURIComponent(params.get("search"));
+	}
+
+	if (computedSrc) {
+		computedSrc = (window.FORMS_URL_PREFIX || "") + computedSrc;
+		document.getElementById("printer-lookup-card").classList.add("d-none");
+		frame.src = computedSrc;
+		frame.classList.remove("d-none");
+		frameEmpty.classList.add("d-none");
+		printBtn.disabled = false;
+	} else {
+		var prefillId = params.get("id");
+		if (prefillId) {
+			idInput.value = prefillId;
+			pendingFormat = params.get("format") || null;
+			do_lookup();
+		}
+	}
+
+	printBtn.addEventListener("click", function () {
+		if (frame.classList.contains("d-none")) return;
+		try {
+			frame.contentWindow.focus();
+			frame.contentWindow.print();
+		} catch (e) {
+			show_alert(__("Could not open the print dialog — try opening the preview directly: {0}", [
+				'<a target="_blank" href="' + frame.src + '">' + __("open in a new tab") + "</a>"
+			]), true);
+		}
+	});
+});
+</script>
+
+{% endblock %}

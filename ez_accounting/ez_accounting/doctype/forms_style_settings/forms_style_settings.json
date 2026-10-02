@@ -1,0 +1,43 @@
+{
+ "actions": [],
+ "creation": "2026-08-23 04:29:24.420689",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "default_style"
+ ],
+ "fields": [
+  {
+   "description": "The Forms Style (see /forms/user/styles) applied site-wide, for every user, on every /forms/* page. Leave blank to use the portal's shipped default look only.",
+   "fieldname": "default_style",
+   "fieldtype": "Link",
+   "label": "System Default Style",
+   "options": "Forms Style"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Ez Accounting",
+ "name": "Forms Style Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

@@ -1,0 +1,168 @@
+{% extends "templates/web.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block navbar %}{% include "templates/includes/forms_nav.html" %}{% endblock %}
+{% block footer %}{% include "templates/includes/forms_footer.html" %}{% endblock %}
+{% block style %}{{ super() }}
+<style>
+.finder-panel{background:#181a20;border:1px solid #343947;border-radius:12px;padding:1.4rem;margin:1rem 0;color:#e8eaf0}
+.finder-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1rem}
+.finder-field{display:flex;flex-direction:column;gap:.35rem}
+.finder-field input,.finder-field select{width:100%;border:1px solid #596171;border-radius:7px;background:#10131a;color:#f3f5fa;padding:.65rem}
+.finder-actions{display:flex;gap:.7rem;align-items:center;flex-wrap:wrap;margin-top:1rem}
+.finder-actions button{border:1px solid #6285c5;background:#284c90;color:#fff;border-radius:7px;padding:.6rem 1rem}
+.finder-actions button:disabled{opacity:.5}
+.finder-result{border-top:1px solid #343947;padding:1rem 0}
+.finder-result h3{font-size:1.07rem;margin:0 0 .3rem;color:#f1f4fb}
+.finder-meta{color:#aeb9cd;font-size:.83rem}
+.finder-description{white-space:pre-wrap;margin:.5rem 0;color:#d9e0ec}
+.finder-result{display:grid;grid-template-columns:108px minmax(0,1fr);gap:1rem}
+.finder-preview{width:108px;height:132px;border:1px solid #45516b;border-radius:8px;background:#111827;overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;text-decoration:none}
+.finder-preview img,.finder-preview iframe{width:100%;height:100%;object-fit:cover;border:0;pointer-events:none}
+.finder-preview-type{font-size:.8rem;font-weight:700;color:#afc4e8;letter-spacing:.08em;text-transform:uppercase}
+.finder-preview-badge{position:absolute;right:3px;bottom:3px;background:#111827d9;color:#fff;border-radius:3px;padding:0 .25rem;font-size:.68rem}
+.finder-content{min-width:0;overflow-wrap:anywhere}
+.finder-match{font-size:.87rem;margin:.55rem 0;color:#c3d6fb}
+.finder-keyword{display:inline-block;border:1px solid #6485bc;border-radius:5px;padding:.12rem .4rem;margin:.4rem 0;color:#d9e7ff;font-size:.78rem}
+.finder-result mark{background:#eac85a;color:#1a1b21;border-radius:2px;padding:0 .1em}
+.finder-view-tabs{display:flex;gap:.55rem;margin:1rem 0}
+.finder-view-tab{border:1px solid #596171;background:#181a20;color:#d8dde8;border-radius:7px;padding:.6rem 1rem;cursor:pointer}
+.finder-view-tab.is-active{background:#284c90;border-color:#6285c5;color:#fff}
+.finder-files-frame{border:0;width:100%;min-height:1250px;background:transparent}
+@media(max-width:520px){.finder-result{grid-template-columns:76px minmax(0,1fr)}.finder-preview{width:76px;height:96px}}
+</style>{% endblock %}
+{% block page_content %}
+<div class="dashboard-hero">
+  <h1 class="mb-1"><a href="">{{ _("Document Finder") }}</a></h1>
+  <p class="dashboard-subtitle mb-0">{{ _("Search, upload, and manage Files across your authorized companies.") }}</p>
+</div>
+<div class="finder-view-tabs" role="tablist">
+ <button type="button" class="finder-view-tab is-active" id="finder-search-tab">{{ _("Find Documents") }}</button>
+ <button type="button" class="finder-view-tab" id="finder-files-tab">{{ _("Manage Files") }}</button>
+</div>
+<div id="finder-search-view"><div class="finder-panel">
+ <form id="finder-form">
+  <div class="finder-grid">
+   <label class="finder-field">{{ _("Keyword") }}<input id="finder-q" type="search" maxlength="200" placeholder="{{ _('Title, tags, description, file name or content') }}"></label>
+   <label class="finder-field">{{ _("Company") }}<select id="finder-company"><option value="">{{ _("All authorized companies") }}</option></select></label>
+   <label class="finder-field">{{ _("Category") }}<select id="finder-category"><option value="">{{ _("All categories") }}</option>{% for category in categories %}<option value="{{ category }}">{{ category }}</option>{% endfor %}</select></label>
+   <label class="finder-field">{{ _("Document date from") }}<input id="finder-from" type="date"></label>
+   <label class="finder-field">{{ _("Document date to") }}<input id="finder-to" type="date"></label>
+   <label class="finder-field">{{ _("Expiry date from") }}<input id="finder-expiry-from" type="date"></label>
+   <label class="finder-field">{{ _("Expiry date to") }}<input id="finder-expiry-to" type="date"></label>
+  </div>
+  <div class="finder-actions"><button type="submit">{{ _("Search") }}</button><button type="button" id="finder-clear">{{ _("Clear") }}</button></div>
+ </form>
+ <p id="finder-status" role="status" aria-live="polite"></p>
+ <div id="finder-results"></div>
+ <div class="finder-actions"><button type="button" id="finder-more" hidden>{{ _("Load more") }}</button></div>
+</div></div>
+<div id="finder-files-view" hidden>
+ <iframe class="finder-files-frame" id="finder-files-frame" title="{{ _('Manage Files') }}" data-src="{{ forms_url_prefix }}/forms/user/files?embedded=1"></iframe>
+</div>
+<script>
+frappe.ready(function () {
+  const $ = id => document.getElementById(id);
+  const searchTab = $('finder-search-tab'), filesTab = $('finder-files-tab');
+  function showView(files) {
+    $('finder-search-view').hidden = files;
+    $('finder-files-view').hidden = !files;
+    searchTab.classList.toggle('is-active', !files);
+    filesTab.classList.toggle('is-active', files);
+    if (files && !$('finder-files-frame').src) $('finder-files-frame').src = $('finder-files-frame').dataset.src;
+  }
+  searchTab.addEventListener('click', () => showView(false));
+  filesTab.addEventListener('click', () => showView(true));
+  const fieldIds = {q:'finder-q', company:'finder-company', category:'finder-category', document_from:'finder-from', document_to:'finder-to', expiry_from:'finder-expiry-from', expiry_to:'finder-expiry-to'};
+  let page = 0, busy = false;
+  function addText(parent, tag, value, className) {
+    const el = document.createElement(tag); if (className) el.className = className;
+    el.textContent = value == null ? '' : String(value); parent.append(el); return el;
+  }
+  function addHighlighted(parent, tag, value, keyword, className) {
+    const el = document.createElement(tag); if (className) el.className = className;
+    const text = String(value || '');
+    const term = String(keyword || '');
+    if (!term) { el.textContent = text; parent.append(el); return el; }
+    const lower = text.toLowerCase(), needle = term.toLowerCase();
+    let cursor = 0, at = lower.indexOf(needle);
+    while (at >= 0 && cursor < text.length) {
+      el.append(document.createTextNode(text.slice(cursor, at)));
+      const mark = document.createElement('mark'); mark.textContent = text.slice(at, at + term.length); el.append(mark);
+      cursor = at + term.length; at = lower.indexOf(needle, cursor);
+    }
+    el.append(document.createTextNode(text.slice(cursor))); parent.append(el); return el;
+  }
+  function preview(root, row) {
+    const filename = String(row.file_name || row.file || '');
+    const kind = (filename.split('?')[0].match(/\.([a-z0-9]+)$/i) || [,'FILE'])[1].toUpperCase();
+    const safe = row.file && /^\/(?:private\/)?files\//.test(row.file);
+    const box = document.createElement(safe ? 'a' : 'div'); box.className = 'finder-preview';
+    if (safe) { box.href = row.file; box.target = '_blank'; box.rel = 'noopener'; box.setAttribute('aria-label', 'Open ' + filename); }
+    if (safe && /^(PNG|JPG|JPEG|GIF|WEBP)$/.test(kind)) {
+      const img = document.createElement('img'); img.src = row.file; img.loading = 'lazy'; img.alt = filename; box.append(img);
+    } else if (safe && kind === 'PDF') {
+      const frame = document.createElement('iframe'); frame.src = row.file + '#page=1&toolbar=0&navpanes=0';
+      frame.loading = 'lazy'; frame.title = 'PDF first page: ' + filename; frame.tabIndex = -1; box.append(frame);
+    } else { addText(box, 'span', kind, 'finder-preview-type'); }
+    if (safe && kind === 'PDF') addText(box, 'span', 'PDF', 'finder-preview-badge');
+    root.append(box);
+  }
+  function render(row, keyword) {
+    const root = document.createElement('article'); root.className = 'finder-result';
+    preview(root, row);
+    const body = document.createElement('div'); body.className = 'finder-content'; root.append(body);
+    const heading = document.createElement('h3');
+    const titleLink = document.createElement('a');
+    titleLink.href = (window.FORMS_URL_PREFIX || '') + '/forms/user/finder_detail?id=' + encodeURIComponent(row.name);
+    addHighlighted(titleLink, 'span', row.title || row.name, keyword);
+    heading.append(titleLink); body.append(heading);
+    addText(body, 'div', [row.is_private && '🔒 Private', row.company, row.category, row.document_date && 'Document: ' + row.document_date, row.expiry_date && 'Expires: ' + row.expiry_date].filter(Boolean).join(' · '), 'finder-meta');
+    if (keyword) addText(body, 'span', 'Keyword: ' + keyword, 'finder-keyword');
+    if (row.match_excerpt) {
+      const match = document.createElement('p'); match.className = 'finder-match';
+      addText(match, 'strong', row.match_field + ': ');
+      addHighlighted(match, 'span', row.match_excerpt, keyword);
+      body.append(match);
+    }
+    if (row.description && row.match_field !== 'Description') addHighlighted(body, 'p', row.description, keyword, 'finder-description');
+    if (row.tags) addHighlighted(body, 'div', row.tags, keyword, 'finder-meta');
+    if (row.file && /^\/(?:private\/)?files\//.test(row.file)) {
+      const link = addText(body, 'a', row.file_name || 'Open file');
+      link.href = row.file; link.target = '_blank'; link.rel = 'noopener';
+    }
+    $('finder-results').append(root);
+  }
+  async function search(reset) {
+    if (busy) return;
+    busy = true;
+    if (reset) { page = 0; $('finder-results').replaceChildren(); }
+    $('finder-status').textContent = 'Searching…'; $('finder-more').hidden = true;
+    try {
+      const url = new URL('/api/method/ez_accounting.www.forms.user.finder.search', location.origin);
+      Object.entries(fieldIds).forEach(([key, id]) => { if ($(id).value) url.searchParams.set(key, $(id).value); });
+      url.searchParams.set('page', String(page));
+      const response = await fetch(url, {credentials:'same-origin', cache:'no-store'});
+      if (!response.ok) throw new Error('Search failed or company access was denied.');
+      const data = (await response.json()).message;
+      if (page === 0) {
+        const select = $('finder-company');
+        const selectedCompany = select.value;
+        select.length = 1;
+        (data.companies || []).forEach(company => { const option = document.createElement('option'); option.value = option.textContent = company; select.append(option); });
+        select.value = selectedCompany;
+      }
+      const keyword = $('finder-q').value.trim();
+      data.rows.forEach(row => render(row, keyword));
+      $('finder-status').textContent = $('finder-results').childElementCount ? $('finder-results').childElementCount + ' document(s) shown' : 'No documents found.';
+      $('finder-more').hidden = !data.has_more;
+      if (data.has_more) page++;
+    } catch (error) { $('finder-status').textContent = error.message; }
+    finally { busy = false; }
+  }
+  $('finder-form').addEventListener('submit', event => { event.preventDefault(); search(true); });
+  $('finder-clear').addEventListener('click', () => { $('finder-form').reset(); search(true); });
+  $('finder-more').addEventListener('click', () => search(false));
+  search(true);
+});
+</script>
+{% endblock %}
