@@ -85,13 +85,10 @@ def get_customers():
 	in each of those companies. No selected company → every permitted customer.
 	"""
 	ensure_admin()
-	# is_student flags Customers in the "Student" group — the form shows a
-	# link to /forms/user/student_customer_profile for them (same group the
-	# Student Customers pages scope by, see ez_accounting.www.forms.user.student_customer).
 	rows = frappe.get_all(
 		"Customer",
 		filters=apply_permitted_filter({"disabled": 0}, "Customer"),
-		fields=["name", "customer_name", "customer_group"],
+		fields=["name", "customer_name"],
 		order_by="customer_name asc",
 	)
 
@@ -103,8 +100,6 @@ def get_customers():
 		allowed = company_customer_names(company) | assigned
 		rows = [r for r in rows if r["name"] in allowed]
 
-	for row in rows:
-		row["is_student"] = row.pop("customer_group", None) == "Student"
 	return rows
 
 
@@ -509,20 +504,6 @@ def get_sales_invoice_history(
 			)
 		)
 
-	# Which of these invoices' customers are students (Customer Group
-	# "Student") — the row then links to that student's profile. One batch
-	# query over the distinct customers on screen.
-	customers = {inv.customer for inv in invoices if inv.customer}
-	student_customers = set()
-	if customers:
-		student_customers = set(
-			frappe.get_all(
-				"Customer",
-				filters={"name": ["in", list(customers)], "customer_group": "Student"},
-				pluck="name",
-			)
-		)
-
 	# One customer-level balance/action marker for the history table. The
 	# button belongs only on that customer's latest submitted invoice, rather
 	# than being repeated on every historical row. SUM(outstanding_amount)
@@ -605,7 +586,6 @@ def get_sales_invoice_history(
 		)
 		inv["created_by"] = full_name_by_owner.get(inv.owner) or inv.owner
 		inv["amendable"] = inv.status == "Cancelled" and inv.name not in already_amended
-		inv["is_student"] = inv.customer in student_customers
 		inv["customer_net_balance"] = net_balance_by_customer.get(inv.customer, 0)
 		inv["last_invoice"] = latest_invoice_by_customer.get(inv.customer)
 		inv["is_last_invoice"] = inv.name == inv["last_invoice"]
@@ -1500,13 +1480,12 @@ def get_amend_form_data(sales_invoice: str):
 def _resolve_customer_email(customer: str) -> str | None:
 	"""Best email on file for `customer`: the Customer's own native
 	`email_id` (a Read Only fetch from `customer_primary_contact.email_id`),
-	then `custom_email` (the Student-profile-only field — see
-	[[forms-student-customer]] — which can be the only email on file for a
-	student even though it's not the native fetch field), then the primary
-	address of whichever Contact is actually linked (primary contact if set,
-	else the first Contact linked via Dynamic Link, same "resolve via primary
-	then first linked" pattern vendor_list.py's own _contacts_for() uses for
-	supplier phone numbers).
+	then `custom_email` (a manually-entered fallback, which can be the only
+	email on file for a customer even though it's not the native fetch
+	field), then the primary address of whichever Contact is actually linked
+	(primary contact if set, else the first Contact linked via Dynamic Link,
+	same "resolve via primary then first linked" pattern vendor_list.py's own
+	_contacts_for() uses for supplier phone numbers).
 	"""
 	customer_row = frappe.db.get_value(
 		"Customer", customer, ["email_id", "custom_email", "customer_primary_contact"], as_dict=True
