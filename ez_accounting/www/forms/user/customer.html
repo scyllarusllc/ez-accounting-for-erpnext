@@ -95,7 +95,7 @@ body.forms-portal-dark .customer-table .disabled-row {
 	opacity: 0.55;
 }
 
-body.forms-portal-dark .customer-table .manage-student-btn {
+body.forms-portal-dark .customer-table .manage-customer-btn {
 	background: none;
 	border: 1px solid #2a2e37;
 	border-radius: 0.5rem;
@@ -105,7 +105,7 @@ body.forms-portal-dark .customer-table .manage-student-btn {
 	white-space: nowrap;
 }
 
-body.forms-portal-dark .customer-table .manage-student-btn:hover {
+body.forms-portal-dark .customer-table .manage-customer-btn:hover {
 	background-color: #1e2129;
 }
 
@@ -679,11 +679,6 @@ frappe.ready(function () {
 		disabledCell.appendChild(disabledCheck);
 		row.appendChild(disabledCell);
 
-		// Student Customers have their own dedicated profile (vacations,
-		// documents, sales history, ...) at /forms/user/student_customer_profile
-		// -- surfaced here instead of a separate nav link, since "Student" is
-		// just one Customer Group among others as far as this page is
-		// concerned, not a different kind of record.
 		var actionsCell = document.createElement("td");
 		actionsCell.className = "customer-actions-cell";
 		var editBtn = document.createElement("button");
@@ -717,11 +712,9 @@ frappe.ready(function () {
 		});
 		actionsCell.appendChild(duplicateBtn);
 		var profileLink = document.createElement("a");
-		profileLink.className = "manage-student-btn";
+		profileLink.className = "manage-customer-btn";
 		profileLink.href = (window.FORMS_URL_PREFIX || "") +
-			(customer.customer_group === "Student"
-				? "/forms/user/student_customer_profile?customer="
-				: "/forms/user/customer_profile?customer=") + encodeURIComponent(customer.name);
+			"/forms/user/customer_profile?customer=" + encodeURIComponent(customer.name);
 		profileLink.target = "_blank";
 		profileLink.rel = "noopener";
 		profileLink.innerHTML = '<i class="fa fa-user btn-icon" aria-hidden="true"></i>' + __("Profile");
